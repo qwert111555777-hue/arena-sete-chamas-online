@@ -6,6 +6,8 @@ const { Server } = require('socket.io');
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const WORLD = { w: 1600, h: 900 };
+const PLAYER_BOUNDS = { minX: 78, maxX: WORLD.w - 78, minY: 185, maxY: WORLD.h - 110 };
+const ENEMY_BOUNDS = { minX: 90, maxX: WORLD.w - 90, minY: 280, maxY: WORLD.h - 200 };
 const MAX_PLAYERS = 5;
 
 const MIME = {
@@ -147,6 +149,15 @@ const io = new Server(server, {
 });
 
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+function clampEntity(ent, bounds = PLAYER_BOUNDS) {
+  ent.x = clamp(ent.x, bounds.minX, bounds.maxX);
+  ent.y = clamp(ent.y, bounds.minY, bounds.maxY);
+  return ent;
+}
+function setAction(ent, action, seconds = 0.35) {
+  ent.action = action;
+  ent.actionTimer = Math.max(ent.actionTimer || 0, seconds);
+}
 function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 function nowMs() { return Date.now(); }
 function sanitizeName(name) {
@@ -216,6 +227,9 @@ function addPlayer(room, socket, name) {
     damageBoostTimer: 0,
     slowTimer: 0,
     respawnTimer: 0,
+    hitFlash: 0,
+    action: 'idle',
+    actionTimer: 0,
     dead: false,
     kills: 0,
     input: defaultInput()
@@ -318,7 +332,11 @@ function initializePlayers(room) {
     const h = HEROES[p.hero];
     const pos = positions[i % positions.length];
     p.x = pos.x; p.y = pos.y;
+    clampEntity(p, PLAYER_BOUNDS);
     p.vx = 0; p.vy = 0; p.dirX = 1; p.dirY = 0;
+    p.action = 'idle';
+    p.actionTimer = 0;
+    p.hitFlash = 0;
     p.maxHp = h.hp;
     p.hp = h.hp;
     p.shield = 0;
@@ -372,8 +390,10 @@ function spawnStage(room) {
       stun: 0, slow: 0, mark: 0, forcedTarget: null, forcedTimer: 0,
       invisible: false, vanishTimer: 0, vanishCd: 3.2,
       foodTimer: 5.5, grow: 1,
+      action: 'idle', actionTimer: 0,
       hitFlash: 0
     };
+    clampEntity(enemy, ENEMY_BOUNDS);
     room.enemies.push(enemy);
   });
   addMessage(room, `${stage.title} começou!`, 'stage');
@@ -456,7 +476,8 @@ function damageEnemy(room, enemy, amount, fromPlayer, options = {}) {
   if (options.crit) final *= 1.45;
   final = Math.max(1, Math.round(final));
   enemy.hp = Math.max(0, enemy.hp - final);
-  enemy.hitFlash = 0.12;
+  enemy.hitFlash = 0.16;
+  if ((enemy.actionTimer || 0) <= 0.12) setAction(enemy, enemy.hp <= 0 ? 'defeat' : 'hit', enemy.hp <= 0 ? 0.8 : 0.18);
   addFloatingText(room, enemy.x + rand(-12, 12), enemy.y - enemy.radius - 12, `-${final}`, options.color || '#ffe36e');
   addEffect(room, { type: 'hit', x: enemy.x, y: enemy.y, r: enemy.radius + 8, color: options.color || '#ffe36e', ttl: 0.25, life: 0.25 });
   if (attacker) {
@@ -486,6 +507,8 @@ function damagePlayer(room, p, amount, sourceName = 'Inimigo', options = {}) {
     return 0;
   }
   p.hp = Math.max(0, p.hp - final);
+  p.hitFlash = 0.2;
+  setAction(p, p.hp <= 0 ? 'dead' : 'hit', p.hp <= 0 ? 1.0 : 0.22);
   addFloatingText(room, p.x, p.y - 38, `-${final}`, '#ff7777');
   addEffect(room, { type: 'hit', x: p.x, y: p.y, r: 32, color: '#ff6565', ttl: 0.28, life: 0.28 });
   if (p.hero === 'albert') p.rivalry = clamp((p.rivalry || 0) + 1, 0, 8);
@@ -514,6 +537,7 @@ function spawnPlayerProjectile(room, p, cfg) {
 
 function spawnEnemyProjectile(room, e, target, cfg = {}) {
   if (!target) return;
+  setAction(e, 'attack', 0.42);
   let dx = target.x - e.x, dy = target.y - e.y;
   let len = Math.hypot(dx, dy) || 1;
   dx /= len; dy /= len;
@@ -532,6 +556,7 @@ function playerNormalAttack(room, p) {
   const dir = getAimDirection(room, p);
   p.dirX = dir.x; p.dirY = dir.y;
   p.attackCd = h.attackCd;
+  setAction(p, 'attack', 0.34);
 
   if (p.hero === 'albert') {
     const cx = p.x + dir.x * 54, cy = p.y + dir.y * 54;
@@ -571,6 +596,7 @@ function playerNormalAttack(room, p) {
 function playerSpecial(room, p) {
   const h = HEROES[p.hero];
   p.specialCd = h.specialCd;
+  setAction(p, 'special', 0.72);
 
   if (p.hero === 'albert') {
     p.shield = Math.max(p.shield, 55);
@@ -637,6 +663,7 @@ function playerSpecial(room, p) {
 
 function playerUltimate(room, p) {
   p.ultimate = 0;
+  setAction(p, 'ultimate', 0.95);
   const dir = getAimDirection(room, p);
   p.dirX = dir.x; p.dirY = dir.y;
 
@@ -727,12 +754,16 @@ function updatePlayers(room, dt) {
 
     p.attackCd = Math.max(0, (p.attackCd || 0) - dt);
     p.specialCd = Math.max(0, (p.specialCd || 0) - dt);
+    p.actionTimer = Math.max(0, (p.actionTimer || 0) - dt);
+    p.hitFlash = Math.max(0, (p.hitFlash || 0) - dt);
     p.damageBoostTimer = Math.max(0, (p.damageBoostTimer || 0) - dt);
     if (p.damageBoostTimer <= 0) p.damageBoost = 1;
     p.slowTimer = Math.max(0, (p.slowTimer || 0) - dt);
     p.shield = Math.max(0, p.shield || 0);
 
     if (p.dead) {
+      p.action = 'dead';
+      p.vx = 0; p.vy = 0;
       p.respawnTimer = Math.max(0, (p.respawnTimer || 0) - dt);
       const aliveCount = [...room.players.values()].filter(a => !a.dead && a.hp > 0).length;
       if (p.respawnTimer <= 0 && aliveCount > 0 && !room.gameOver) {
@@ -741,6 +772,8 @@ function updatePlayers(room, dt) {
         p.shield = 24;
         p.x = 240 + rand(-30, 30);
         p.y = 450 + rand(-80, 80);
+        clampEntity(p, PLAYER_BOUNDS);
+        setAction(p, 'revive', 0.8);
         addEffect(room, { type: 'ring', x: p.x, y: p.y, r: 100, color: '#83ffae', ttl: 0.65, life: 0.65 });
         addMessage(room, `${p.name} voltou para a arena!`, 'good');
       }
@@ -758,8 +791,13 @@ function updatePlayers(room, dt) {
     if (len > 1) { mx /= len; my /= len; }
     if (len > 0.05) { p.dirX = mx; p.dirY = my; }
     const speed = h.speed * (p.slowTimer > 0 ? 0.62 : 1);
-    p.x = clamp(p.x + mx * speed * dt, 42, WORLD.w - 42);
-    p.y = clamp(p.y + my * speed * dt, 42, WORLD.h - 42);
+    const prevX = p.x, prevY = p.y;
+    p.x += mx * speed * dt;
+    p.y += my * speed * dt;
+    clampEntity(p, PLAYER_BOUNDS);
+    p.vx = (p.x - prevX) / Math.max(dt, 0.001);
+    p.vy = (p.y - prevY) / Math.max(dt, 0.001);
+    if (p.actionTimer <= 0) p.action = len > 0.05 ? 'run' : 'idle';
 
     if (input.attack && p.attackCd <= 0) playerNormalAttack(room, p);
     if (input.special && p.specialCd <= 0) playerSpecial(room, p);
@@ -801,6 +839,7 @@ function updateProjectiles(room, dt) {
 }
 
 function enemyMelee(room, e, target, radius, damage, color) {
+  setAction(e, 'melee', 0.45);
   addEffect(room, { type: 'ring', x: e.x, y: e.y, r: radius, color, ttl: 0.34, life: 0.34 });
   for (const p of room.players.values()) {
     if (p.dead || p.hp <= 0) continue;
@@ -816,6 +855,7 @@ function updateEnemies(room, dt) {
   for (const e of room.enemies) {
     if (e.hp <= 0) continue;
     e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt);
+    e.actionTimer = Math.max(0, (e.actionTimer || 0) - dt);
     e.stun = Math.max(0, (e.stun || 0) - dt);
     e.slow = Math.max(0, (e.slow || 0) - dt);
     e.mark = Math.max(0, (e.mark || 0) - dt);
@@ -831,10 +871,12 @@ function updateEnemies(room, dt) {
         if (e.vanishTimer <= 0) {
           const target = nearestPlayer(room, e);
           if (target) {
-            e.x = clamp(target.x + rand(-150, 150), 70, WORLD.w - 70);
-            e.y = clamp(target.y + rand(-120, 120), 70, WORLD.h - 70);
+            e.x = target.x + rand(-150, 150);
+            e.y = target.y + rand(-120, 120);
+            clampEntity(e, ENEMY_BOUNDS);
           }
           e.invisible = false;
+          setAction(e, 'special', 0.7);
           e.attackCd = 0.2;
           enemyMelee(room, e, target, 125, e.dmg * 0.8, '#ff5b5b');
           addMessage(room, 'Vanjo voltou do sumiço rabugento!', 'bad');
@@ -856,8 +898,13 @@ function updateEnemies(room, dt) {
       }
     }
 
-    if (e.stun > 0) continue;
+    if (e.stun > 0) {
+      e.vx = 0; e.vy = 0;
+      if (e.actionTimer <= 0) e.action = 'stun';
+      continue;
+    }
 
+    const prevX = e.x, prevY = e.y;
     let target = null;
     if (e.forcedTarget) {
       const forced = room.players.get(e.forcedTarget);
@@ -877,12 +924,18 @@ function updateEnemies(room, dt) {
     if (e.type === 'napoleao') desiredRange = 120 + e.radius * 0.4;
 
     if (d > desiredRange) {
-      e.x = clamp(e.x + (dx / d) * e.speed * slowFactor * dt, 40, WORLD.w - 40);
-      e.y = clamp(e.y + (dy / d) * e.speed * slowFactor * dt, 40, WORLD.h - 40);
+      e.x += (dx / d) * e.speed * slowFactor * dt;
+      e.y += (dy / d) * e.speed * slowFactor * dt;
+      clampEntity(e, ENEMY_BOUNDS);
     } else if (d < desiredRange * 0.55 && ['anielle', 'mito'].includes(e.type)) {
-      e.x = clamp(e.x - (dx / d) * e.speed * 0.45 * slowFactor * dt, 40, WORLD.w - 40);
-      e.y = clamp(e.y - (dy / d) * e.speed * 0.45 * slowFactor * dt, 40, WORLD.h - 40);
+      e.x -= (dx / d) * e.speed * 0.45 * slowFactor * dt;
+      e.y -= (dy / d) * e.speed * 0.45 * slowFactor * dt;
+      clampEntity(e, ENEMY_BOUNDS);
     }
+
+    e.vx = (e.x - prevX) / Math.max(dt, 0.001);
+    e.vy = (e.y - prevY) / Math.max(dt, 0.001);
+    if (e.actionTimer <= 0) e.action = Math.hypot(e.vx, e.vy) > 14 ? 'run' : 'idle';
 
     if (e.attackCd > 0) continue;
 
@@ -891,6 +944,7 @@ function updateEnemies(room, dt) {
         const heal = Math.round(26 * diff.enemyHp);
         e.hp = Math.min(e.maxHp, e.hp + heal);
         e.specialCd = 6.8;
+        setAction(e, 'special', 0.65);
         addFloatingText(room, e.x, e.y - 50, `+${heal}`, '#83ffae');
         addEffect(room, { type: 'ring', x: e.x, y: e.y, r: 80, color: '#83ffae', ttl: 0.45, life: 0.45 });
       }
@@ -900,6 +954,7 @@ function updateEnemies(room, dt) {
     } else if (e.type === 'anielle') {
       spawnEnemyProjectile(room, e, target, { speed: 500, radius: 12, damage: e.dmg, slow: 0.9, color: '#ba7cff', label: 'fofoca' });
       if (e.specialCd <= 0) {
+        setAction(e, 'special', 0.7);
         for (const p of room.players.values()) if (!p.dead) p.slowTimer = Math.max(p.slowTimer || 0, 1.2);
         addEffect(room, { type: 'ring', x: e.x, y: e.y, r: 190, color: '#ba7cff', ttl: 0.5, life: 0.5 });
         e.specialCd = 5.5;
@@ -909,6 +964,7 @@ function updateEnemies(room, dt) {
       if (d < 145) enemyMelee(room, e, target, 115, e.dmg * 0.9, '#ff70df');
       else spawnEnemyProjectile(room, e, target, { speed: 585, radius: 15, damage: e.dmg, slow: 1.4, color: '#ff70df', label: 'gloss' });
       if (e.specialCd <= 0) {
+        setAction(e, 'special', 0.62);
         const tx = target.x, ty = target.y;
         addEffect(room, { type: 'hazard', x: tx, y: ty, r: 120, color: '#ff70df', ttl: 1.0, life: 1.0 });
         for (const p of room.players.values()) {
@@ -921,7 +977,9 @@ function updateEnemies(room, dt) {
       if (e.specialCd <= 0 && d > 145) {
         const chargeX = dx / d, chargeY = dy / d;
         const cx = e.x + chargeX * 170, cy = e.y + chargeY * 170;
-        e.x = clamp(cx, 60, WORLD.w - 60); e.y = clamp(cy, 60, WORLD.h - 60);
+        e.x = cx; e.y = cy;
+        clampEntity(e, ENEMY_BOUNDS);
+        setAction(e, 'special', 0.62);
         enemyMelee(room, e, target, 145, e.dmg * 1.05, '#ffb12c');
         addMessage(room, 'Lenda acelerou a Bros 2009 amarela!', 'bad');
         e.specialCd = 5.8;
@@ -932,6 +990,7 @@ function updateEnemies(room, dt) {
     } else if (e.type === 'vanjo') {
       if (e.vanishCd <= 0) {
         e.invisible = true;
+        setAction(e, 'special', 0.72);
         e.vanishTimer = 1.1;
         e.vanishCd = 7.8;
         addEffect(room, { type: 'ring', x: e.x, y: e.y, r: 120, color: '#c7c7c7', ttl: 0.45, life: 0.45 });
@@ -951,8 +1010,10 @@ function updateEnemies(room, dt) {
       }
       if (e.specialCd <= 0) {
         const tx = target.x, ty = target.y;
-        e.x = clamp(tx + rand(-65, 65), 70, WORLD.w - 70);
-        e.y = clamp(ty + rand(-65, 65), 70, WORLD.h - 70);
+        e.x = tx + rand(-65, 65);
+        e.y = ty + rand(-65, 65);
+        clampEntity(e, ENEMY_BOUNDS);
+        setAction(e, 'special', 0.75);
         enemyMelee(room, e, target, 155 + e.radius * 0.45, e.dmg * 1.05, '#ffcf72');
         e.specialCd = 6.3;
         addMessage(room, 'Napoleão fez a entrada Garfield!', 'bad');
@@ -1038,7 +1099,8 @@ function gameSnapshot(room) {
     stageTimer: room.stageTimer,
     players: [...room.players.values()].filter(p => p.hero).map(p => ({
       id: p.id, name: p.name, hero: p.hero, connected: p.connected,
-      x: p.x, y: p.y, dirX: p.dirX, dirY: p.dirY,
+      x: p.x, y: p.y, vx: Math.round(p.vx || 0), vy: Math.round(p.vy || 0), dirX: p.dirX, dirY: p.dirY,
+      action: p.action || 'idle', actionTimer: p.actionTimer || 0, hitFlash: p.hitFlash || 0,
       hp: Math.round(p.hp), maxHp: p.maxHp, shield: Math.round(p.shield || 0),
       dead: p.dead, respawnTimer: p.respawnTimer,
       attackCd: p.attackCd, specialCd: p.specialCd,
@@ -1046,13 +1108,14 @@ function gameSnapshot(room) {
       damageBoostTimer: p.damageBoostTimer || 0, kills: p.kills || 0
     })),
     enemies: room.enemies.map(e => ({
-      id: e.id, type: e.type, name: e.name, x: e.x, y: e.y,
+      id: e.id, type: e.type, name: e.name, x: e.x, y: e.y, vx: Math.round(e.vx || 0), vy: Math.round(e.vy || 0),
+      action: e.action || 'idle', actionTimer: e.actionTimer || 0,
       hp: Math.round(e.hp), maxHp: e.maxHp, radius: e.radius, color: e.color,
       stun: e.stun, slow: e.slow, mark: e.mark, invisible: e.invisible, grow: e.grow || 1, hitFlash: e.hitFlash || 0,
       attackCd: e.attackCd || 0, specialCd: e.specialCd || 0, vanishCd: e.vanishCd || 0, foodTimer: e.foodTimer || 0
     })),
     projectiles: room.projectiles.map(p => ({
-      id: p.id, owner: p.owner, hero: p.hero, enemyType: p.enemyType, x: p.x, y: p.y,
+      id: p.id, owner: p.owner, hero: p.hero, enemyType: p.enemyType, x: p.x, y: p.y, vx: Math.round(p.vx || 0), vy: Math.round(p.vy || 0),
       radius: p.radius, color: p.color, label: p.label || ''
     })),
     effects: room.effects.map(fx => ({
