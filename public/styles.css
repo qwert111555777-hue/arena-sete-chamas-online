@@ -76,11 +76,10 @@ button { user-select: none; }
   position: fixed;
   inset: -20px;
   background:
-    linear-gradient(90deg, rgba(16,9,20,.70), rgba(16,9,20,.58)),
-    url('assets/herois_2d_v9.png') center / cover no-repeat;
-  filter: saturate(1.05) contrast(1.02);
-  opacity: .72;
-  transform: scale(1.03);
+    radial-gradient(circle at 20% 20%, rgba(255,209,102,.20), transparent 28%),
+    radial-gradient(circle at 80% 10%, rgba(123,211,255,.16), transparent 30%),
+    linear-gradient(135deg, #100914, #261331 55%, #08050c);
+  opacity: 1;
 }
 .menu-card {
   position: relative;
@@ -609,3 +608,7 @@ body.quality-performance .hero-bg { filter: none; }
 }
 .boss-skill b { color: var(--gold); }
 .boss-line small { color: var(--muted); display: block; margin-top: 5px; }
+
+.quick-rules { margin: 10px 0 0; padding-left: 20px; color: var(--muted); }
+.quick-rules li { margin: 8px 0; }
+.quick-rules strong { color: var(--gold); }

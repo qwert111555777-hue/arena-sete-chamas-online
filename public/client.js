@@ -61,17 +61,17 @@ const STAGE_BACKGROUNDS = {
 
 
 const SPRITE_FILES = {
-  albert: 'assets/sprites/albert.png',
-  geovanna: 'assets/sprites/geovanna.png',
-  romulo: 'assets/sprites/romulo.png',
-  arthur: 'assets/sprites/arthur.png',
-  guilherme: 'assets/sprites/guilherme.png',
-  otavio: 'assets/sprites/otavio.png',
-  anielle: 'assets/sprites/anielle.png',
-  mito: 'assets/sprites/mito.png',
-  lenda: 'assets/sprites/lenda.png',
-  vanjo: 'assets/sprites/vanjo.png',
-  napoleao: 'assets/sprites/napoleao.png'
+  albert: 'assets/sprites_opt/albert.webp',
+  geovanna: 'assets/sprites_opt/geovanna.webp',
+  romulo: 'assets/sprites_opt/romulo.webp',
+  arthur: 'assets/sprites_opt/arthur.webp',
+  guilherme: 'assets/sprites_opt/guilherme.webp',
+  otavio: 'assets/sprites_opt/otavio.webp',
+  anielle: 'assets/sprites_opt/anielle.webp',
+  mito: 'assets/sprites_opt/mito.webp',
+  lenda: 'assets/sprites_opt/lenda.webp',
+  vanjo: 'assets/sprites_opt/vanjo.webp',
+  napoleao: 'assets/sprites_opt/napoleao.webp'
 };
 
 const SPRITE_HEIGHT = {
@@ -87,7 +87,7 @@ function loadAsset(src) {
   return img;
 }
 function assetReady(img) { return !!img && img.complete && img.naturalWidth > 0; }
-assets.arena = loadAsset('assets/arena_brawl_fantasy.png');
+assets.arena = loadAsset('assets/stages/stage1_lagoa_porta.jpg');
 Object.entries(SPRITE_FILES).forEach(([key, src]) => { assets.sprites[key] = loadAsset(src); });
 Object.entries(STAGE_BACKGROUNDS).forEach(([key, src]) => { assets.stages[key] = loadAsset(src); });
 
@@ -116,19 +116,21 @@ let view = { scale: 1, ox: 0, oy: 0, w: 1600, h: 900, cssW: 1600, cssH: 900 };
 let lastCanvasW = 0;
 let lastCanvasH = 0;
 let lastDrawTime = 0;
+let lastHudUpdate = 0;
 
 function resolveQuality() {
   if (qualitySetting === 'max') return 'max';
   if (qualitySetting === 'performance') return 'performance';
   if (qualitySetting === 'balanced') return 'balanced';
-  if (device.mobile || device.memory <= 3 || device.cores <= 4) return 'balanced';
-  return 'max';
+  // Auto prioriza não travar: celular fica desempenho, PC fica equilibrado.
+  if (device.mobile || device.memory <= 3 || device.cores <= 4) return 'performance';
+  return 'balanced';
 }
 
 function qualityDprCap() {
-  if (quality === 'max') return 2;
-  if (quality === 'balanced') return device.mobile ? 1.15 : 1.5;
-  return 1;
+  if (quality === 'max') return device.mobile ? 1.15 : 1.35;
+  if (quality === 'balanced') return 1;
+  return 0.85;
 }
 
 function applyQuality() {
@@ -194,8 +196,13 @@ socket.on('state', (data) => {
   const oldStage = game?.stageIndex;
   game = data;
   if (currentScreen !== 'gameScreen') showScreen('gameScreen');
-  if (oldStage !== game.stageIndex) resizeCanvas(true);
-  updateGameHud();
+  const stageChanged = oldStage !== game.stageIndex;
+  if (stageChanged) resizeCanvas(true);
+  const t = performance.now();
+  if (stageChanged || game.gameOver || t - lastHudUpdate > 220) {
+    lastHudUpdate = t;
+    updateGameHud();
+  }
 });
 
 socket.on('roomList', (rooms) => {
@@ -367,9 +374,9 @@ function renderDifficultyButtons() {
   const box = $('difficultyButtons');
   if (!box || !Object.keys(difficulties).length) return;
   const text = {
-    facil: 'Chefes mais leves e reviver rápido.',
-    medio: 'Equilíbrio para jogar em grupo.',
-    dificil: 'Chefes agressivos e pouco perdão.'
+    facil: 'Bem mais vida para heróis; chefes causam pouco dano.',
+    medio: 'Luta longa, intensa e equilibrada.',
+    dificil: 'Chefes com muita vida e dano maior.'
   };
   box.innerHTML = Object.values(difficulties).map(d => `
     <div class="diff-card" data-diff="${d.key}">
@@ -543,7 +550,7 @@ function resizeCanvas(force = false) {
   const cssW = Math.max(1, Math.round(rect.width || innerWidth));
   const cssH = Math.max(1, Math.round(rect.height || innerHeight));
   const cap = qualityDprCap();
-  const nextDpr = Math.max(1, Math.min(window.devicePixelRatio || 1, cap));
+  const nextDpr = Math.max(0.85, Math.min(window.devicePixelRatio || 1, cap));
   const nextW = Math.floor(cssW * nextDpr);
   const nextH = Math.floor(cssH * nextDpr);
   const world = game?.world || { w: 1600, h: 900 };
@@ -1059,7 +1066,7 @@ function drawCooldownOverlay() {
 
 function draw(t = 0) {
   requestAnimationFrame(draw);
-  const targetFps = quality === 'performance' ? 42 : device.mobile && quality !== 'max' ? 50 : 60;
+  const targetFps = quality === 'performance' ? 30 : device.mobile && quality !== 'max' ? 38 : 45;
   const minFrame = 1000 / targetFps;
   if (t - lastDrawTime < minFrame) return;
   lastDrawTime = t;

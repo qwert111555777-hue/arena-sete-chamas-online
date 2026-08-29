@@ -13,6 +13,7 @@ const MIME = {
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.png': 'image/png',
+  '.webp': 'image/webp',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
   '.svg': 'image/svg+xml; charset=utf-8',
@@ -22,35 +23,36 @@ const MIME = {
 const HEROES = {
   albert: {
     key: 'albert', name: 'Albert', title: 'Brigão Competitivo', color: '#1e57d6', alt: '#a0162c',
-    hp: 150, speed: 235, radius: 23, attackCd: 0.48, specialCd: 7.5,
+    hp: 360, speed: 235, radius: 23, attackCd: 0.48, specialCd: 7.5,
     attackName: 'Soco de Discussão', specialName: 'Briga Sem Fim', ultimateName: 'Eu Não Perco'
   },
   geovanna: {
     key: 'geovanna', name: 'Geovanna', title: 'Psicóloga Ciumenta', color: '#ffd447', alt: '#ff69b4',
-    hp: 105, speed: 245, radius: 21, attackCd: 0.55, specialCd: 7,
+    hp: 275, speed: 245, radius: 21, attackCd: 0.55, specialCd: 7,
     attackName: 'Olhar de Ciúmes', specialName: 'Sessão de Psicóloga', ultimateName: 'Ciúmes Estratégico'
   },
   romulo: {
     key: 'romulo', name: 'Rômulo', title: 'Jogador Nato', color: '#858b95', alt: '#3ea86d',
-    hp: 118, speed: 238, radius: 22, attackCd: 0.5, specialCd: 8,
+    hp: 300, speed: 238, radius: 22, attackCd: 0.5, specialCd: 8,
     attackName: 'Jogada Segura', specialName: 'Prever Movimento', ultimateName: 'Xeque-Mate Gamer'
   },
   arthur: {
     key: 'arthur', name: 'Arthur', title: 'Hacker do Ego', color: '#111111', alt: '#18d4ff',
-    hp: 110, speed: 252, radius: 21, attackCd: 0.44, specialCd: 7.5,
+    hp: 285, speed: 252, radius: 21, attackCd: 0.44, specialCd: 7.5,
     attackName: 'Código Cortante', specialName: 'Hack de Sistema', ultimateName: 'Admin Supremo'
   },
   guilherme: {
     key: 'guilherme', name: 'Guilherme', title: 'General da Aura', color: '#16a9ff', alt: '#9df4ff',
-    hp: 112, speed: 240, radius: 21, attackCd: 0.52, specialCd: 8.5,
+    hp: 295, speed: 240, radius: 21, attackCd: 0.52, specialCd: 8.5,
     attackName: 'Corte Social', specialName: 'Estratégia de Guerra', ultimateName: 'Operação Aura Máxima'
   }
 };
 
 const DIFFICULTY = {
-  facil: { key: 'facil', label: 'Fácil', enemyHp: 0.78, enemyDmg: 0.76, enemySpeed: 0.9, respawn: 3.8, healBetween: 0.72 },
-  medio: { key: 'medio', label: 'Médio', enemyHp: 1, enemyDmg: 1, enemySpeed: 1, respawn: 5.5, healBetween: 0.55 },
-  dificil: { key: 'dificil', label: 'Difícil', enemyHp: 1.32, enemyDmg: 1.24, enemySpeed: 1.08, respawn: 7.5, healBetween: 0.38 }
+  // Mais vida para lutas duradouras; menos dano, principalmente no fácil.
+  facil: { key: 'facil', label: 'Fácil', enemyHp: 1.05, enemyDmg: 0.35, enemySpeed: 0.82, respawn: 2.5, healBetween: 1.0 },
+  medio: { key: 'medio', label: 'Médio', enemyHp: 1.32, enemyDmg: 0.58, enemySpeed: 0.92, respawn: 3.7, healBetween: 0.86 },
+  dificil: { key: 'dificil', label: 'Difícil', enemyHp: 1.7, enemyDmg: 0.78, enemySpeed: 1.0, respawn: 5.2, healBetween: 0.72 }
 };
 
 const ENEMIES = {
@@ -340,7 +342,7 @@ function spawnStage(room) {
   const stage = STAGES[room.stageIndex];
   const diff = DIFFICULTY[room.difficulty];
   const playerCount = Math.max(1, [...room.players.values()].filter(p => p.hero).length);
-  const hpScale = diff.enemyHp * (0.82 + playerCount * 0.24);
+  const hpScale = diff.enemyHp * (1.2 + playerCount * 0.55);
   room.enemies = [];
   room.projectiles = [];
   room.effects = [];
@@ -434,7 +436,7 @@ function getAimDirection(room, p) {
 
 function addEffect(room, effect) {
   room.effects.push({ id: makeId('fx'), ttl: effect.ttl || 0.45, life: effect.ttl || 0.45, ...effect });
-  if (room.effects.length > 80) room.effects.splice(0, room.effects.length - 80);
+  if (room.effects.length > 45) room.effects.splice(0, room.effects.length - 45);
 }
 
 function addFloatingText(room, x, y, text, color = '#fff') {
@@ -791,7 +793,7 @@ function updateProjectiles(room, dt) {
       }
     }
   }
-  room.projectiles = room.projectiles.filter(pr => pr.ttl > 0).slice(-120);
+  room.projectiles = room.projectiles.filter(pr => pr.ttl > 0).slice(-70);
 }
 
 function enemyMelee(room, e, target, radius, damage, color) {
@@ -958,7 +960,7 @@ function updateEnemies(room, dt) {
 
 function updateEffects(room, dt) {
   for (const fx of room.effects) fx.ttl -= dt;
-  room.effects = room.effects.filter(fx => fx.ttl > 0).slice(-80);
+  room.effects = room.effects.filter(fx => fx.ttl > 0).slice(-45);
 }
 
 function handleStageAndGameOver(room, dt) {
