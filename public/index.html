@@ -41,6 +41,7 @@
       </section>
 
       <div class="mini-info">
+        <span id="deviceBadge">Detectando dispositivo...</span>
         <span>📱 Celular deitado igual Brawl Stars</span>
         <span>🎮 PC: WASD + mouse + Q/E</span>
         <span>👥 Máximo 5 jogadores</span>
@@ -57,6 +58,7 @@
       </div>
       <div class="top-actions">
         <button id="lobbyHowToBtn" class="small-btn ghost">Como jogar</button>
+        <button id="fullscreenLobbyBtn" class="small-btn ghost">Tela cheia</button>
         <button id="copyBtn" class="small-btn">Copiar código</button>
         <button id="leaveBtn" class="small-btn ghost">Sair</button>
       </div>
@@ -107,11 +109,21 @@
         <p id="hudSub">Prepare-se.</p>
       </div>
       <div class="hud-buttons">
+        <label class="quality-label">Gráfico
+          <select id="qualitySelect">
+            <option value="auto">Auto</option>
+            <option value="max">Máximo</option>
+            <option value="balanced">Equilibrado</option>
+            <option value="performance">Desempenho</option>
+          </select>
+        </label>
+        <button id="fullscreenGameBtn" class="small-btn ghost">Tela cheia</button>
         <button id="backLobbyBtn" class="small-btn ghost">Lobby</button>
       </div>
     </div>
 
     <div id="teamHud" class="team-hud glass"></div>
+    <div id="abilityHud" class="ability-hud glass"></div>
     <div id="bossHud" class="boss-hud glass"></div>
     <div id="messagesHud" class="messages-hud"></div>
 
@@ -165,6 +177,10 @@
           </ol>
         </article>
       </div>
+      <section class="how-skills">
+        <h3>Habilidades e tempos</h3>
+        <div id="howSkillsList"></div>
+      </section>
       <p class="muted">Objetivo: cinco amigos escolhem os heróis e derrotam os chefes em ordem. Os vilões não podem ser escolhidos.</p>
     </div>
   </div>

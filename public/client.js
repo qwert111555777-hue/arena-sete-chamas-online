@@ -14,23 +14,23 @@ let toastTimer = null;
 const HERO_INFO = {
   albert: {
     icon: 'A', role: 'Tanque ofensivo', short: 'Competitivo, briga toda hora e fica mais forte quando apanha.',
-    passive: 'Rivalidade aumenta o dano ao receber golpe.'
+    passive: 'Rivalidade aumenta o dano ao receber golpe.', attack: 'Soco curto que provoca inimigos próximos.', special: 'Briga Sem Fim: escudo e provoca chefes por alguns segundos.', ultimate: 'Eu Não Perco: explosão de dano em área.'
   },
   geovanna: {
     icon: 'G', role: 'Suporte/controle', short: 'Ciúmes, psicóloga e faz tudo para vencer.',
-    passive: 'Cura melhor quando alguém está em perigo.'
+    passive: 'Cura melhor quando alguém está em perigo.', attack: 'Olhar de Ciúmes: projétil rosa que desacelera.', special: 'Sessão de Psicóloga: cura o aliado mais ferido.', ultimate: 'Ciúmes Estratégico: marca chefes e cura o time.'
   },
   romulo: {
     icon: 'R', role: 'Estrategista', short: 'Jogador nato, calculista e prevê movimentos.',
-    passive: 'Escudos e lentidão nos chefes.'
+    passive: 'Escudos e lentidão nos chefes.', attack: 'Jogada Segura: projétil preciso.', special: 'Prever Movimento: escudo no time e lentidão nos chefes.', ultimate: 'Xeque-Mate Gamer: paralisa chefes e aumenta dano aliado.'
   },
   arthur: {
     icon: 'AR', role: 'Dano/controle', short: 'Ego alto e hacker de sistemas.',
-    passive: 'Crítico carrega ego e aumenta dano.'
+    passive: 'Crítico carrega ego e aumenta dano.', attack: 'Código Cortante: disparo digital rápido.', special: 'Hack de Sistema: trava o chefe mais próximo.', ultimate: 'Admin Supremo: dano em todos os chefes.'
   },
   guilherme: {
     icon: 'GU', role: 'Buffer/aura', short: 'Beta que farma aura e usa estratégia de guerra.',
-    passive: 'Acumula aura para um ultimate gigante.'
+    passive: 'Acumula aura para um ultimate gigante.', attack: 'Corte Social: projétil que farma aura.', special: 'Estratégia de Guerra: escudo e bônus de dano para o time.', ultimate: 'Operação Aura Máxima: consome aura para dano em área.'
   }
 };
 
@@ -40,6 +40,23 @@ const HERO_COLORS = {
   romulo: ['#858b95', '#3ea86d', '#9a5b3e'],
   arthur: ['#111111', '#18d4ff', '#8d4c35'],
   guilherme: ['#16a9ff', '#9df4ff', '#ffe2bd']
+};
+
+const ENEMY_INFO = {
+  otavio: { icon: '🍔', attack: 'Promessa de Lanche', special: 'Gulodice', passive: 'cura quando está ferido', specialMax: 6.8 },
+  anielle: { icon: '🗣️', attack: 'Língua Grande', special: 'Falsidade', passive: 'fofoca mágica reduz mobilidade', specialMax: 5.5 },
+  mito: { icon: '💄', attack: 'Gloss Caótico', special: 'Testa Astral', passive: 'alta velocidade e dano de brilho', specialMax: 4.8 },
+  lenda: { icon: '🏍️', attack: 'Barrigada Lendária', special: 'Bros 2009 Amarela', passive: 'investida de moto e capacete rosa', specialMax: 5.8 },
+  vanjo: { icon: '📦', attack: 'Reposição Furiosa', special: 'Sumiço Rabugento', passive: 'some e volta causando dano', specialMax: 7.8 },
+  napoleao: { icon: '🐶', attack: 'Mordida de Lanche', special: 'Forma Garfield', passive: 'Fome extrema: cresce e cura com comida', specialMax: 6.3 }
+};
+
+const STAGE_BACKGROUNDS = {
+  stage1_lagoa_porta: 'assets/stages/stage1_lagoa_porta.jpg',
+  stage2_feira_coruja: 'assets/stages/stage2_feira_coruja.jpg',
+  stage3_tanque_missionarios: 'assets/stages/stage3_tanque_missionarios.jpg',
+  stage4_recanto_serra: 'assets/stages/stage4_recanto_serra.jpg',
+  stage5_riacho_curva: 'assets/stages/stage5_riacho_curva.jpg'
 };
 
 
@@ -62,7 +79,7 @@ const SPRITE_HEIGHT = {
   otavio: 158, anielle: 136, mito: 188, lenda: 190, vanjo: 184, napoleao: 172
 };
 
-const assets = { arena: null, sprites: {} };
+const assets = { arena: null, sprites: {}, stages: {} };
 function loadAsset(src) {
   const img = new Image();
   img.decoding = 'async';
@@ -72,6 +89,7 @@ function loadAsset(src) {
 function assetReady(img) { return !!img && img.complete && img.naturalWidth > 0; }
 assets.arena = loadAsset('assets/arena_brawl_fantasy.png');
 Object.entries(SPRITE_FILES).forEach(([key, src]) => { assets.sprites[key] = loadAsset(src); });
+Object.entries(STAGE_BACKGROUNDS).forEach(([key, src]) => { assets.stages[key] = loadAsset(src); });
 
 const keys = {};
 const inputState = { mx: 0, my: 0, aimX: null, aimY: null, attack: false, special: false, ultimate: false };
@@ -86,8 +104,43 @@ let lastSocketInput = 0;
 
 const canvas = $('gameCanvas');
 const ctx = canvas.getContext('2d');
-let dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+const device = {
+  mobile: /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1,
+  memory: navigator.deviceMemory || 4,
+  cores: navigator.hardwareConcurrency || 4
+};
+let qualitySetting = localStorage.getItem('arenaQuality') || 'auto';
+let quality = 'balanced';
+let dpr = 1;
 let view = { scale: 1, ox: 0, oy: 0, w: 1600, h: 900, cssW: 1600, cssH: 900 };
+let lastCanvasW = 0;
+let lastCanvasH = 0;
+let lastDrawTime = 0;
+
+function resolveQuality() {
+  if (qualitySetting === 'max') return 'max';
+  if (qualitySetting === 'performance') return 'performance';
+  if (qualitySetting === 'balanced') return 'balanced';
+  if (device.mobile || device.memory <= 3 || device.cores <= 4) return 'balanced';
+  return 'max';
+}
+
+function qualityDprCap() {
+  if (quality === 'max') return 2;
+  if (quality === 'balanced') return device.mobile ? 1.15 : 1.5;
+  return 1;
+}
+
+function applyQuality() {
+  quality = resolveQuality();
+  document.body.classList.toggle('is-mobile', device.mobile);
+  document.body.classList.toggle('quality-performance', quality === 'performance');
+  const select = $('qualitySelect');
+  if (select) select.value = qualitySetting;
+  const badge = $('deviceBadge');
+  if (badge) badge.textContent = device.mobile ? '📱 Modo celular detectado' : '💻 Modo PC detectado';
+  resizeCanvas(true);
+}
 
 function toast(message) {
   const el = $('toast');
@@ -126,6 +179,8 @@ socket.on('hello', (data) => {
   stages = data.stages || [];
   renderDifficultyButtons();
   renderHeroCards();
+  renderHowSkills();
+  applyQuality();
   renderOpenRooms();
 });
 
@@ -136,8 +191,10 @@ socket.on('lobby', (data) => {
 });
 
 socket.on('state', (data) => {
+  const oldStage = game?.stageIndex;
   game = data;
   if (currentScreen !== 'gameScreen') showScreen('gameScreen');
+  if (oldStage !== game.stageIndex) resizeCanvas(true);
   updateGameHud();
 });
 
@@ -208,6 +265,28 @@ $('lobbyHowToBtn').addEventListener('click', openHowTo);
 $('closeHowToBtn').addEventListener('click', closeHowTo);
 $('howToModal').addEventListener('click', (e) => { if (e.target.id === 'howToModal') closeHowTo(); });
 
+async function toggleFullscreen() {
+  try {
+    if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+    else await document.exitFullscreen();
+    setTimeout(() => resizeCanvas(true), 150);
+  } catch {
+    toast('Tela cheia não foi permitida pelo navegador.');
+  }
+}
+['fullscreenMenuBtn', 'fullscreenLobbyBtn', 'fullscreenGameBtn'].forEach(id => {
+  const btn = $(id);
+  if (btn) btn.addEventListener('click', toggleFullscreen);
+});
+document.addEventListener('fullscreenchange', () => resizeCanvas(true));
+
+$('qualitySelect').addEventListener('change', (e) => {
+  qualitySetting = e.target.value;
+  localStorage.setItem('arenaQuality', qualitySetting);
+  applyQuality();
+  toast(`Gráfico: ${e.target.options[e.target.selectedIndex].text}`);
+});
+
 $('leaveBtn').addEventListener('click', () => {
   location.href = location.pathname;
 });
@@ -238,6 +317,28 @@ $('playAgainBtn').addEventListener('click', () => {
   if (isHost()) socket.emit('restartLobby', () => {});
   else toast('Só o host pode voltar ao lobby.');
 });
+
+function renderHowSkills() {
+  const box = $('howSkillsList');
+  if (!box || !Object.keys(heroes).length) return;
+  const heroCards = Object.keys(heroes).map(key => {
+    const h = heroes[key];
+    const info = HERO_INFO[key] || {};
+    return `<div class="how-skill-card">
+      <strong>${h.name} · ${h.title}</strong>
+      <span><em>Ataque:</em> ${h.attackName} — ${info.attack || ''}</span><br>
+      <span><em>Habilidade:</em> ${h.specialName} — ${Math.round(h.specialCd || 0)}s — ${info.special || ''}</span><br>
+      <span><em>Ultimate:</em> ${h.ultimateName} — carrega causando dano — ${info.ultimate || ''}</span>
+    </div>`;
+  }).join('');
+  const bossCards = Object.entries(ENEMY_INFO).map(([key, e]) => `<div class="how-skill-card">
+    <strong>${e.icon} ${key[0].toUpperCase() + key.slice(1)}</strong>
+    <span><em>Ataque:</em> ${e.attack}</span><br>
+    <span><em>Especial:</em> ${e.special} — ${Math.round(e.specialMax || 0)}s</span><br>
+    <span><em>Passiva:</em> ${e.passive}</span>
+  </div>`).join('');
+  box.innerHTML = heroCards + bossCards;
+}
 
 function renderOpenRooms() {
   const box = $('openRoomsList');
@@ -363,9 +464,9 @@ function renderLobby() {
 function updateGameHud() {
   if (!game) return;
   $('hudRoom').textContent = game.code;
-  $('hudDiff').textContent = diffLabel(game.difficulty);
+  $('hudDiff').textContent = `${diffLabel(game.difficulty)} · ${quality === 'max' ? 'gráfico máximo' : quality === 'performance' ? 'desempenho' : 'equilibrado'}`;
   $('hudStage').textContent = `${game.stageIndex + 1}/${game.stageCount} · ${game.stageTitle}`;
-  $('hudSub').textContent = game.stageCleared ? `Próxima fase em ${Math.max(0, Math.ceil(game.stageTimer))}...` : game.stageSubtitle;
+  $('hudSub').textContent = game.stageCleared ? `Próxima fase em ${Math.max(0, Math.ceil(game.stageTimer))}...` : `${game.stageVenue || ''} · ${game.stageSubtitle}`;
 
   const team = $('teamHud');
   team.innerHTML = game.players.map(p => {
@@ -382,12 +483,22 @@ function updateGameHud() {
     </div>`;
   }).join('');
 
+  renderAbilityHud();
+  drawCooldownOverlay();
+
   const boss = $('bossHud');
-  boss.innerHTML = game.enemies.filter(e => e.hp > 0).map(e => `
-    <div class="boss-line">
-      <div class="boss-name"><span>${enemyIcon(e.type)} ${e.name}</span><span>${Math.round(e.hp)}/${e.maxHp}</span></div>
+  boss.innerHTML = game.enemies.filter(e => e.hp > 0).map(e => {
+    const info = ENEMY_INFO[e.type] || { icon: '👾', attack: 'Ataque', special: 'Especial', passive: '', specialMax: 6 };
+    const specialCd = e.type === 'vanjo' ? e.vanishCd : e.type === 'napoleao' ? Math.min(e.specialCd || 0, e.foodTimer || 99) : e.specialCd;
+    const specialPct = 100 - pct(Math.max(0, specialCd || 0), info.specialMax || 6);
+    return `<div class="boss-line">
+      <div class="boss-name"><span>${info.icon} ${e.name}</span><span>${Math.round(e.hp)}/${e.maxHp}</span></div>
       <div class="bar"><span class="hpbar" style="width:${pct(e.hp, e.maxHp)}%; background:linear-gradient(90deg,#ff6262,#ffcc5c)"></span></div>
-    </div>`).join('') || '<strong>Fase vencida!</strong>';
+      <div class="boss-skill"><b>${info.special}</b><span>${specialCd > .1 ? Math.ceil(specialCd) + 's' : 'pronto'}</span></div>
+      <div class="bar"><span class="ultbar" style="width:${Math.max(0, Math.min(100, specialPct))}%"></span></div>
+      <small>${info.passive}</small>
+    </div>`;
+  }).join('') || '<strong>Fase vencida!</strong>';
 
   $('messagesHud').innerHTML = (game.messages || []).slice(-4).reverse().map(m => `<div class="msg ${m.kind}">${m.text}</div>`).join('');
 
@@ -404,25 +515,50 @@ function updateGameHud() {
   }
 }
 
-function enemyIcon(type) {
-  return ({ otavio: '🍔', anielle: '🗣️', mito: '💄', lenda: '🏍️', vanjo: '📦', napoleao: '🐶' })[type] || '👾';
+function renderAbilityHud() {
+  const box = $('abilityHud');
+  const me = myGamePlayer();
+  if (!box || !me) return;
+  const h = heroes[me.hero] || {};
+  const specialReady = me.specialCd <= .05 && !me.dead;
+  const ultimateReady = me.ultimate >= 100 && !me.dead;
+  const attackReady = me.attackCd <= .05 && !me.dead;
+  const extra = me.hero === 'guilherme' ? `Aura ${Math.round(me.aura || 0)}%` : me.hero === 'albert' ? `Rivalidade ${me.rivalry || 0}` : me.damageBoostTimer > 0 ? 'Bônus de dano' : '';
+  box.innerHTML = `<div class="ability-title"><strong>${h.name || 'Herói'} · ${h.title || ''}</strong><span>${me.dead ? 'Revive em ' + Math.ceil(me.respawnTimer) + 's' : extra}</span></div>
+    <div class="ability-grid">
+      <div class="ability-card ${attackReady ? 'ready' : 'wait'}"><b>${h.attackName || 'Ataque'}</b><span>${attackReady ? 'pronto' : Math.ceil(me.attackCd) + 's'} · clique/espaço</span></div>
+      <div class="ability-card ${specialReady ? 'ready' : 'wait'}"><b>${h.specialName || 'Habilidade'}</b><span>${specialReady ? 'pronto' : Math.ceil(me.specialCd) + 's'} · Q</span></div>
+      <div class="ability-card ${ultimateReady ? 'ready' : 'wait'}"><b>${h.ultimateName || 'Ultimate'}</b><span>${ultimateReady ? 'pronto' : Math.round(me.ultimate || 0) + '%'} · E</span></div>
+    </div>`;
 }
 
-function resizeCanvas() {
+
+function enemyIcon(type) {
+  return ENEMY_INFO[type]?.icon || '👾';
+}
+
+function resizeCanvas(force = false) {
   if (!canvas) return;
-  dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
   const rect = canvas.getBoundingClientRect();
-  const cssW = Math.max(1, rect.width || innerWidth);
-  const cssH = Math.max(1, rect.height || innerHeight);
-  canvas.width = Math.floor(cssW * dpr);
-  canvas.height = Math.floor(cssH * dpr);
-  canvas.style.width = `${cssW}px`;
-  canvas.style.height = `${cssH}px`;
+  const cssW = Math.max(1, Math.round(rect.width || innerWidth));
+  const cssH = Math.max(1, Math.round(rect.height || innerHeight));
+  const cap = qualityDprCap();
+  const nextDpr = Math.max(1, Math.min(window.devicePixelRatio || 1, cap));
+  const nextW = Math.floor(cssW * nextDpr);
+  const nextH = Math.floor(cssH * nextDpr);
   const world = game?.world || { w: 1600, h: 900 };
   const scale = Math.min(cssW / world.w, cssH / world.h);
   view = { scale, ox: (cssW - world.w * scale) / 2, oy: (cssH - world.h * scale) / 2, w: world.w, h: world.h, cssW, cssH };
+  if (!force && canvas.width === nextW && canvas.height === nextH && lastCanvasW === cssW && lastCanvasH === cssH && dpr === nextDpr) return;
+  dpr = nextDpr;
+  lastCanvasW = cssW; lastCanvasH = cssH;
+  canvas.width = nextW;
+  canvas.height = nextH;
+  canvas.style.width = `${cssW}px`;
+  canvas.style.height = `${cssH}px`;
 }
-window.addEventListener('resize', resizeCanvas);
+window.addEventListener('resize', () => resizeCanvas(true));
+window.addEventListener('orientationchange', () => setTimeout(() => resizeCanvas(true), 250));
 
 function screenToWorld(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
@@ -549,10 +685,13 @@ function drawImageCover(img, x, y, w, h) {
 }
 
 function drawArena() {
-  if (assetReady(assets.arena)) {
-    drawImageCover(assets.arena, 0, 0, view.w, view.h);
+  const bgKey = game?.stageBackground;
+  const bg = bgKey ? assets.stages[bgKey] : null;
+  const img = assetReady(bg) ? bg : assets.arena;
+  if (assetReady(img)) {
+    drawImageCover(img, 0, 0, view.w, view.h);
     ctx.save();
-    const pulse = .18 + Math.sin(performance.now() / 600) * .04;
+    const pulse = quality === 'performance' ? .12 : .16 + Math.sin(performance.now() / 700) * .025;
     ctx.fillStyle = `rgba(16, 8, 24, ${pulse})`;
     ctx.fillRect(0, 0, view.w, view.h);
     ctx.restore();
@@ -565,24 +704,25 @@ function drawArena() {
     ctx.fillRect(0, 0, view.w, view.h);
   }
 
-  // Vinheta e brilho central para dar acabamento de jogo mobile.
   ctx.save();
   const rg = ctx.createRadialGradient(view.w / 2, view.h / 2, 80, view.w / 2, view.h / 2, view.w * .62);
-  rg.addColorStop(0, 'rgba(255, 226, 128, .10)');
-  rg.addColorStop(.55, 'rgba(90, 43, 116, .04)');
-  rg.addColorStop(1, 'rgba(0, 0, 0, .34)');
+  rg.addColorStop(0, 'rgba(255, 226, 128, .09)');
+  rg.addColorStop(.58, 'rgba(90, 43, 116, .035)');
+  rg.addColorStop(1, 'rgba(0, 0, 0, .32)');
   ctx.fillStyle = rg;
   ctx.fillRect(0, 0, view.w, view.h);
 
   ctx.strokeStyle = '#ffe08a88';
-  ctx.lineWidth = 8;
+  ctx.lineWidth = quality === 'performance' ? 5 : 8;
   roundRect(ctx, 18, 18, view.w - 36, view.h - 36, 28); ctx.stroke();
 
-  const runePulse = .25 + Math.sin(performance.now() / 420) * .08;
-  ctx.globalAlpha = runePulse;
-  ctx.strokeStyle = '#ff77ea';
-  ctx.lineWidth = 4;
-  ctx.beginPath(); ctx.arc(view.w / 2, view.h / 2, 132, 0, Math.PI * 2); ctx.stroke();
+  if (quality !== 'performance') {
+    const runePulse = .22 + Math.sin(performance.now() / 420) * .08;
+    ctx.globalAlpha = runePulse;
+    ctx.strokeStyle = game?.stageIndex === 1 ? '#ffb45f' : game?.stageIndex === 4 ? '#ffd166' : '#ff77ea';
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(view.w / 2, view.h / 2, 132, 0, Math.PI * 2); ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -627,10 +767,10 @@ function spriteDimensions(key, height) {
 
 function drawSpriteImage(key, x, footY, height, facing = 1, alpha = 1, glow = null) {
   const { img, w, h } = spriteDimensions(key, height);
-  const bob = Math.sin(performance.now() / 185 + x * .013) * 2.2;
+  const bob = quality === 'performance' ? 0 : Math.sin(performance.now() / 185 + x * .013) * 2.2;
   ctx.save();
   ctx.globalAlpha *= alpha;
-  if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = 18; }
+  if (glow && quality !== 'performance') { ctx.shadowColor = glow; ctx.shadowBlur = quality === 'max' ? 18 : 10; }
   if (assetReady(img)) {
     ctx.translate(x, footY - h / 2 + bob);
     ctx.scale(facing, 1);
@@ -846,10 +986,20 @@ function sadMouth(x, y, s = 1) {
 
 function drawProjectile(pr) {
   ctx.save();
-  ctx.shadowColor = pr.color || '#fff'; ctx.shadowBlur = 16;
+  if (quality !== 'performance') { ctx.shadowColor = pr.color || '#fff'; ctx.shadowBlur = 16; }
   ctx.fillStyle = pr.color || '#fff';
   ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.radius, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle = '#fff8'; ctx.beginPath(); ctx.arc(pr.x - pr.radius*.25, pr.y - pr.radius*.25, pr.radius*.35, 0, Math.PI*2); ctx.fill();
+  if (quality !== 'performance') {
+    const icon = pr.hero === 'geovanna' ? '♥' : pr.hero === 'romulo' ? '◆' : pr.hero === 'arthur' ? '01' : pr.hero === 'guilherme' ? '✦' :
+      pr.enemyType === 'napoleao' ? '🍗' : pr.enemyType === 'vanjo' ? '▣' : pr.enemyType === 'mito' ? '✧' : pr.enemyType === 'anielle' ? '!' : '';
+    if (icon) {
+      ctx.font = `bold ${Math.max(10, pr.radius * 1.05)}px system-ui`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff';
+      ctx.fillText(icon, pr.x, pr.y + 0.5);
+    }
+  }
   ctx.restore();
 }
 
@@ -885,22 +1035,35 @@ function drawAimLine() {
   ctx.restore();
 }
 
+function setButtonHtml(id, main, sub) {
+  const btn = $(id);
+  if (!btn) return;
+  btn.innerHTML = `${main}<span>${sub}</span>`;
+}
+
 function drawCooldownOverlay() {
   const me = myGamePlayer();
   if (!me) return;
   const h = heroes[me.hero] || {};
   const specialReady = me.specialCd <= .05 && !me.dead;
   const ultimateReady = me.ultimate >= 100 && !me.dead;
+  const attackReady = me.attackCd <= .05 && !me.dead;
+  $('attackTouch').style.filter = attackReady ? 'brightness(1)' : 'grayscale(.25) brightness(.86)';
   $('specialTouch').style.filter = specialReady ? 'brightness(1)' : 'grayscale(.45) brightness(.75)';
   $('ultimateTouch').style.filter = ultimateReady ? 'brightness(1.15)' : 'grayscale(.45) brightness(.75)';
-  $('specialTouch').querySelector('span').textContent = specialReady ? 'Q' : `${Math.ceil(me.specialCd)}s`;
-  $('ultimateTouch').querySelector('span').textContent = ultimateReady ? 'E pronto' : `${Math.round(me.ultimate)}%`;
-  $('attackTouch').querySelector('span').textContent = h.attackName || 'Mouse/Espaço';
+  setButtonHtml('attackTouch', h.attackName || 'ATACAR', attackReady ? 'clique/espaço' : `${Math.ceil(me.attackCd)}s`);
+  setButtonHtml('specialTouch', h.specialName || 'HABILIDADE', specialReady ? 'Q pronto' : `Q · ${Math.ceil(me.specialCd)}s`);
+  setButtonHtml('ultimateTouch', h.ultimateName || 'ULTIMATE', ultimateReady ? 'E pronto' : `E · ${Math.round(me.ultimate || 0)}%`);
 }
 
-function draw() {
+
+function draw(t = 0) {
   requestAnimationFrame(draw);
-  resizeCanvas();
+  const targetFps = quality === 'performance' ? 42 : device.mobile && quality !== 'max' ? 50 : 60;
+  const minFrame = 1000 / targetFps;
+  if (t - lastDrawTime < minFrame) return;
+  lastDrawTime = t;
+
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, view.cssW, view.cssH);
   ctx.fillStyle = '#120914'; ctx.fillRect(0, 0, view.cssW, view.cssH);
@@ -911,27 +1074,28 @@ function draw() {
   drawArena();
 
   if (game) {
-    (game.effects || []).filter(fx => fx.type !== 'text').forEach(drawEffect);
-    (game.projectiles || []).forEach(drawProjectile);
+    const effects = game.effects || [];
+    for (const fx of effects) if (fx.type !== 'text') drawEffect(fx);
+    for (const pr of (game.projectiles || [])) drawProjectile(pr);
     const entities = [
       ...(game.players || []).map(p => ({ kind: 'player', y: p.y, data: p })),
       ...(game.enemies || []).map(e => ({ kind: 'enemy', y: e.y, data: e }))
     ].sort((a, b) => a.y - b.y);
     for (const item of entities) item.kind === 'player' ? drawPlayer(item.data) : drawEnemy(item.data);
     drawAimLine();
-    (game.effects || []).filter(fx => fx.type === 'text').forEach(drawEffect);
+    for (const fx of effects) if (fx.type === 'text') drawEffect(fx);
   } else {
     ctx.fillStyle = '#fff6dd'; ctx.font = 'bold 42px system-ui'; ctx.textAlign = 'center';
     ctx.fillText('Arena das Sete Chamas', view.w/2, view.h/2);
   }
   ctx.restore();
-
-  if (game && currentScreen === 'gameScreen') drawCooldownOverlay();
 }
+
 requestAnimationFrame(draw);
 
 // Entrada automática via link ?room=ABCD
 window.addEventListener('load', () => {
+  applyQuality();
   $('nameInput').value = localStorage.getItem('arenaNome') || '';
   $('nameInput').addEventListener('input', () => localStorage.setItem('arenaNome', $('nameInput').value));
   const params = new URLSearchParams(location.search);

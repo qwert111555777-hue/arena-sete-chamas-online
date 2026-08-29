@@ -510,3 +510,102 @@ button:disabled { opacity: .55; cursor: not-allowed; transform: none !important;
   filter: drop-shadow(0 10px 10px rgba(0,0,0,.32));
 }
 .hero-card .orb { display: none; }
+
+.quality-label {
+  display: inline-grid;
+  gap: 3px;
+  align-items: center;
+  color: var(--muted);
+  font-size: .75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.quality-label select {
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 12px;
+  padding: 7px 9px;
+  color: var(--text);
+  background: rgba(0,0,0,.38);
+  outline: none;
+  font-weight: 900;
+}
+.hud-buttons { display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+.ability-hud {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  z-index: 6;
+  width: min(460px, calc(100vw - 360px));
+  min-width: 320px;
+  border-radius: 20px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+.ability-title { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.ability-title strong { color: var(--gold); }
+.ability-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ability-card {
+  padding: 9px;
+  border-radius: 15px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.22);
+  min-height: 58px;
+}
+.ability-card b { display: block; color: var(--text); font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ability-card span { color: var(--muted); font-size: .78rem; }
+.ability-card.ready { border-color: rgba(125,244,168,.45); box-shadow: inset 0 0 22px rgba(125,244,168,.09); }
+.ability-card.wait { opacity: .74; }
+.how-skills { margin-top: 14px; }
+.how-skills h3 { color: var(--gold); margin: 0 0 8px; }
+#howSkillsList { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.how-skill-card {
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.20);
+  border-radius: 16px;
+  padding: 10px;
+  color: var(--muted);
+}
+.how-skill-card strong { color: var(--text); display: block; }
+.how-skill-card em { color: var(--gold); font-style: normal; font-weight: 900; }
+body.is-mobile .hero-bg { filter: saturate(1) contrast(1); }
+body.quality-performance .glass { backdrop-filter: none; }
+body.quality-performance .hero-bg { filter: none; }
+
+@media (max-width: 980px) {
+  .ability-hud {
+    width: min(360px, calc(100vw - 28px));
+    min-width: 0;
+    left: 14px;
+    bottom: 122px;
+  }
+  .team-hud { bottom: 274px; }
+}
+
+@media (max-width: 720px) {
+  .hud-buttons { width: 100%; justify-content: flex-start; }
+  .quality-label select { max-width: 135px; }
+  .ability-hud {
+    left: 8px;
+    right: 8px;
+    bottom: 112px;
+    width: calc(100vw - 16px);
+    padding: 8px;
+  }
+  .ability-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .ability-card { padding: 7px; min-height: 50px; }
+  .ability-card b { font-size: .72rem; }
+  .ability-card span { font-size: .66rem; }
+  .team-hud { display: none; }
+  #howSkillsList { grid-template-columns: 1fr; }
+}
+.boss-skill {
+  margin-top: 7px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: .82rem;
+}
+.boss-skill b { color: var(--gold); }
+.boss-line small { color: var(--muted); display: block; margin-top: 5px; }

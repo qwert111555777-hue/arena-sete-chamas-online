@@ -63,11 +63,41 @@ const ENEMIES = {
 };
 
 const STAGES = [
-  { title: 'Fase 1: Falsidade e Gulodice', subtitle: 'Derrote Otávio e Anielle juntos.', enemies: ['otavio', 'anielle'] },
-  { title: 'Fase 2: Ascensão da Mito', subtitle: 'A transformação de Anielle domina o campo com gloss.', enemies: ['mito'] },
-  { title: 'Fase 3: A Lenda Motorizada', subtitle: 'Otávio volta como Lenda, com barriga, barba e egoísmo.', enemies: ['lenda'] },
-  { title: 'Fase 4: O Sumiço do Vanjo', subtitle: 'Vanjo aparece, some e volta mais rabugento.', enemies: ['vanjo'] },
-  { title: 'Chefão Final: Napoleão', subtitle: 'O basset hound faminto cresce cada vez que come.', enemies: ['napoleao'] }
+  {
+    title: 'Lagoa da Porta: Falsidade e Gulodice',
+    venue: 'Parque Lagoa da Porta',
+    subtitle: 'Otávio e Anielle aparecem na praça da lagoa para abrir a confusão.',
+    background: 'stage1_lagoa_porta',
+    enemies: ['otavio', 'anielle']
+  },
+  {
+    title: 'Feira da Coruja: Ascensão da Mito',
+    venue: 'Feira da Coruja',
+    subtitle: 'Entre barracas, tecidos e luzes, a Mito espalha gloss caótico.',
+    background: 'stage2_feira_coruja',
+    enemies: ['mito']
+  },
+  {
+    title: 'Tanque dos Missionários: A Lenda Motorizada',
+    venue: 'Parque Municipal Tanque dos Missionários',
+    subtitle: 'A pista do parque vira rota da Bros 2009 amarela.',
+    background: 'stage3_tanque_missionarios',
+    enemies: ['lenda']
+  },
+  {
+    title: 'Recanto da Serra: O Sumiço do Vanjo',
+    venue: 'Recanto da Serra / Museu dos Tropeiros',
+    subtitle: 'Na poeira da serra, Vanjo some, volta e fica cada vez mais rabugento.',
+    background: 'stage4_recanto_serra',
+    enemies: ['vanjo']
+  },
+  {
+    title: 'Riacho da Curva: Napoleão Supremo',
+    venue: 'Riacho da Curva',
+    subtitle: 'O chefão final chega perto do riacho com fome extrema.',
+    background: 'stage5_riacho_curva',
+    enemies: ['napoleao']
+  }
 ];
 
 let nextEntityId = 1;
@@ -995,7 +1025,9 @@ function gameSnapshot(room) {
     stageIndex: room.stageIndex,
     stageCount: STAGES.length,
     stageTitle: stage.title,
+    stageVenue: stage.venue,
     stageSubtitle: stage.subtitle,
+    stageBackground: stage.background,
     stageCleared: room.stageCleared,
     stageTimer: room.stageTimer,
     players: [...room.players.values()].filter(p => p.hero).map(p => ({
@@ -1010,7 +1042,8 @@ function gameSnapshot(room) {
     enemies: room.enemies.map(e => ({
       id: e.id, type: e.type, name: e.name, x: e.x, y: e.y,
       hp: Math.round(e.hp), maxHp: e.maxHp, radius: e.radius, color: e.color,
-      stun: e.stun, slow: e.slow, mark: e.mark, invisible: e.invisible, grow: e.grow || 1, hitFlash: e.hitFlash || 0
+      stun: e.stun, slow: e.slow, mark: e.mark, invisible: e.invisible, grow: e.grow || 1, hitFlash: e.hitFlash || 0,
+      attackCd: e.attackCd || 0, specialCd: e.specialCd || 0, vanishCd: e.vanishCd || 0, foodTimer: e.foodTimer || 0
     })),
     projectiles: room.projectiles.map(p => ({
       id: p.id, owner: p.owner, hero: p.hero, enemyType: p.enemyType, x: p.x, y: p.y,
