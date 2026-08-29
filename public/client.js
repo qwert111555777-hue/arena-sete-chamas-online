@@ -10,7 +10,7 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '17';
+const ASSET_VERSION = '18';
 const SHOW_ARENA_TEXT = false;
 const SHOW_STAGE_INTRO = true;
 
@@ -1902,5 +1902,15 @@ window.addEventListener('load', () => {
   if (code) $('roomInput').value = code.toUpperCase().slice(0, 4);
   socket.emit('listRooms', (res) => {
     if (res?.ok) { openRooms = res.rooms || []; renderOpenRooms(); }
+  });
+});
+
+// APK: avisa para desinstalar o antigo antes de instalar (assinatura nova)
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('apkBtn');
+  if (btn) btn.addEventListener('click', () => {
+    try {
+      toast('Baixando o APK novo. IMPORTANTE: desinstale o app antigo antes de instalar este (a assinatura foi renovada).');
+    } catch (e) {}
   });
 });
