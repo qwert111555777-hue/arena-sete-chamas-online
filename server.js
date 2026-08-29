@@ -76,8 +76,8 @@ const STAGES = [
   },
   {
     title: 'Feira da Coruja: Ascensão da Mito',
-    venue: 'Feira da Coruja',
-    subtitle: 'Entre barracas, tecidos e luzes, a Mito espalha gloss caótico.',
+    venue: 'Complexo da Feira da Coruja / Av. Luiz Alves de Oliveira Filho',
+    subtitle: 'Barracas de bordados e confecções viram campo escorregadio da Mito.',
     background: 'stage2_feira_coruja',
     enemies: ['mito']
   },
@@ -90,14 +90,14 @@ const STAGES = [
   },
   {
     title: 'Recanto da Serra: O Sumiço do Vanjo',
-    venue: 'Recanto da Serra / Museu dos Tropeiros',
-    subtitle: 'Na poeira da serra, Vanjo some, volta e fica cada vez mais rabugento.',
+    venue: 'Eco Parque Recanto da Serra / Museu dos Tropeiros, Povoado Jacaré',
+    subtitle: 'Trilhas, bodega e ponte dos tropeiros cercam o sumiço do Vanjo.',
     background: 'stage4_recanto_serra',
     enemies: ['vanjo']
   },
   {
     title: 'Riacho da Curva: Napoleão Supremo',
-    venue: 'Riacho da Curva',
+    venue: 'Riacho da Curva / zona rural de Tobias Barreto',
     subtitle: 'O chefão final chega perto do riacho com fome extrema.',
     background: 'stage5_riacho_curva',
     enemies: ['napoleao']

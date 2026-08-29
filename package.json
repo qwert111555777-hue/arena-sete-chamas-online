@@ -4,7 +4,8 @@
   "description": "Arena 2D online no navegador para ate 5 jogadores, com salas, herois personalizados e chefes.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "verify": "node --check server.js && node --check public/client.js && node tools/verify_game.js"
   },
   "dependencies": {
     "socket.io": "^4.7.5"

@@ -10,7 +10,7 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '8';
+const ASSET_VERSION = '9';
 const SHOW_ARENA_TEXT = false;
 
 const HERO_INFO = {
@@ -63,18 +63,28 @@ const STAGE_BACKGROUNDS = {
 
 
 const SPRITE_FILES = {
-  albert: 'assets/sprites_opt/albert.webp',
-  geovanna: 'assets/sprites_opt/geovanna.webp',
-  romulo: 'assets/sprites_opt/romulo.webp',
-  arthur: 'assets/sprites_opt/arthur.webp',
-  guilherme: 'assets/sprites_opt/guilherme.webp',
-  otavio: 'assets/sprites_opt/otavio.webp',
-  anielle: 'assets/sprites_opt/anielle.webp',
-  mito: 'assets/sprites_opt/mito.webp',
-  lenda: 'assets/sprites_opt/lenda.webp',
-  vanjo: 'assets/sprites_opt/vanjo.webp',
-  napoleao: 'assets/sprites_opt/napoleao.webp'
+  albert: 'assets/spritesheets/albert.webp',
+  anielle: 'assets/spritesheets/anielle.webp',
+  arthur: 'assets/spritesheets/arthur.webp',
+  geovanna: 'assets/spritesheets/geovanna.webp',
+  guilherme: 'assets/spritesheets/guilherme.webp',
+  lenda: 'assets/spritesheets/lenda.webp',
+  mito: 'assets/spritesheets/mito.webp',
+  napoleao: 'assets/spritesheets/napoleao.webp',
+  otavio: 'assets/spritesheets/otavio.webp',
+  romulo: 'assets/spritesheets/romulo.webp',
+  vanjo: 'assets/spritesheets/vanjo.webp'
 };
+
+
+const PORTRAIT_FILES = {
+  albert: 'assets/portraits/albert.webp',
+  geovanna: 'assets/portraits/geovanna.webp',
+  romulo: 'assets/portraits/romulo.webp',
+  arthur: 'assets/portraits/arthur.webp',
+  guilherme: 'assets/portraits/guilherme.webp'
+};
+function versionedAsset(src) { return `${src}${src.includes('?') ? '&' : '?'}v=${ASSET_VERSION}`; }
 
 const SPRITE_HEIGHT = {
   // Altura do arquivo completo já com margem transparente. A parte visível fica do tamanho correto.
@@ -82,10 +92,7 @@ const SPRITE_HEIGHT = {
   otavio: 229, anielle: 217, mito: 279, lenda: 283, vanjo: 276, napoleao: 274
 };
 
-const SPRITE_PAD = {
-  albert: 34, geovanna: 34, romulo: 34, arthur: 34, guilherme: 34,
-  otavio: 34, anielle: 34, mito: 40, lenda: 40, vanjo: 40, napoleao: 46
-};
+const SPRITE_SHEETS = {"albert":{"frameW":128,"frameH":224,"cols":4,"rows":4,"pad":29},"anielle":{"frameW":125,"frameH":219,"cols":4,"rows":4,"pad":28},"arthur":{"frameW":109,"frameH":210,"cols":4,"rows":4,"pad":28},"geovanna":{"frameW":110,"frameH":208,"cols":4,"rows":4,"pad":28},"guilherme":{"frameW":109,"frameH":210,"cols":4,"rows":4,"pad":28},"lenda":{"frameW":162,"frameH":279,"cols":4,"rows":4,"pad":34},"mito":{"frameW":148,"frameH":275,"cols":4,"rows":4,"pad":34},"napoleao":{"frameW":255,"frameH":271,"cols":4,"rows":4,"pad":34},"otavio":{"frameW":128,"frameH":230,"cols":4,"rows":4,"pad":29},"romulo":{"frameW":115,"frameH":215,"cols":4,"rows":4,"pad":28},"vanjo":{"frameW":155,"frameH":272,"cols":4,"rows":4,"pad":34}};
 
 const CHARACTER_ANIM = {
   albert: { color: '#ffd84a', aura: '#ffd84a', fx: 'fists' },
@@ -101,18 +108,37 @@ const CHARACTER_ANIM = {
   napoleao: { color: '#ffcf72', aura: '#ffcf72', fx: 'royal' }
 };
 
+
+const SPRITE_ROWS = { idle: 0, run: 1, attack: 2, melee: 2, hit: 2, dead: 2, defeat: 2, special: 3, ultimate: 3, revive: 3, stun: 3 };
+function actionDuration(actionName) {
+  return actionName === 'ultimate' ? .95 : actionName === 'special' ? .72 : actionName === 'melee' ? .45 : actionName === 'attack' ? .34 : actionName === 'hit' ? .22 : .8;
+}
+
 const assets = { arena: null, sprites: {}, stages: {} };
 function loadAsset(src) {
   const img = new Image();
   img.decoding = 'async';
-  const sep = src.includes('?') ? '&' : '?';
-  img.src = `${src}${sep}v=${ASSET_VERSION}`;
+  img.src = versionedAsset(src);
   return img;
 }
 function assetReady(img) { return !!img && img.complete && img.naturalWidth > 0; }
-assets.arena = loadAsset('assets/stages/stage1_lagoa_porta.jpg');
-Object.entries(SPRITE_FILES).forEach(([key, src]) => { assets.sprites[key] = loadAsset(src); });
-Object.entries(STAGE_BACKGROUNDS).forEach(([key, src]) => { assets.stages[key] = loadAsset(src); });
+function getSpriteAsset(key) {
+  const src = SPRITE_FILES[key];
+  if (!src) return null;
+  if (!assets.sprites[key]) assets.sprites[key] = loadAsset(src);
+  return assets.sprites[key];
+}
+function getStageAsset(key) {
+  const src = STAGE_BACKGROUNDS[key];
+  if (!src) return null;
+  if (!assets.stages[key]) assets.stages[key] = loadAsset(src);
+  return assets.stages[key];
+}
+function prewarmCurrentAssets() {
+  if (game?.stageBackground) getStageAsset(game.stageBackground);
+  for (const p of game?.players || []) getSpriteAsset(p.hero);
+  for (const e of game?.enemies || []) getSpriteAsset(e.type);
+}
 
 const keys = {};
 const inputState = { mx: 0, my: 0, aimX: null, aimY: null, attack: false, special: false, ultimate: false };
@@ -142,6 +168,8 @@ let lastDrawTime = 0;
 let lastHudUpdate = 0;
 const spriteMotion = new Map();
 let bgCache = { key: null, quality: null, canvas: null };
+let perfLevel = 0;
+const perfStats = { samples: [], lastCheck: 0, badChecks: 0, goodChecks: 0 };
 
 function resolveQuality() {
   if (qualitySetting === 'max') return 'max';
@@ -153,10 +181,60 @@ function resolveQuality() {
 }
 
 function qualityDprCap() {
-  if (quality === 'max') return device.mobile ? 1.15 : 1.35;
-  if (quality === 'balanced') return 1;
-  return 0.85;
+  let cap = quality === 'max' ? (device.mobile ? 1.05 : 1.25) : quality === 'balanced' ? 0.95 : 0.75;
+  if (perfLevel >= 2) cap = Math.min(cap, 0.62);
+  else if (perfLevel >= 1) cap = Math.min(cap, 0.75);
+  return cap;
 }
+
+function minDprCap() {
+  if (perfLevel >= 2) return 0.58;
+  if (perfLevel >= 1 || quality === 'performance') return 0.70;
+  return 0.82;
+}
+
+function getTargetFps() {
+  if (perfLevel >= 2) return 24;
+  if (perfLevel >= 1) return 28;
+  if (quality === 'performance') return 30;
+  if (device.mobile && quality !== 'max') return 34;
+  return 45;
+}
+
+function setPerfLevel(level) {
+  level = clamp(level, 0, 2);
+  if (level === perfLevel) return;
+  perfLevel = level;
+  document.body.classList.toggle('perf-guard-1', perfLevel >= 1);
+  document.body.classList.toggle('perf-guard-2', perfLevel >= 2);
+  bgCache = { key: null, quality: null, canvas: null };
+  resizeCanvas(true);
+}
+
+function recordFrameCost(dt) {
+  if (!game || currentScreen !== 'gameScreen') return;
+  perfStats.samples.push(dt);
+  if (perfStats.samples.length > 75) perfStats.samples.shift();
+  const t = performance.now();
+  if (t - perfStats.lastCheck < 2500 || perfStats.samples.length < 35) return;
+  perfStats.lastCheck = t;
+  const avg = perfStats.samples.reduce((a, b) => a + b, 0) / perfStats.samples.length;
+  const slowFrames = perfStats.samples.filter(v => v > 45).length / perfStats.samples.length;
+  const fps = 1000 / Math.max(1, avg);
+  if (fps < 22 || slowFrames > .32) {
+    perfStats.badChecks++;
+    perfStats.goodChecks = 0;
+    if (perfStats.badChecks >= 1) setPerfLevel(perfLevel + 1);
+  } else if (fps > 34 && slowFrames < .08) {
+    perfStats.goodChecks++;
+    perfStats.badChecks = 0;
+    if (perfStats.goodChecks >= 5) setPerfLevel(perfLevel - 1);
+  } else {
+    perfStats.badChecks = 0;
+    perfStats.goodChecks = 0;
+  }
+}
+
 
 function applyQuality() {
   quality = resolveQuality();
@@ -227,6 +305,7 @@ socket.on('lobby', (data) => {
 socket.on('state', (data) => {
   const oldStage = game?.stageIndex;
   game = data;
+  prewarmCurrentAssets();
   if (currentScreen !== 'gameScreen') showScreen('gameScreen');
   const stageChanged = oldStage !== game.stageIndex;
   if (stageChanged) resizeCanvas(true);
@@ -433,7 +512,7 @@ function renderHeroCards() {
     return `
       <article class="hero-card" data-hero="${key}">
         <div class="hero-thumb-wrap" style="background:linear-gradient(135deg, ${colors[0]}55, ${colors[1]}55)">
-          <img class="hero-thumb" src="${SPRITE_FILES[key]}" alt="${h.name}" loading="lazy" />
+          <img class="hero-thumb" src="${versionedAsset(PORTRAIT_FILES[key] || SPRITE_FILES[key])}" alt="${h.name}" loading="lazy" />
         </div>
         <h4>${h.name}</h4>
         <p><strong>${h.title}</strong></p>
@@ -583,7 +662,7 @@ function resizeCanvas(force = false) {
   const cssW = Math.max(1, Math.round(rect.width || innerWidth));
   const cssH = Math.max(1, Math.round(rect.height || innerHeight));
   const cap = qualityDprCap();
-  const nextDpr = Math.max(0.85, Math.min(window.devicePixelRatio || 1, cap));
+  const nextDpr = Math.max(minDprCap(), Math.min(window.devicePixelRatio || 1, cap));
   const nextW = Math.floor(cssW * nextDpr);
   const nextH = Math.floor(cssH * nextDpr);
   const world = game?.world || { w: 1600, h: 900 };
@@ -730,7 +809,7 @@ function drawImageCover(img, x, y, w, h) {
 
 function buildStageCache(img, bgKey) {
   if (!assetReady(img)) return null;
-  const key = `${bgKey || 'fallback'}-${quality}-${view.w}x${view.h}-${img.naturalWidth}x${img.naturalHeight}`;
+  const key = `${bgKey || 'fallback'}-${quality}-p${perfLevel}-${view.w}x${view.h}-${img.naturalWidth}x${img.naturalHeight}`;
   if (bgCache.key === key && bgCache.canvas) return bgCache.canvas;
   const c = document.createElement('canvas');
   c.width = view.w;
@@ -757,9 +836,10 @@ function buildStageCache(img, bgKey) {
 }
 
 function drawArena() {
-  const bgKey = game?.stageBackground;
-  const bg = bgKey ? assets.stages[bgKey] : null;
-  const img = assetReady(bg) ? bg : assets.arena;
+  const bgKey = game?.stageBackground || 'stage1_lagoa_porta';
+  const bg = getStageAsset(bgKey);
+  const fallback = getStageAsset('stage1_lagoa_porta');
+  const img = assetReady(bg) ? bg : fallback;
   const cached = buildStageCache(img, bgKey);
   if (cached) {
     ctx.drawImage(cached, 0, 0, view.w, view.h);
@@ -772,7 +852,7 @@ function drawArena() {
     ctx.fillRect(0, 0, view.w, view.h);
   }
 
-  if (quality !== 'performance') {
+  if (quality !== 'performance' && perfLevel < 1) {
     ctx.save();
     const runePulse = .18 + Math.sin(performance.now() / 420) * .07;
     ctx.globalAlpha = runePulse;
@@ -865,7 +945,7 @@ function drawStepDust(x, y, phase, color = '#f2d7a7') {
 }
 
 function drawOrbitParticles(x, y, radius, color, phase, count = 5) {
-  if (quality === 'performance' && count > 3) count = 3;
+  if ((quality === 'performance' || perfLevel >= 1) && count > 3) count = 3;
   ctx.save();
   ctx.fillStyle = color;
   for (let i = 0; i < count; i++) {
@@ -963,39 +1043,40 @@ function drawExpressionMark(x, y, size, facing, mood = 'focus', color = '#fff') 
 }
 
 function spriteDimensions(key, height) {
-  const img = assets.sprites[key];
-  if (!assetReady(img)) return { img: null, w: height * .55, h: height, pad: 0, visibleH: height };
-  const ratio = img.naturalWidth / Math.max(1, img.naturalHeight);
-  const pad = (SPRITE_PAD[key] || 0) / Math.max(1, img.naturalHeight) * height;
-  return { img, w: height * ratio, h: height, pad, visibleH: Math.max(1, height - pad * 2) };
+  const img = getSpriteAsset(key);
+  const sheet = SPRITE_SHEETS[key] || { frameW: Math.round(height * .55), frameH: height, cols: 1, rows: 1, pad: 0 };
+  const ratio = sheet.frameW / Math.max(1, sheet.frameH);
+  const pad = (sheet.pad || 0) / Math.max(1, sheet.frameH) * height;
+  return { img, sheet, w: height * ratio, h: height, pad, visibleH: Math.max(1, height - pad * 2) };
 }
 
-function drawSpritePart(img, iw, ih, w, h, sy, sh) {
-  ctx.drawImage(img, 0, sy, iw, sh, -w / 2, -h / 2 + (sy / ih) * h, w, (sh / ih) * h);
+function drawSpriteFrame(img, sheet, frameCol, frameRow, w, h) {
+  const sx = clamp(frameCol, 0, sheet.cols - 1) * sheet.frameW;
+  const sy = clamp(frameRow, 0, sheet.rows - 1) * sheet.frameH;
+  ctx.drawImage(img, sx, sy, sheet.frameW, sheet.frameH, -w / 2, -h / 2, w, h);
 }
 
 function drawSpriteImage(key, x, footY, height, facing = 1, alpha = 1, glow = null, motion = null, action = {}) {
-  const { img, w, h, pad, visibleH } = spriteDimensions(key, height);
+  const { img, sheet, w, h, pad, visibleH } = spriteDimensions(key, height);
   const actionName = action.name || action.action || 'idle';
   const actionTimer = Number(action.timer || 0);
   const hitFlash = Number(action.hit || 0);
   const moving = !!motion?.moving || actionName === 'run';
   const phase = motion?.phase || performance.now() / 220;
-  const perf = quality === 'performance';
-  const walk = Math.sin(phase * 1.65);
-  const step = Math.abs(walk);
+  const perf = quality === 'performance' || perfLevel >= 2;
   const attackLike = actionName === 'attack' || actionName === 'melee';
   const specialLike = actionName === 'special' || actionName === 'ultimate' || actionName === 'revive';
   const hitLike = actionName === 'hit' || hitFlash > 0;
-  const actionPower = clamp(actionTimer / (actionName === 'ultimate' ? .95 : actionName === 'special' ? .72 : .36), 0, 1);
-
-  const bob = (moving ? step * (perf ? 5.2 : 8.8) : Math.sin(phase) * (perf ? .9 : 1.8)) + (specialLike ? Math.sin(actionPower * Math.PI) * -7 : 0);
-  const tilt = (moving ? walk * (perf ? .035 : .065) : Math.sin(phase * .55) * .012) * facing + (attackLike ? facing * .075 * actionPower : 0);
-  const stretch = moving ? step * (perf ? .015 : .030) : Math.sin(phase * .8) * .006;
-  const side = moving ? walk * (perf ? 1.2 : 2.6) : 0;
-  const lunge = attackLike ? facing * (9 + 8 * actionPower) : 0;
-  const recoil = hitLike ? Math.sin(actionPower * Math.PI) * -facing * 5 : 0;
-  const scalePulse = specialLike ? 1 + Math.sin(actionPower * Math.PI) * .045 : 1;
+  const duration = actionDuration(actionName);
+  const actionProgress = actionTimer > 0 ? clamp(1 - actionTimer / duration, 0, 1) : 0;
+  const row = SPRITE_ROWS[actionName] ?? (moving ? SPRITE_ROWS.run : SPRITE_ROWS.idle);
+  const frameCol = (actionTimer > 0 && row !== SPRITE_ROWS.idle && actionName !== 'run')
+    ? Math.min(sheet.cols - 1, Math.floor(actionProgress * sheet.cols))
+    : Math.floor((phase * (moving ? 1.28 : .55)) % sheet.cols);
+  const bob = moving ? Math.abs(Math.sin(phase * 1.65)) * (perf ? 1.8 : 3.0) : Math.sin(phase) * (perf ? .35 : .8);
+  const tilt = (moving ? Math.sin(phase * 1.65) * (perf ? .012 : .025) : 0) * facing;
+  const lunge = attackLike ? facing * (perf ? 6 : 10) * Math.sin(actionProgress * Math.PI) : 0;
+  const pulse = specialLike ? 1 + Math.sin(actionProgress * Math.PI) * (perf ? .018 : .035) : 1;
   const imageBottom = footY + pad + bob;
   const centerY = imageBottom - h / 2;
   const visualTop = imageBottom - h + pad;
@@ -1003,44 +1084,33 @@ function drawSpriteImage(key, x, footY, height, facing = 1, alpha = 1, glow = nu
 
   ctx.save();
   ctx.globalAlpha *= alpha;
-  if (glow && quality !== 'performance') { ctx.shadowColor = glow; ctx.shadowBlur = quality === 'max' ? 20 : 12; }
+  if (glow && quality !== 'performance' && perfLevel < 1) { ctx.shadowColor = glow; ctx.shadowBlur = quality === 'max' ? 16 : 9; }
 
   if (assetReady(img)) {
-    if (moving && !perf) {
-      ctx.save();
-      ctx.globalAlpha *= .13;
-      ctx.filter = 'blur(1px)';
-      ctx.translate(x + side - facing * 12, centerY + 2);
-      ctx.rotate(tilt * .55);
-      ctx.scale(facing * scalePulse * .995, scalePulse * (1 + stretch * .35));
-      ctx.drawImage(img, -w / 2, -h / 2, w, h);
-      ctx.restore();
-    }
-
-    ctx.translate(x + side + lunge + recoil, centerY);
+    ctx.translate(x + lunge, centerY);
     ctx.rotate(tilt);
-    ctx.scale(facing * scalePulse * (1 + (moving ? walk * (perf ? .008 : .015) : 0)), scalePulse * (1 + stretch));
-    ctx.drawImage(img, -w / 2, -h / 2, w, h);
+    ctx.scale(facing * pulse, pulse);
+    drawSpriteFrame(img, sheet, frameCol, row, w, h);
 
     if (hitLike) {
       ctx.save();
-      ctx.globalAlpha = .18 + Math.min(.30, hitFlash * 1.4);
-      ctx.filter = actionName === 'hit' ? 'brightness(1.8) sepia(.25) saturate(1.8)' : 'brightness(1.7)';
-      ctx.drawImage(img, -w / 2, -h / 2, w, h);
+      ctx.globalAlpha = .16 + Math.min(.24, hitFlash * 1.2);
+      ctx.filter = 'brightness(1.55) sepia(.25) saturate(1.6)';
+      drawSpriteFrame(img, sheet, frameCol, row, w, h);
       ctx.restore();
     }
   } else {
-    ctx.fillStyle = glow || '#fff';
+    ctx.fillStyle = glow || CHARACTER_ANIM[key]?.color || '#fff';
     ctx.beginPath(); ctx.arc(x, footY - h / 2, h * .22, 0, Math.PI * 2); ctx.fill();
   }
   ctx.restore();
 
-  if (attackLike) drawActionArc(x + facing * 26, visualTop + visibleH * .52, Math.max(38, visibleH * .26), facing, CHARACTER_ANIM[key]?.color || glow || '#fff', .8 + actionPower * .4);
-  if (specialLike && quality !== 'performance') {
+  if (attackLike && perfLevel < 2) drawActionArc(x + facing * 26, visualTop + visibleH * .52, Math.max(38, visibleH * .26), facing, CHARACTER_ANIM[key]?.color || glow || '#fff', .8 + Math.sin(actionProgress * Math.PI) * .4);
+  if (specialLike && quality !== 'performance' && perfLevel < 1) {
     drawOrbitParticles(x, visualTop + visibleH * .56, Math.max(42, visibleH * .30), CHARACTER_ANIM[key]?.aura || '#fff', phase, actionName === 'ultimate' ? 8 : 5);
   }
 
-  return { w, h, pad, visibleH, top: visualTop - Math.abs(tilt) * 24, bottom: visualBottom, footY };
+  return { w, h, pad, visibleH, top: visualTop - Math.abs(tilt) * 18, bottom: visualBottom, footY };
 }
 
 
@@ -1296,7 +1366,7 @@ function drawProjectile(pr) {
   const dx = speed > 1 ? (pr.vx || 0) / speed : 1;
   const dy = speed > 1 ? (pr.vy || 0) / speed : 0;
   const angle = Math.atan2(dy, dx);
-  if (quality !== 'performance') {
+  if (quality !== 'performance' && perfLevel < 1) {
     ctx.shadowColor = color;
     ctx.shadowBlur = 16;
     const grd = ctx.createLinearGradient(pr.x - dx * pr.radius * 5, pr.y - dy * pr.radius * 5, pr.x, pr.y);
@@ -1441,9 +1511,10 @@ function drawCooldownOverlay() {
 
 function draw(t = 0) {
   requestAnimationFrame(draw);
-  const targetFps = quality === 'performance' ? 30 : device.mobile && quality !== 'max' ? 38 : 45;
+  const targetFps = getTargetFps();
   const minFrame = 1000 / targetFps;
   if (t - lastDrawTime < minFrame) return;
+  const frameDt = t - lastDrawTime;
   lastDrawTime = t;
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1471,6 +1542,7 @@ function draw(t = 0) {
     ctx.fillText('Arena das Sete Chamas', view.w/2, view.h/2);
   }
   ctx.restore();
+  recordFrameCost(frameDt);
 }
 
 requestAnimationFrame(draw);
