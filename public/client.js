@@ -10,7 +10,7 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '13';
+const ASSET_VERSION = '14';
 const SHOW_ARENA_TEXT = false;
 const SHOW_STAGE_INTRO = true;
 
@@ -235,17 +235,23 @@ function applyQuality() {
   quality = resolveQuality();
   document.body.classList.toggle('is-mobile', device.mobile);
   document.body.classList.toggle('quality-performance', quality === 'performance');
-  const badge = $('deviceBadge');
+  const badge = document.getElementById('deviceBadge');
   if (badge) badge.textContent = device.mobile ? '📱 Modo celular detectado' : '💻 Modo PC detectado';
   resizeCanvas(true);
 }
 
 function toast(message) {
   const el = $('toast');
+  if (!el) return;
+  if (currentScreen === 'gameScreen') {
+    el.textContent = '';
+    el.classList.remove('show');
+    return;
+  }
   el.textContent = message;
   el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2300);
+  toastTimer = setTimeout(() => { el.classList.remove('show'); el.textContent = ''; }, 1500);
 }
 
 function showScreen(id) {
@@ -286,7 +292,6 @@ socket.on('hello', (data) => {
   stages = data.stages || [];
   renderDifficultyButtons();
   renderHeroCards();
-  renderHowSkills();
   applyQuality();
   renderOpenRooms();
 });
@@ -379,12 +384,14 @@ $('refreshRoomsBtn').addEventListener('click', () => {
   });
 });
 
-function openHowTo() { $('howToModal').classList.remove('hidden'); }
-function closeHowTo() { $('howToModal').classList.add('hidden'); }
-$('howToBtn').addEventListener('click', openHowTo);
-$('lobbyHowToBtn').addEventListener('click', openHowTo);
-$('closeHowToBtn').addEventListener('click', closeHowTo);
-$('howToModal').addEventListener('click', (e) => { if (e.target.id === 'howToModal') closeHowTo(); });
+function optionalClick(id, fn) { const el = $(id); if (el) el.addEventListener('click', fn); }
+function openHowTo() { const m = document.getElementById('howToModal'); if (m) m.classList.remove('hidden'); }
+function closeHowTo() { const m = document.getElementById('howToModal'); if (m) m.classList.add('hidden'); }
+optionalClick('howToBtn', openHowTo);
+optionalClick('lobbyHowToBtn', openHowTo);
+optionalClick('closeHowToBtn', closeHowTo);
+const howToBackdrop = document.getElementById('howToModal');
+if (howToBackdrop) howToBackdrop.addEventListener('click', (e) => { if (e.target.id === 'howToModal') closeHowTo(); });
 
 async function toggleFullscreen() {
   try {
@@ -438,7 +445,7 @@ $('playAgainBtn').addEventListener('click', () => {
 });
 
 function renderHowSkills() {
-  const box = $('howSkillsList');
+  const box = document.getElementById('howSkillsList');
   if (!box || !Object.keys(heroes).length) return;
   const heroCards = Object.keys(heroes).map(key => {
     const h = heroes[key];
@@ -463,7 +470,7 @@ function renderOpenRooms() {
   const box = $('openRoomsList');
   if (!box) return;
   if (!openRooms.length) {
-    box.innerHTML = '<div class="empty-rooms">Nenhuma sala criada ainda. Clique em <strong>Criar sala</strong> ou espere a sala dos seus amigos aparecer aqui.</div>';
+    box.innerHTML = '<div class="empty-rooms">Nenhuma sala aberta.</div>';
     return;
   }
   box.innerHTML = openRooms.map(room => {
@@ -485,15 +492,9 @@ function renderOpenRooms() {
 function renderDifficultyButtons() {
   const box = $('difficultyButtons');
   if (!box || !Object.keys(difficulties).length) return;
-  const text = {
-    facil: 'Bem mais vida para heróis; chefes causam pouco dano.',
-    medio: 'Luta longa, intensa e equilibrada.',
-    dificil: 'Chefes com muita vida e dano maior.'
-  };
   box.innerHTML = Object.values(difficulties).map(d => `
     <div class="diff-card" data-diff="${d.key}">
       <strong>${d.label}</strong>
-      <span>${text[d.key] || ''}</span>
     </div>`).join('');
   box.querySelectorAll('.diff-card').forEach(card => {
     card.addEventListener('click', () => {
@@ -516,13 +517,6 @@ function renderHeroCards() {
           <img class="hero-thumb" src="${versionedAsset(PORTRAIT_FILES[key] || SPRITE_FILES[key])}" alt="${h.name}" loading="lazy" />
         </div>
         <h4>${h.name}</h4>
-        <p><strong>${h.title}</strong></p>
-        <p>${info.short || ''}</p>
-        <div class="skills">
-          <span>⚔️ ${h.attackName}</span>
-          <span>✨ ${h.specialName}</span>
-          <span>🔥 ${h.ultimateName}</span>
-        </div>
         <div class="taken-by"></div>
       </article>`;
   }).join('');
@@ -583,9 +577,9 @@ function renderLobby() {
 function updateGameHud() {
   if (!game) return;
   $('hudRoom').textContent = game.code;
-  $('hudDiff').textContent = `${diffLabel(game.difficulty)} · modo leve universal`;
+  $('hudDiff').textContent = `${diffLabel(game.difficulty)}`;
   $('hudStage').textContent = `${game.stageIndex + 1}/${game.stageCount} · ${game.stageTitle}`;
-  $('hudSub').textContent = game.stageCleared ? `Próxima fase em ${Math.max(0, Math.ceil(game.stageTimer))}...` : `${game.stageVenue || ''} · ${game.stageSubtitle}`;
+  $('hudSub').textContent = '';
 
   const team = $('teamHud');
   team.innerHTML = game.players.map(p => {
@@ -607,17 +601,12 @@ function updateGameHud() {
 
   const boss = $('bossHud');
   boss.innerHTML = game.enemies.filter(e => e.hp > 0).map(e => {
-    const info = ENEMY_INFO[e.type] || { icon: '👾', attack: 'Ataque', special: 'Especial', passive: '', specialMax: 6 };
-    const specialCd = e.type === 'vanjo' ? e.vanishCd : e.type === 'napoleao' ? Math.min(e.specialCd || 0, e.foodTimer || 99) : e.specialCd;
-    const specialPct = 100 - pct(Math.max(0, specialCd || 0), info.specialMax || 6);
+    const info = ENEMY_INFO[e.type] || { icon: '👾' };
     return `<div class="boss-line">
       <div class="boss-name"><span>${info.icon} ${e.name}</span><span>${Math.round(e.hp)}/${e.maxHp}</span></div>
       <div class="bar"><span class="hpbar" style="width:${pct(e.hp, e.maxHp)}%; background:linear-gradient(90deg,#ff6262,#ffcc5c)"></span></div>
-      <div class="boss-skill"><b>${info.special}</b><span>${specialCd > .1 ? Math.ceil(specialCd) + 's' : 'pronto'}</span></div>
-      <div class="bar"><span class="ultbar" style="width:${Math.max(0, Math.min(100, specialPct))}%"></span></div>
-      <small>${info.passive}</small>
     </div>`;
-  }).join('') || '<strong>Fase vencida!</strong>';
+  }).join('') || '<strong>OK</strong>';
 
   const msgHud = $('messagesHud');
   if (msgHud) msgHud.innerHTML = '';
@@ -637,19 +626,8 @@ function updateGameHud() {
 
 function renderAbilityHud() {
   const box = $('abilityHud');
-  const me = myGamePlayer();
-  if (!box || !me) return;
-  const h = heroes[me.hero] || {};
-  const specialReady = me.specialCd <= .05 && !me.dead;
-  const ultimateReady = me.ultimate >= 100 && !me.dead;
-  const attackReady = me.attackCd <= .05 && !me.dead;
-  const extra = me.hero === 'guilherme' ? `Aura ${Math.round(me.aura || 0)}%` : me.hero === 'albert' ? `Rivalidade ${me.rivalry || 0}` : me.damageBoostTimer > 0 ? 'Bônus de dano' : '';
-  box.innerHTML = `<div class="ability-title"><strong>${h.name || 'Herói'} · ${h.title || ''}</strong><span>${me.dead ? 'Revive em ' + Math.ceil(me.respawnTimer) + 's' : extra}</span></div>
-    <div class="ability-grid">
-      <div class="ability-card ${attackReady ? 'ready' : 'wait'}"><b>${h.attackName || 'Ataque'}</b><span>${attackReady ? 'pronto' : Math.ceil(me.attackCd) + 's'} · clique/espaço</span></div>
-      <div class="ability-card ${specialReady ? 'ready' : 'wait'}"><b>${h.specialName || 'Habilidade'}</b><span>${specialReady ? 'pronto' : Math.ceil(me.specialCd) + 's'} · Q</span></div>
-      <div class="ability-card ${ultimateReady ? 'ready' : 'wait'}"><b>${h.ultimateName || 'Ultimate'}</b><span>${ultimateReady ? 'pronto' : Math.round(me.ultimate || 0) + '%'} · E</span></div>
-    </div>`;
+  if (!box) return;
+  box.innerHTML = '';
 }
 
 
@@ -1615,6 +1593,15 @@ function drawPlayer(p) {
   ctx.save();
   ctx.globalAlpha = alpha;
 
+  if (p.id === meId) {
+    ctx.save();
+    ctx.globalAlpha *= .34;
+    ctx.strokeStyle = '#ffd166';
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.ellipse(x, footY - 28, 60, 76, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+
   ctx.fillStyle = 'rgba(0,0,0,.36)';
   ctx.beginPath(); ctx.ellipse(x, footY + 3, motion.moving ? 52 : 44, motion.moving ? 17 : 14, 0, 0, Math.PI * 2); ctx.fill();
   if (motion.moving) drawStepDust(x, footY + 2, motion.phase, '#f0d0a0');
@@ -1632,12 +1619,6 @@ function drawPlayer(p) {
   }
 
   drawNameplate({ name: p.name, hp: p.hp, maxHp: p.maxHp, shield: p.shield }, x, Math.max(24, drawn.top - 30), 98);
-  if (p.id === meId) {
-    ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.arc(x, y + 5, 60, 0, Math.PI*2); ctx.stroke();
-    ctx.fillStyle = '#ffd166';
-    ctx.beginPath(); ctx.moveTo(x, Math.min(view.h - 22, footY + 26)); ctx.lineTo(x - 10, Math.min(view.h - 10, footY + 42)); ctx.lineTo(x + 10, Math.min(view.h - 10, footY + 42)); ctx.closePath(); ctx.fill();
-  }
   ctx.restore();
 }
 

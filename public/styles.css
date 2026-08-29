@@ -737,3 +737,18 @@ body.is-mobile .action span { font-size: .50rem; line-height: 1.05; }
   body.is-mobile .action, .action { width: clamp(52px, 17vw, 70px); min-width: 0; height: 43px; font-size: .58rem; }
   body.is-mobile .action span, .action span { display: none; }
 }
+
+/* v14: telas limpas, sem texto explicativo sobrando. */
+.menu-card h1 { margin-bottom: 14px; }
+.menu-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
+.rooms-head.compact-head { align-items: center; }
+.lobby-grid { grid-template-areas: "diff players" "heroes heroes"; }
+.art-panel, .lead, .mini-info, .how-skills, #howToModal { display: none !important; }
+.hidden-game-info { display: none !important; }
+.ability-hud { display: none !important; }
+.hero-card p, .hero-card .skills, .diff-card span, .boss-skill, .boss-line small { display: none !important; }
+.hero-card { gap: 8px; }
+.hero-card h4 { margin-top: 4px; }
+.orientation-hint p { display: none !important; }
+body.is-mobile .game-hud { max-width: 32vw; width: min(230px, 32vw); }
+body.is-mobile .boss-hud { width: min(196px, 34vw); }

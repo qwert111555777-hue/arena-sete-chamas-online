@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Repara pés/sapatos visíveis nos sprites já aprovados.
+"""Completa pés/sapatos dos sprites sem criar 'blocos' artificiais.
 
-Os sprites originais tinham margem transparente, mas alguns pés/sapatos vieram
-pequenos/incompletos na própria arte. Este reparo mantém rosto/roupa/corpo e
-reforça a parte inferior de cada frame com sapatos/botas/patas completos.
+Mantém a arte aprovada e só reforça a parte inferior: sapatos/tênis/botas/patas
+pequenos, conectados às pernas e com margem transparente segura.
 """
 from pathlib import Path
 import json
+import math
 from PIL import Image, ImageDraw
 import numpy as np
 
@@ -15,170 +15,224 @@ SHEET_DIR = ROOT / 'public/assets/spritesheets'
 PORTRAIT_DIR = ROOT / 'public/assets/portraits'
 
 CONFIG = {
-    'albert':    dict(kind='shoe', shoe='#111418', sole='#f3f0e6', sock='#f1f1eb', margin=10, spread=.18, w=.20, h=.060),
-    'geovanna':  dict(kind='shoe', shoe='#ff4fa0', sole='#fff3fb', sock='#ffffff', margin=10, spread=.18, w=.18, h=.055),
-    'romulo':    dict(kind='shoe', shoe='#151515', sole='#f2f2ee', sock='#f3f3ed', margin=10, spread=.16, w=.18, h=.055),
-    'arthur':    dict(kind='shoe', shoe='#111111', sole='#ffffff', sock='#ffffff', margin=9,  spread=.17, w=.18, h=.055),
-    'guilherme': dict(kind='boot', shoe='#2b1a11', sole='#c98a4a', sock='#233044', margin=10, spread=.15, w=.18, h=.060),
-    'otavio':    dict(kind='boot', shoe='#3a2015', sole='#8b5632', sock='#513327', margin=10, spread=.17, w=.20, h=.065),
-    'anielle':   dict(kind='boot', shoe='#172016', sole='#5fa36d', sock='#18331e', margin=10, spread=.16, w=.18, h=.058),
-    'lenda':     dict(kind='boot', shoe='#3b1f10', sole='#e09045', sock='#6b3416', margin=12, spread=.18, w=.21, h=.065),
-    'vanjo':     dict(kind='shoe', shoe='#1d2430', sole='#cfd7df', sock='#313842', margin=11, spread=.15, w=.17, h=.055),
-    'napoleao':  dict(kind='paw',  shoe='#fff2d2', sole='#8b5a36', sock='#fff2d2', margin=10, spread=.18, w=.18, h=.065),
-    # Mito não usa sapato: ele flutua. Reforçamos a ponta da forma astral para não parecer cortada.
-    'mito':      dict(kind='float', shoe='#9a4cff', sole='#ff70df', sock='#5830b8', margin=11, spread=.00, w=.16, h=.065),
+    'albert':    dict(kind='shoe', shoe='#14181c', sole='#eee9df', sock='#e9e7df', ext=.040, w=.135, h=.045, minw=10, maxw=18, margin=18),
+    'geovanna':  dict(kind='shoe', shoe='#ff58a4', sole='#fff4fb', sock='#fff5f7', ext=.038, w=.130, h=.042, minw=9,  maxw=16, margin=18),
+    'romulo':    dict(kind='shoe', shoe='#151719', sole='#f0eee9', sock='#e8e3dc', ext=.038, w=.130, h=.042, minw=9,  maxw=16, margin=18),
+    'arthur':    dict(kind='shoe', shoe='#101215', sole='#f4f4f1', sock='#eeeeea', ext=.038, w=.130, h=.042, minw=9,  maxw=16, margin=18),
+    'guilherme': dict(kind='boot', shoe='#2b1b12', sole='#b97b42', sock='#252d3a', ext=.040, w=.132, h=.046, minw=9,  maxw=17, margin=18),
+    'otavio':    dict(kind='boot', shoe='#3c2519', sole='#8f5d39', sock='#4b3429', ext=.040, w=.135, h=.048, minw=11, maxw=20, margin=18),
+    'anielle':   dict(kind='boot', shoe='#172016', sole='#6aa56c', sock='#203522', ext=.038, w=.128, h=.045, minw=9,  maxw=16, margin=18),
+    'lenda':     dict(kind='boot', shoe='#3b2115', sole='#d28a48', sock='#61351d', ext=.040, w=.135, h=.050, minw=12, maxw=23, margin=20),
+    'vanjo':     dict(kind='shoe', shoe='#202833', sole='#cfd6de', sock='#313b45', ext=.036, w=.118, h=.043, minw=10, maxw=18, margin=18),
+    'napoleao':  dict(kind='paw',  shoe='#fff0d0', sole='#8b5a36', sock='#fff0d0', ext=.030, w=.095, h=.048, minw=13, maxw=26, margin=18),
+    'mito':      dict(kind='float', shoe='#884cff', sole='#ff73df', sock='#5b31b4', ext=.030, w=.105, h=.050, minw=10, maxw=19, margin=18),
 }
 
 
-def hex_rgba(hex_color, alpha=255):
+def rgba(hex_color, a=255):
     h = hex_color.lstrip('#')
-    return tuple(int(h[i:i+2], 16) for i in (0, 2, 4)) + (alpha,)
+    return tuple(int(h[i:i+2], 16) for i in (0,2,4)) + (a,)
 
 
-def alpha_bbox(img, threshold=18):
+def bbox_alpha(img, th=18):
     arr = np.array(img.getchannel('A'))
-    ys, xs = np.where(arr > threshold)
+    ys, xs = np.where(arr > th)
     if len(xs) == 0:
         return None
     return int(xs.min()), int(ys.min()), int(xs.max()+1), int(ys.max()+1)
 
 
-def draw_shoe(draw, cx, top, w, h, toe_dir, cfg, boot=False):
-    outline = (12, 10, 9, 230)
-    shoe = hex_rgba(cfg['shoe'], 245)
-    sole = hex_rgba(cfg['sole'], 245)
-    hi = (255, 255, 255, 72)
-    # Forma com bico virado para fora, mais completa que um círculo simples.
-    pts = [
-        (cx - toe_dir*w*.52, top + h*.05),
-        (cx + toe_dir*w*.36, top - h*.02),
-        (cx + toe_dir*w*.70, top + h*.38),
-        (cx + toe_dir*w*.55, top + h*.80),
-        (cx - toe_dir*w*.44, top + h*.88),
-        (cx - toe_dir*w*.68, top + h*.50),
-    ]
-    draw.polygon(pts, fill=outline)
-    inner = [(x, y + h*.03) for x, y in pts]
-    draw.polygon(inner, fill=shoe)
+def sample_color(frame, x, y, fallback):
+    arr = np.array(frame)
+    H, W = arr.shape[:2]
+    xs = range(max(0, int(x)-3), min(W, int(x)+4))
+    ys = range(max(0, int(y)-8), min(H, int(y)+3))
+    vals=[]
+    for yy in ys:
+        for xx in xs:
+            if arr[yy, xx, 3] > 30:
+                vals.append(arr[yy, xx, :3])
+    if not vals:
+        return rgba(fallback, 170)
+    mean = np.mean(vals, axis=0).astype(int)
+    return (int(mean[0]), int(mean[1]), int(mean[2]), 185)
+
+
+def foot_centers(frame, bbox):
+    l,t,r,b = bbox
+    W,H = frame.size
+    arr = np.array(frame.getchannel('A'))
+    bw, bh = r-l, b-t
+    y0 = max(t, b - max(16, int(bh*.22)))
+    mask = arr[y0:b, l:r] > 18
+    ys, xs = np.where(mask)
+    cx = (l+r)/2
+    fallback = [cx - bw*.15, cx + bw*.15]
+    if len(xs) < 8:
+        return fallback
+    absx = xs + l
+    left = absx[absx < cx]
+    right = absx[absx >= cx]
+    out=[]
+    for side, fb in ((left, fallback[0]), (right, fallback[1])):
+        if len(side) < 4:
+            out.append(fb)
+        else:
+            # Pega pixels mais baixos do lado, porque correspondem ao pé/perna.
+            out.append(float(np.median(side)))
+    if abs(out[1]-out[0]) < bw*.13:
+        out = fallback
+    return out
+
+
+def aa_layer(size, scale=4):
+    return Image.new('RGBA', (size[0]*scale, size[1]*scale), (0,0,0,0)), scale
+
+
+def P(scale, *pts):
+    return [(x*scale, y*scale) for x,y in pts]
+
+
+def draw_natural_shoe(d, scale, cx, top, w, h, direction, cfg, leg_col, boot=False):
+    cx*=scale; top*=scale; w*=scale; h*=scale
+    direction = -1 if direction < 0 else 1
+    shoe = rgba(cfg['shoe'], 246)
+    sole = rgba(cfg['sole'], 232)
+    outline = (8,7,7,190)
+    highlight = (255,255,255,70)
+    leg_col = tuple(leg_col[:3]) + (150,)
+
+    # tornozelo/ponte, curto e atrás do sapato para ficar conectado.
+    ankle_w = max(2*scale, w*.16)
+    ankle_h = h*(1.10 if boot else .78)
+    d.rounded_rectangle([cx-ankle_w, top-ankle_h, cx+ankle_w, top+h*.28], radius=max(1, int(h*.18)), fill=leg_col)
+
     if boot:
-        draw.rounded_rectangle([cx - w*.40, top - h*.72, cx + w*.18, top + h*.18], radius=max(2, int(h*.22)), fill=outline)
-        draw.rounded_rectangle([cx - w*.34, top - h*.62, cx + w*.14, top + h*.22], radius=max(2, int(h*.18)), fill=shoe)
-    # sola clara/contrastante para o pé aparecer completo.
-    y = top + h*.82
-    draw.line([(cx - toe_dir*w*.56, y), (cx + toe_dir*w*.54, y - h*.05)], fill=sole, width=max(1, int(h*.18)))
-    draw.line([(cx - toe_dir*w*.18, top + h*.22), (cx + toe_dir*w*.22, top + h*.15)], fill=hi, width=max(1, int(h*.12)))
+        d.rounded_rectangle([cx-w*.30, top-h*.78, cx+w*.20, top+h*.22], radius=max(2, int(h*.24)), fill=outline)
+        d.rounded_rectangle([cx-w*.24, top-h*.68, cx+w*.16, top+h*.18], radius=max(2, int(h*.20)), fill=shoe)
+
+    # tênis/sapato em perspectiva, bico para fora, sobrepondo o pé antigo.
+    pts = [
+        (cx - direction*w*.40, top + h*.22),
+        (cx + direction*w*.30, top + h*.05),
+        (cx + direction*w*.66, top + h*.28),
+        (cx + direction*w*.72, top + h*.58),
+        (cx + direction*w*.46, top + h*.78),
+        (cx - direction*w*.45, top + h*.82),
+        (cx - direction*w*.58, top + h*.54),
+    ]
+    d.polygon(pts, fill=outline)
+    pts2=[(x, y+h*.03) for x,y in pts]
+    d.polygon(pts2, fill=shoe)
+    # sola fina, não um bloco.
+    d.line([(cx-direction*w*.50, top+h*.82), (cx+direction*w*.52, top+h*.76)], fill=sole, width=max(1, int(h*.16)))
+    d.line([(cx-direction*w*.06, top+h*.32), (cx+direction*w*.34, top+h*.22)], fill=highlight, width=max(1, int(h*.12)))
 
 
-def draw_paw(draw, cx, top, w, h, cfg):
-    outline = (93, 54, 32, 220)
-    fur = hex_rgba(cfg['shoe'], 248)
-    pad = hex_rgba(cfg['sole'], 225)
-    draw.ellipse([cx-w*.58, top-h*.05, cx+w*.58, top+h*.95], fill=outline)
-    draw.ellipse([cx-w*.50, top, cx+w*.50, top+h*.86], fill=fur)
-    draw.ellipse([cx-w*.20, top+h*.45, cx+w*.20, top+h*.72], fill=pad)
-    for off in (-.32, 0, .32):
-        draw.ellipse([cx+w*off-w*.09, top+h*.18, cx+w*off+w*.09, top+h*.36], fill=pad)
+def draw_paw(d, scale, cx, top, w, h, cfg):
+    cx*=scale; top*=scale; w*=scale; h*=scale
+    outline=(96,59,35,170); fur=rgba(cfg['shoe'],230); pad=rgba(cfg['sole'],190)
+    d.ellipse([cx-w*.46, top+h*.02, cx+w*.46, top+h*.82], fill=outline)
+    d.ellipse([cx-w*.40, top+h*.06, cx+w*.40, top+h*.74], fill=fur)
+    d.ellipse([cx-w*.15, top+h*.44, cx+w*.15, top+h*.63], fill=pad)
+    for off in (-.25,.0,.25):
+        d.ellipse([cx+w*off-w*.07, top+h*.22, cx+w*off+w*.07, top+h*.34], fill=pad)
+
+
+def draw_float_tip(d, scale, cx, top, w, h, cfg):
+    cx*=scale; top*=scale; w*=scale; h*=scale
+    d.ellipse([cx-w*.42, top-h*.08, cx+w*.42, top+h*.72], fill=(45,22,95,155))
+    d.ellipse([cx-w*.30, top+h*.02, cx+w*.30, top+h*.58], fill=rgba(cfg['shoe'],178))
+    d.arc([cx-w*.62, top-h*.12, cx+w*.62, top+h*.82], 20, 160, fill=rgba(cfg['sole'],170), width=max(1, int(h*.16)))
 
 
 def repair_frame(frame, name, row=0, col=0, portrait=False):
     cfg = CONFIG[name]
-    bbox = alpha_bbox(frame)
+    bbox = bbox_alpha(frame)
     if not bbox:
-        return frame, 0
-    l, t, r, b = bbox
-    W, H = frame.size
-    bw, bh = max(1, r-l), max(1, b-t)
-    margin = max(3 if portrait else 8, int(cfg['margin'] * (.72 if portrait else 1)))
-    target_bottom = min(H - margin, b + max(5, int(bh * .055)))
-    if target_bottom <= b + 2 and H - b > margin + 3:
-        target_bottom = H - margin
+        return frame
+    l,t,r,b=bbox
+    W,H=frame.size
+    bw,bh=max(1,r-l),max(1,b-t)
+    margin=int(cfg['margin'] * (.72 if portrait else 1))
+    ext=max(3, int(bh*cfg['ext']*(.72 if portrait else 1)))
+    target_bottom=min(H-margin, b+ext)
+    if target_bottom <= b:
+        target_bottom=min(H-8, b+3)
+    # Tamanho proporcional e limitado; sapato pequeno, integrado.
+    shoe_w=max(cfg['minw']*(.72 if portrait else 1), min(cfg['maxw']*(.78 if portrait else 1), bw*cfg['w']))
+    shoe_h=max(5*(.72 if portrait else 1), min(14*(.82 if portrait else 1), bh*cfg['h']))
+    top=target_bottom-shoe_h
+    if top > b - shoe_h*.20:
+        top = b - shoe_h*.35
+        target_bottom = top + shoe_h
+    centers=foot_centers(frame,bbox)
+    # Pequeno passo nas animações, mas sem descolar.
+    step = (1 if col % 2 else -1) * bw * (0.010 if row else 0.004)
+    layer, scale=aa_layer(frame.size,4)
+    d=ImageDraw.Draw(layer,'RGBA')
 
-    layer = Image.new('RGBA', frame.size, (0,0,0,0))
-    d = ImageDraw.Draw(layer, 'RGBA')
-    center = (l + r) / 2
-    # Passo alternado nas linhas de corrida/ataque para o sapato acompanhar a animação.
-    step = ((col % 2) * 2 - 1) * bw * (0.020 if row in (1,2,3) else 0.006)
+    if cfg['kind']=='float':
+        draw_float_tip(d, scale, (l+r)/2, top, shoe_w, shoe_h*1.35, cfg)
+    elif cfg['kind']=='paw':
+        for i,sign in enumerate((-1,1)):
+            cx=centers[i] + sign*step
+            draw_paw(d, scale, cx, top + (1 if row==1 and i==1 else 0), shoe_w, shoe_h*1.15, cfg)
+    else:
+        for i,sign in enumerate((-1,1)):
+            cx=centers[i] + sign*step
+            leg_col=sample_color(frame,cx,b-8,cfg['sock'])
+            draw_natural_shoe(d, scale, cx, top + (0.8 if row==1 and i==1 else 0), shoe_w, shoe_h, sign, cfg, leg_col, boot=cfg['kind']=='boot')
 
-    if cfg['kind'] == 'float':
-        h = max(7, min(18, bh * cfg['h']))
-        w = max(12, min(34, bw * cfg['w']))
-        top = target_bottom - h
-        # Ponta astral completa, não sapato.
-        d.ellipse([center-w*.65, top-h*.20, center+w*.65, top+h*.92], fill=(38, 18, 82, 205))
-        d.ellipse([center-w*.48, top, center+w*.48, top+h*.78], fill=hex_rgba(cfg['shoe'], 205))
-        d.arc([center-w*.78, top-h*.25, center+w*.78, top+h*1.08], 20, 160, fill=hex_rgba(cfg['sole'], 190), width=max(1, int(h*.18)))
-        out = Image.alpha_composite(frame, layer)
-        return out, max(0, target_bottom - b)
-
-    if cfg['kind'] == 'paw':
-        h = max(8, min(20, bh * cfg['h']))
-        w = max(12, min(34, bw * cfg['w']))
-        top = target_bottom - h
-        for sign in (-1, 1):
-            cx = center + sign * bw * cfg['spread'] + sign * step
-            draw_paw(d, cx, top + (2 if sign > 0 and row == 1 else 0), w, h, cfg)
-        out = Image.alpha_composite(frame, layer)
-        return out, max(0, target_bottom - b)
-
-    h = max(6, min(16, bh * cfg['h']))
-    w = max(10, min(32, bw * cfg['w']))
-    top = target_bottom - h
-    sock = hex_rgba(cfg['sock'], 155)
-    # Conectores discretos para não parecer que o pé está solto.
-    for sign in (-1, 1):
-        cx = center + sign * bw * cfg['spread'] + sign * step
-        ankle_w = max(4, w * .28)
-        ankle_top = max(t, min(b - h*.35, top - h*.82))
-        d.rounded_rectangle([cx-ankle_w, ankle_top, cx+ankle_w, top+h*.25], radius=max(1, int(h*.18)), fill=sock)
-    draw_shoe(d, center - bw * cfg['spread'] - step, top, w, h, -1, cfg, boot=cfg['kind']=='boot')
-    draw_shoe(d, center + bw * cfg['spread'] + step, top + (1 if row == 1 else 0), w, h, 1, cfg, boot=cfg['kind']=='boot')
-
-    out = Image.alpha_composite(frame, layer)
-    return out, max(0, target_bottom - b)
+    layer=layer.resize(frame.size, Image.Resampling.LANCZOS)
+    return Image.alpha_composite(frame, layer)
 
 
-def repair_spritesheets():
-    meta_path = SHEET_DIR / 'meta.json'
-    meta = json.loads(meta_path.read_text(encoding='utf-8'))
-    changed = {}
-    for name, m in meta.items():
-        if name not in CONFIG:
-            continue
-        p = SHEET_DIR / f'{name}.webp'
-        img = Image.open(p).convert('RGBA')
-        out = Image.new('RGBA', img.size, (0,0,0,0))
-        max_extension = 0
+def actual_min_bottom(img, m):
+    min_bottom=10**9
+    for row in range(m['rows']):
+        for col in range(m['cols']):
+            fr=img.crop((col*m['frameW'], row*m['frameH'], (col+1)*m['frameW'], (row+1)*m['frameH']))
+            bb=bbox_alpha(fr)
+            if bb:
+                min_bottom=min(min_bottom, m['frameH']-bb[3])
+    return 18 if min_bottom==10**9 else int(min_bottom)
+
+
+def repair_sheets():
+    meta_path=SHEET_DIR/'meta.json'
+    meta=json.loads(meta_path.read_text(encoding='utf-8'))
+    result={}
+    for name,m in meta.items():
+        if name not in CONFIG: continue
+        p=SHEET_DIR/f'{name}.webp'
+        img=Image.open(p).convert('RGBA')
+        out=Image.new('RGBA',img.size,(0,0,0,0))
+        old_min=actual_min_bottom(img,m)
         for row in range(m['rows']):
             for col in range(m['cols']):
-                box = (col*m['frameW'], row*m['frameH'], (col+1)*m['frameW'], (row+1)*m['frameH'])
-                fr = img.crop(box)
-                fixed, ext = repair_frame(fr, name, row, col, portrait=False)
-                max_extension = max(max_extension, ext)
-                out.alpha_composite(fixed, (box[0], box[1]))
-        # Pad agora reflete a nova margem inferior real, para o pé ficar ancorado corretamente no chão.
-        cfg_margin = int(CONFIG[name]['margin'])
-        m['pad'] = max(8, cfg_margin)
-        out.save(p, 'WEBP', quality=82, method=6)
-        changed[name] = max_extension
-    meta_path.write_text(json.dumps(meta, separators=(',', ':'), ensure_ascii=False), encoding='utf-8')
-    return changed
+                box=(col*m['frameW'],row*m['frameH'],(col+1)*m['frameW'],(row+1)*m['frameH'])
+                fixed=repair_frame(img.crop(box),name,row,col,False)
+                out.alpha_composite(fixed,(box[0],box[1]))
+        new_min=actual_min_bottom(out,m)
+        m['pad']=max(8, min(22, new_min))
+        out.save(p,'WEBP',quality=84,method=6)
+        result[name]=(old_min,new_min,m['pad'])
+    meta_path.write_text(json.dumps(meta,separators=(',',':'),ensure_ascii=False),encoding='utf-8')
+    return result
 
 
 def repair_portraits():
-    changed = {}
+    res={}
     for p in sorted(PORTRAIT_DIR.glob('*.webp')):
-        name = p.stem
-        if name not in CONFIG:
-            continue
-        img = Image.open(p).convert('RGBA')
-        fixed, ext = repair_frame(img, name, 0, 0, portrait=True)
-        fixed.save(p, 'WEBP', quality=84, method=6)
-        changed[name] = ext
-    return changed
+        name=p.stem
+        if name not in CONFIG: continue
+        img=Image.open(p).convert('RGBA')
+        fixed=repair_frame(img,name,0,0,True)
+        fixed.save(p,'WEBP',quality=84,method=6)
+        res[name]=p.stat().st_size
+    return res
 
-
-if __name__ == '__main__':
-    s = repair_spritesheets()
-    p = repair_portraits()
-    print('SPRITE_FEET_REPAIRED', s)
-    print('PORTRAIT_FEET_REPAIRED', p)
+if __name__=='__main__':
+    print('SPRITES', repair_sheets())
+    print('PORTRAITS', repair_portraits())

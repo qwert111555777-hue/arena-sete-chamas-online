@@ -26,9 +26,9 @@ const assetMatches = [...(html + css + js).matchAll(/assets\/[A-Za-z0-9_\.\-\/]+
 const missingAssets = [...new Set(assetMatches)].filter(a => !exists(path.join('public', a)));
 ok(missingAssets.length === 0, `sem assets faltando${missingAssets.length ? ': ' + missingAssets.join(', ') : ''}`);
 
-ok(/client\.js\?v=13/.test(html), 'HTML usando client.js?v=13 para limpar cache');
-ok(/styles\.css\?v=13/.test(html), 'HTML usando styles.css?v=13 para limpar cache');
-ok(/ASSET_VERSION = '13'/.test(js), 'assets com versao v13');
+ok(/client\.js\?v=14/.test(html), 'HTML usando client.js?v=14 para limpar cache');
+ok(/styles\.css\?v=14/.test(html), 'HTML usando styles.css?v=14 para limpar cache');
+ok(/ASSET_VERSION = '14'/.test(js), 'assets com versao v14');
 ok(!/assets\/sprites_opt\//.test(js), 'cliente nao carrega sprites antigos pesados');
 ok(/assets\/spritesheets\//.test(js), 'cliente usa spritesheets animados');
 ok(/perfLevel/.test(js) && /recordFrameCost/.test(js) && /setPerfLevel/.test(js), 'guarda anti-lag dinamico existe');
@@ -44,10 +44,14 @@ ok(/drawHeroWeapon/.test(js) && /drawEnemyWeapon/.test(js), 'armas/itens visuais
 ok(/venceu seus piores medos/.test(js) && !/miss[aã]o conclu/i.test(js + server + html), 'frase final motivadora e sem missao concluida');
 ok(/levelHp/.test(server) && /stageLevelScale/.test(server) && /stageLevel/.test(server), 'levels/fases escalam vida e dano corretamente');
 ok(/enemyDamage/.test(server) && /dodgeTimer/.test(server) && /defenseTimer/.test(server) && /pityTimer/.test(server) && /rage/.test(server), 'habilidades corrigidas: marca, esquiva, defesa, pena e raiva');
-ok(/WORLD\.h - 300/.test(server) && /const footY = y \+ 30/.test(js), 'pes completos: sapatos/patas reforcados, limite inferior maior e sprite levantado');
-ok(/Modo leve único/.test(html) && !/<select id="qualitySelect"/.test(html) && /modo único leve\/universal/.test(js), 'modo unico leve sem seletor de desempenho');
+ok(/WORLD\.h - 300/.test(server) && /const footY = y \+ 30/.test(js) && /Completa pés|sapatos\/tênis\/botas/.test(fs.existsSync(path.join(root, 'tools/repair_feet.py')) ? read('tools/repair_feet.py') : ''), 'pes completos: sapatos/patas naturais, limite inferior maior e sprite levantado');
+ok(!/<select id="qualitySelect"/.test(html) && /modo único leve\/universal/.test(js), 'modo unico leve sem seletor de desempenho visivel');
 ok(/updateCameraTransform/.test(js) && /isFollowCameraMode/.test(js) && /visualViewport/.test(js), 'camera mobile acompanha personagem e corrige giro de tela');
 ok(/v12: layout celular primeiro/.test(css) && /max-height: 285px/.test(css) && /stage-intro-active/.test(css), 'CSS celular compacto para horizontal');
+
+ok(!/Como jogar/.test(html), 'sem botao/modal de informacoes Como jogar');
+ok(!/Instruções rápidas|Objetivo:|Habilidades e tempos|Como começar|gráfico/.test(html), 'tela inicial/lobby sem textos informativos excessivos');
+ok(/hidden-game-info/.test(html) && /ability-hud \{ display: none/.test(css), 'gameplay sem paineis informativos extras');
 
 const stageFiles = [
   'public/assets/stages/stage1_lama_esgoto.jpg',
