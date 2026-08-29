@@ -10,7 +10,7 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '15';
+const ASSET_VERSION = '16';
 const SHOW_ARENA_TEXT = false;
 const SHOW_STAGE_INTRO = true;
 
@@ -183,13 +183,15 @@ function resolveQuality() {
 }
 
 function qualityDprCap() {
-  let cap = device.mobile ? 0.88 : 1.0;
-  if (perfLevel >= 1) cap = Math.min(cap, 0.72);
+  // Resolução nativa: nunca renderiza ABAIXO de 1x (que borrava ao esticar).
+  // Em celular bom chega a ~1.6x (tela nítida); se travar, cai p/ 1.0x.
+  let cap = device.mobile ? 1.6 : 1.25;
+  if (perfLevel >= 1) cap = Math.min(cap, 1.1);
   return cap;
 }
 
 function minDprCap() {
-  return device.mobile ? 0.62 : 0.70;
+  return device.mobile ? 1.0 : 1.0;
 }
 
 function getTargetFps() {
