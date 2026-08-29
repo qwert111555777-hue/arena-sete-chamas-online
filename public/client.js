@@ -10,7 +10,7 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '10';
+const ASSET_VERSION = '11';
 const SHOW_ARENA_TEXT = false;
 const SHOW_STAGE_INTRO = true;
 
@@ -46,20 +46,20 @@ const HERO_COLORS = {
 };
 
 const ENEMY_INFO = {
-  otavio: { icon: '🍔', attack: 'Promessa de Lanche', special: 'Gulodice', passive: 'cura quando está ferido', specialMax: 6.8 },
-  anielle: { icon: '🗣️', attack: 'Língua Grande', special: 'Falsidade', passive: 'fofoca mágica reduz mobilidade', specialMax: 5.5 },
-  mito: { icon: '💄', attack: 'Testa Astral', special: 'Gloss Caótico', passive: 'feixe da testa e chão escorregadio', specialMax: 4.8 },
-  lenda: { icon: '🏍️', attack: 'Barrigada Lendária', special: 'Bros 2009 Amarela', passive: 'investida de moto e capacete rosa', specialMax: 5.8 },
-  vanjo: { icon: '📦', attack: 'Reposição Furiosa', special: 'Sumiço Rabugento', passive: 'some e volta causando dano', specialMax: 7.8 },
-  napoleao: { icon: '🐶', attack: 'Mordida de Lanche', special: 'Forma Garfield', passive: 'Fome extrema: cresce e cura com comida', specialMax: 6.3 }
+  otavio: { icon: '🍔', attack: 'Promessa de Lanche', special: 'Gulodice', passive: 'cura quando está ferido e atrai para armadilha', specialMax: 6.8 },
+  anielle: { icon: '🗣️', attack: 'Língua Grande', special: 'Falsidade', passive: 'primeiro golpe reduzido e ilusão absorve dano', specialMax: 5.5 },
+  mito: { icon: '🌟', attack: 'Testa Astral', special: 'Gloss Caótico', passive: 'feixe da testa, esquiva leve e chão escorregadio', specialMax: 4.8 },
+  lenda: { icon: '🏍️', attack: 'Barrigada Lendária', special: 'Bros/Capacete Rosa', passive: 'investida de moto, defesa e reflexão de dano', specialMax: 5.8 },
+  vanjo: { icon: '📦', attack: 'Reposição Furiosa', special: 'Sumiço Rabugento', passive: 'raiva aumenta com o tempo de luta', specialMax: 7.8 },
+  napoleao: { icon: '🐶', attack: 'Mordida de Lanche', special: 'Cara de Coitado/Forma Garfield', passive: 'Fome extrema: cresce, cura e entra em fases', specialMax: 6.3 }
 };
 
 const STAGE_BACKGROUNDS = {
-  stage1_lagoa_porta: 'assets/stages/stage1_lagoa_porta.jpg',
-  stage2_feira_coruja: 'assets/stages/stage2_feira_coruja.jpg',
-  stage3_tanque_missionarios: 'assets/stages/stage3_tanque_missionarios.jpg',
-  stage4_recanto_serra: 'assets/stages/stage4_recanto_serra.jpg',
-  stage5_riacho_curva: 'assets/stages/stage5_riacho_curva.jpg'
+  stage1_lama_esgoto: 'assets/stages/stage1_lama_esgoto.jpg',
+  stage2_ifs_mito: 'assets/stages/stage2_ifs_mito.jpg',
+  stage3_terreiro_lenda: 'assets/stages/stage3_terreiro_lenda.jpg',
+  stage4_supermercado_vanjo: 'assets/stages/stage4_supermercado_vanjo.jpg',
+  stage5_reino_comidas: 'assets/stages/stage5_reino_comidas.jpg'
 };
 
 
@@ -275,6 +275,8 @@ function diffLabel(key) { return difficulties[key]?.label || key; }
 function myLobbyPlayer() { return lobby?.players?.find(p => p.id === meId) || null; }
 function myGamePlayer() { return game?.players?.find(p => p.id === meId) || null; }
 function isHost() { return lobby?.hostId === meId || game?.hostId === meId; }
+function isStageIntroActive() { return !!(SHOW_STAGE_INTRO && game && currentScreen === 'gameScreen' && !game.gameOver && ((game.stageStartTimer || 0) > 0.08 || performance.now() < stageIntroUntil)); }
+function updateStageIntroClass() { document.body.classList.toggle('stage-intro-active', isStageIntroActive()); }
 function pct(a, b) { return Math.max(0, Math.min(100, Math.round((a / Math.max(1, b)) * 100))); }
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 function alphaColor(color, alphaHex = '77') {
@@ -309,8 +311,10 @@ socket.on('lobby', (data) => {
 socket.on('state', (data) => {
   const oldStage = game?.stageIndex;
   game = data;
+  updateStageIntroClass();
   prewarmCurrentAssets();
   if (currentScreen !== 'gameScreen') showScreen('gameScreen');
+  updateStageIntroClass();
   const stageChanged = oldStage !== game.stageIndex;
   const stageKey = `${game.stageIndex}-${game.stageBackground}`;
   if (stageChanged || stageKey !== lastStageKey) {
@@ -846,9 +850,9 @@ function buildStageCache(img, bgKey) {
 }
 
 function drawArena() {
-  const bgKey = game?.stageBackground || 'stage1_lagoa_porta';
+  const bgKey = game?.stageBackground || 'stage1_lama_esgoto';
   const bg = getStageAsset(bgKey);
-  const fallback = getStageAsset('stage1_lagoa_porta');
+  const fallback = getStageAsset('stage1_lama_esgoto');
   const img = assetReady(bg) ? bg : fallback;
   const cached = buildStageCache(img, bgKey);
   if (cached) {
@@ -877,58 +881,97 @@ function drawStageAnimation() {
   if (!game) return;
   const t = performance.now() / 1000;
   const key = game.stageBackground || '';
-  const light = perfLevel >= 2;
+  const light = perfLevel >= 2 || quality === 'performance';
   ctx.save();
-  if (key.includes('lagoa_porta')) {
+  if (key.includes('lama_esgoto')) {
+    // Poças de lama/esgoto borbulhando; detalhes leves para não travar.
+    const count = light ? 5 : 11;
+    for (let i = 0; i < count; i++) {
+      const x = 150 + (i * 137) % 1280;
+      const y = 260 + (i * 89) % 360;
+      const r = 20 + (i % 4) * 10 + Math.sin(t * 2 + i) * 4;
+      ctx.globalAlpha = light ? .11 : .18;
+      ctx.fillStyle = i % 2 ? '#2b3a31' : '#4d3b21';
+      ctx.beginPath(); ctx.ellipse(x, y, r * 1.35, r * .42, Math.sin(i) * .3, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = light ? .18 : .30;
+      ctx.strokeStyle = '#9ed38b'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x + Math.sin(t + i) * 12, y - 3, 4 + Math.sin(t * 4 + i) * 2, 0, Math.PI * 2); ctx.stroke();
+    }
+  } else if (key.includes('ifs_mito')) {
+    // Pátio tecnológico: linhas digitais e brilhos rosa/roxo da Testa Astral.
     ctx.globalAlpha = light ? .10 : .18;
-    ctx.strokeStyle = '#bcecff'; ctx.lineWidth = light ? 2 : 3;
-    for (let i = 0; i < (light ? 3 : 6); i++) {
-      const y = 155 + i * 25 + Math.sin(t * 1.5 + i) * 5;
-      ctx.beginPath();
-      ctx.moveTo(95, y);
-      ctx.bezierCurveTo(230, y + Math.sin(t + i) * 18, 340, y - 12, 455, y + 8);
-      ctx.stroke();
+    ctx.strokeStyle = '#80d8ff'; ctx.lineWidth = 2;
+    for (let i = 0; i < (light ? 4 : 8); i++) {
+      const y = 150 + i * 64 + Math.sin(t * 1.4 + i) * 4;
+      ctx.beginPath(); ctx.moveTo(270, y); ctx.lineTo(1320, y + Math.sin(t + i) * 9); ctx.stroke();
     }
-    // folhas perto das árvores
-    ctx.fillStyle = '#7cc36a'; ctx.globalAlpha = light ? .10 : .16;
-    for (let i = 0; i < (light ? 8 : 16); i++) {
-      const a = t * .7 + i * .9;
-      ctx.beginPath(); ctx.ellipse(115 + (i * 63 % 370) + Math.sin(a) * 6, 90 + (i * 41 % 250) + Math.cos(a) * 4, 4, 2, a, 0, Math.PI * 2); ctx.fill();
-    }
-  } else if (key.includes('feira_coruja')) {
-    for (let i = 0; i < (light ? 8 : 18); i++) {
-      const x = 405 + (i % 3) * 250 + Math.sin(t + i) * 2;
-      const y = 95 + Math.floor(i / 3) * 78;
-      ctx.globalAlpha = (light ? .16 : .26) + Math.sin(t * 3 + i) * .07;
-      ctx.fillStyle = i % 2 ? '#ffd166' : '#75e6ff';
-      ctx.beginPath(); ctx.arc(x, y, light ? 4 : 6, 0, Math.PI * 2); ctx.fill();
-    }
-  } else if (key.includes('tanque_missionarios')) {
-    ctx.strokeStyle = '#bcecff'; ctx.lineWidth = light ? 2 : 3;
-    for (let i = 0; i < (light ? 3 : 6); i++) {
-      ctx.globalAlpha = (light ? .12 : .20) * (1 - i * .08);
-      ctx.beginPath(); ctx.ellipse(805, 250, 62 + i * 18 + Math.sin(t + i) * 3, 28 + i * 9, 0, 0, Math.PI * 2); ctx.stroke();
-    }
-  } else if (key.includes('recanto_serra')) {
-    ctx.fillStyle = '#d9a35b';
     for (let i = 0; i < (light ? 5 : 12); i++) {
-      const x = (t * 18 + i * 137) % view.w;
-      const y = 260 + (i * 53 % 360);
-      ctx.globalAlpha = light ? .10 : .18;
-      ctx.beginPath(); ctx.ellipse(x, y + Math.sin(t+i)*5, 5, 2.2, .5, 0, Math.PI*2); ctx.fill();
+      const x = 310 + (i * 83) % 920;
+      const y = 145 + (i * 47) % 430;
+      drawSparkShape(x, y, 5 + (i % 3), i % 2 ? '#ff70df' : '#d9f2ff', (light ? .13 : .24) + Math.sin(t * 3 + i) * .05);
     }
-  } else if (key.includes('riacho_curva')) {
-    ctx.strokeStyle = '#9fe8ff'; ctx.lineWidth = light ? 2 : 4;
-    for (let i = 0; i < (light ? 4 : 9); i++) {
-      ctx.globalAlpha = light ? .13 : .22;
-      const off = (t * 55 + i * 70) % 760;
+  } else if (key.includes('terreiro_lenda')) {
+    // Velas, fumaça e energia mística sem caricaturar religião.
+    const candles = light ? 6 : 13;
+    for (let i = 0; i < candles; i++) {
+      const x = 125 + (i * 121) % 1350;
+      const y = 115 + (i * 77) % 630;
+      ctx.globalAlpha = .15 + Math.sin(t * 5 + i) * .05;
+      ctx.fillStyle = '#ffd166';
+      ctx.beginPath(); ctx.ellipse(x, y, 8, 15, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = light ? .06 : .11;
+      ctx.fillStyle = '#d7d2ff';
+      ctx.beginPath(); ctx.ellipse(x + Math.sin(t + i) * 12, y - 32 - (Math.sin(t * .8 + i) + 1) * 11, 12, 30, .25, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = light ? .12 : .22;
+    ctx.strokeStyle = '#ffb12c'; ctx.lineWidth = light ? 2 : 4; ctx.setLineDash([12, 10]);
+    ctx.beginPath(); ctx.arc(view.w/2, view.h/2 + 40, 120 + Math.sin(t)*7, 0, Math.PI*2); ctx.stroke();
+  } else if (key.includes('supermercado_vanjo')) {
+    // Luz de supermercado e carrinhos/caixas nas bordas.
+    for (let i = 0; i < (light ? 6 : 14); i++) {
+      const x = 140 + (i * 102) % 1320;
+      const y = 95 + (i % 4) * 135;
+      ctx.globalAlpha = (light ? .10 : .20) + Math.sin(t * 5 + i) * .05;
+      ctx.fillStyle = i % 3 ? '#ffffff' : '#ffef9a';
+      roundRect(ctx, x, y, 58, 9, 5); ctx.fill();
+    }
+    ctx.strokeStyle = '#ff5757'; ctx.lineWidth = 3; ctx.globalAlpha = light ? .12 : .22;
+    for (let i = 0; i < (light ? 3 : 7); i++) {
+      const x = (t * 22 + i * 210) % view.w;
+      const y = 690 - (i % 2) * 45;
+      ctx.beginPath(); ctx.rect(x, y, 35, 22); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x + 6, y + 25, 4, 0, Math.PI*2); ctx.arc(x + 30, y + 25, 4, 0, Math.PI*2); ctx.stroke();
+    }
+  } else if (key.includes('reino_comidas')) {
+    // Reino final: molho borbulhando e brilho dourado épico.
+    const bubbles = light ? 8 : 18;
+    for (let i = 0; i < bubbles; i++) {
+      const x = 120 + (i * 91) % 1370;
+      const y = 120 + (i * 67) % 610;
+      const r = 5 + (i % 5) + Math.sin(t * 2.6 + i) * 2;
+      ctx.globalAlpha = light ? .12 : .22;
+      ctx.fillStyle = i % 2 ? '#ff9f1c' : '#ffd166';
+      ctx.beginPath(); ctx.arc(x, y + Math.sin(t + i) * 8, Math.max(2, r), 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = light ? .10 : .19;
+    ctx.strokeStyle = '#fff1a8'; ctx.lineWidth = light ? 3 : 6;
+    for (let i = 0; i < (light ? 2 : 4); i++) {
       ctx.beginPath();
-      ctx.moveTo(210 + off * .42, 180 + off * .18);
-      ctx.quadraticCurveTo(265 + off * .42, 198 + off * .18 + Math.sin(t+i)*10, 330 + off * .42, 182 + off * .18);
+      ctx.ellipse(view.w/2, view.h/2 + 35, 170 + i*55 + Math.sin(t+i)*7, 58 + i*20, 0, 0, Math.PI*2);
       ctx.stroke();
     }
   }
   ctx.restore();
+}
+
+function drawIntroSprite(key, x, footY, height, facing, alpha = 1, actionName = 'special') {
+  const fakeMotion = { moving: false, phase: performance.now() / 240, facing };
+  try {
+    return drawSpriteImage(key, x, footY, height, facing, alpha, CHARACTER_ANIM[key]?.aura || '#ffd166', fakeMotion, { name: actionName, timer: .45, hit: 0 });
+  } catch (err) {
+    ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = CHARACTER_ANIM[key]?.color || '#fff'; ctx.beginPath(); ctx.arc(x, footY - height * .48, height * .18, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    return null;
+  }
 }
 
 function drawStageIntro() {
@@ -937,34 +980,103 @@ function drawStageIntro() {
   const serverHold = Math.max(0, game.stageStartTimer || 0);
   if (now > stageIntroUntil && serverHold <= 0) return;
   const data = stageIntroData || { title: game.stageTitle, venue: game.stageVenue, subtitle: game.stageSubtitle, idx: game.stageIndex, count: game.stageCount };
+  const total = 4.8;
   const remain = Math.max(serverHold, (stageIntroUntil - now) / 1000);
-  const pulse = .5 + Math.sin(now / 160) * .08;
+  const progress = clamp(1 - remain / total, 0, 1);
+  const shake = progress > .46 && progress < .72 && quality !== 'performance' ? Math.sin(now / 28) * 3 : 0;
+  const enemies = (game.enemies || []).filter(e => e.hp > 0);
+  const heroesAlive = (game.players || []).filter(p => p.hero);
+  const enemyNames = enemies.map(e => e.name).join(' + ') || 'Chefes';
+  const heroNames = heroesAlive.map(p => heroName(p.hero)).join(' · ');
+
   ctx.save();
-  ctx.fillStyle = `rgba(5, 5, 10, ${serverHold > 0 ? .44 : .25})`;
-  ctx.fillRect(0, 0, view.w, view.h);
-  const w = Math.min(820, view.w - 130);
-  const h = 190;
-  const x = (view.w - w) / 2;
-  const y = 72;
-  const grd = ctx.createLinearGradient(x, y, x + w, y + h);
-  grd.addColorStop(0, 'rgba(255, 209, 102, .24)');
-  grd.addColorStop(0.45, 'rgba(20, 17, 28, .84)');
-  grd.addColorStop(1, 'rgba(112, 199, 255, .22)');
-  ctx.fillStyle = grd;
-  roundRect(ctx, x, y, w, h, 26); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = 2; roundRect(ctx, x, y, w, h, 26); ctx.stroke();
+  ctx.translate(shake, 0);
+  ctx.fillStyle = `rgba(3, 2, 7, ${serverHold > 0 ? .80 : .50})`;
+  ctx.fillRect(-8, -8, view.w + 16, view.h + 16);
+
+  // Painéis laterais de versus, inspirados em jogos de luta, mas com identidade própria.
+  const slide = Math.min(1, progress * 2.4);
+  const leftW = view.w * .47;
+  const rightW = view.w * .47;
+  const leftX = -leftW * (1 - slide);
+  const rightX = view.w - rightW + rightW * (1 - slide);
+  const top = 88;
+  const panelH = view.h - 190;
+  const grdL = ctx.createLinearGradient(leftX, top, leftX + leftW, top + panelH);
+  grdL.addColorStop(0, 'rgba(255, 209, 102, .30)');
+  grdL.addColorStop(.48, 'rgba(35, 21, 50, .86)');
+  grdL.addColorStop(1, 'rgba(20, 10, 25, .88)');
+  ctx.fillStyle = grdL; roundRect(ctx, leftX, top, leftW, panelH, 30); ctx.fill();
+  const grdR = ctx.createLinearGradient(rightX, top, rightX + rightW, top + panelH);
+  grdR.addColorStop(0, 'rgba(60, 12, 18, .90)');
+  grdR.addColorStop(.55, 'rgba(105, 18, 30, .84)');
+  grdR.addColorStop(1, 'rgba(255, 80, 72, .30)');
+  ctx.fillStyle = grdR; roundRect(ctx, rightX, top, rightW, panelH, 30); ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,.24)'; roundRect(ctx, leftX, top, leftW, panelH, 30); ctx.stroke(); roundRect(ctx, rightX, top, rightW, panelH, 30); ctx.stroke();
+
+  // Retratos/sprites do time e dos chefes.
+  const heroHeight = Math.min(205, Math.max(120, view.h * .22));
+  const heroGap = Math.min(86, leftW / Math.max(2.5, heroesAlive.length + .4));
+  const baseHeroX = leftX + leftW * .18;
+  heroesAlive.slice(0, 5).forEach((p, i) => {
+    const x = baseHeroX + i * heroGap;
+    const bob = Math.sin(now / 220 + i) * 4;
+    drawIntroSprite(p.hero, x, top + panelH - 58 + bob, heroHeight, 1, .95, i % 2 ? 'attack' : 'special');
+  });
+  const enemyHeight = Math.min(300, Math.max(170, view.h * (enemies.length > 1 ? .27 : .34)));
+  const enemyGap = Math.min(165, rightW / Math.max(2, enemies.length + .5));
+  const baseEnemyX = rightX + rightW * .73;
+  enemies.slice(0, 3).forEach((e, i) => {
+    const x = baseEnemyX - i * enemyGap;
+    const bob = Math.sin(now / 190 + i) * 5;
+    drawIntroSprite(e.type, x, top + panelH - 54 + bob, enemyHeight * (e.type === 'napoleao' ? 1.05 : 1), -1, .98, 'ultimate');
+  });
+
+  // Textos ficam só na cinemática antes da luta, não poluem a arena durante gameplay.
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#ffd166'; ctx.font = '900 24px system-ui, sans-serif';
+  ctx.fillText('HERÓIS', leftX + 32, top + 48);
+  ctx.fillStyle = '#fff6dd'; ctx.font = heroesAlive.length > 2 ? '900 24px system-ui, sans-serif' : '900 34px system-ui, sans-serif';
+  ctx.fillText(heroNames || 'TIME', leftX + 32, top + 90);
+  ctx.fillStyle = '#d7c7aa'; ctx.font = '700 18px system-ui, sans-serif';
+  ctx.fillText(`Nível ${Number(data.idx || 0) + 1}/${data.count || game.stageCount}`, leftX + 34, top + 124);
+
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#ff9a76'; ctx.font = '900 24px system-ui, sans-serif';
+  ctx.fillText('CHEFE', rightX + rightW - 32, top + 48);
+  ctx.fillStyle = '#fff6dd'; ctx.font = '900 34px system-ui, sans-serif';
+  ctx.fillText(enemyNames, rightX + rightW - 32, top + 90);
+  ctx.fillStyle = '#ffd4c0'; ctx.font = '700 18px system-ui, sans-serif';
+  ctx.fillText(data.venue || '', rightX + rightW - 34, top + 124);
+
+  const vsPulse = 1 + Math.sin(now / 110) * .06;
+  ctx.save();
+  ctx.translate(view.w / 2, view.h / 2 + 4);
+  ctx.scale(vsPulse, vsPulse);
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#ffd166'; ctx.font = '900 22px system-ui, sans-serif';
-  ctx.fillText(`Fase ${Number(data.idx || 0) + 1}/${data.count || game.stageCount}`, view.w / 2, y + 40);
-  ctx.fillStyle = '#fff6dd'; ctx.font = '900 38px system-ui, sans-serif';
-  ctx.fillText(data.title || 'Arena', view.w / 2, y + 86);
-  ctx.fillStyle = '#d9f2ff'; ctx.font = '800 21px system-ui, sans-serif';
-  ctx.fillText(data.venue || '', view.w / 2, y + 120);
-  ctx.fillStyle = '#dac9ae'; ctx.font = '700 18px system-ui, sans-serif';
-  ctx.fillText(serverHold > 0 ? `Preparem-se... ${Math.ceil(remain)}` : (data.subtitle || ''), view.w / 2, y + 152);
-  ctx.globalAlpha = pulse;
-  ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 6;
-  ctx.beginPath(); ctx.arc(view.w/2, y + h + 54, 35, -Math.PI/2, -Math.PI/2 + Math.PI*2*clamp(remain/2.8,0,1)); ctx.stroke();
+  ctx.lineWidth = 12;
+  ctx.strokeStyle = '#210505';
+  ctx.font = '1000 112px system-ui, sans-serif';
+  ctx.strokeText('VS', 0, 0);
+  const grd = ctx.createLinearGradient(-80, -90, 80, 30);
+  grd.addColorStop(0, '#fff1a8'); grd.addColorStop(.5, '#ff9f1c'); grd.addColorStop(1, '#ff4040');
+  ctx.fillStyle = grd;
+  ctx.fillText('VS', 0, 0);
+  ctx.restore();
+
+  const barW = Math.min(650, view.w - 180);
+  const barX = (view.w - barW) / 2;
+  const barY = view.h - 95;
+  ctx.fillStyle = 'rgba(0,0,0,.58)'; roundRect(ctx, barX, barY, barW, 46, 23); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = 2; roundRect(ctx, barX, barY, barW, 46, 23); ctx.stroke();
+  ctx.fillStyle = '#ffd166'; ctx.font = '900 20px system-ui, sans-serif'; ctx.textAlign = 'center';
+  const cue = serverHold > 0 ? `A batalha começa em ${Math.max(1, Math.ceil(remain))}` : 'LUTEM!';
+  ctx.fillText(cue, view.w / 2, barY + 30);
+
+  ctx.fillStyle = 'rgba(255,255,255,.90)'; ctx.font = '900 28px system-ui, sans-serif';
+  ctx.fillText(data.title || 'Arena das Sete Chamas', view.w / 2, 52);
+  ctx.fillStyle = 'rgba(255,255,255,.58)'; ctx.font = '700 18px system-ui, sans-serif';
+  ctx.fillText(data.subtitle || '', view.w / 2, 78);
   ctx.restore();
 }
 
@@ -1322,6 +1434,14 @@ function drawHeroPersonality(p, x, y, footY, drawn, facing, motion) {
     ctx.strokeStyle = p.ultimate >= 100 ? '#ffd166' : '#ffe45d'; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.arc(x, y + 2, 54 + Math.sin(phase * 1.6) * 5, 0, Math.PI * 2); ctx.stroke();
   }
+  if (p.dodgeTimer > 0) {
+    ctx.globalAlpha = .26; ctx.strokeStyle = '#bff3ff'; ctx.lineWidth = 4; ctx.setLineDash([8, 7]);
+    ctx.beginPath(); ctx.ellipse(x, y + 8, 64, 48, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+  }
+  if (p.hero === 'arthur' && (p.ego || 0) > 0) {
+    ctx.globalAlpha = .18 + Math.min(.18, p.ego * .035); ctx.strokeStyle = '#18d4ff'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(x, headY + 28, 38 + p.ego * 4, 0, Math.PI * 2); ctx.stroke();
+  }
 
   if (p.hero === 'albert') {
     ctx.globalAlpha = .72;
@@ -1378,6 +1498,18 @@ function drawEnemyPersonality(e, x, y, footY, drawn, facing, motion) {
   ctx.save();
   drawExpressionMark(x + facing * drawn.w * .02, headY, Math.max(15, drawn.visibleH * .10), facing, e.hitFlash > 0 ? 'hit' : 'evil', meta.color);
   drawEnemyWeapon(e, x, y, footY, drawn, facing, motion);
+  if (e.defenseTimer > 0) {
+    ctx.globalAlpha = .30; ctx.strokeStyle = '#ffb12c'; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.ellipse(x, y + 8, drawn.w * .48, drawn.visibleH * .34, 0, 0, Math.PI * 2); ctx.stroke();
+  }
+  if (e.type === 'vanjo' && (e.rage || 0) > 6) {
+    ctx.globalAlpha = Math.min(.30, .08 + e.rage * .008); ctx.strokeStyle = '#ff5757'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(x, y + 4, 62 + Math.sin(phase*2)*4, 0, Math.PI * 2); ctx.stroke();
+  }
+  if (e.type === 'napoleao' && (e.phase || 1) > 1) {
+    ctx.globalAlpha = e.phase >= 3 ? .36 : .22; ctx.strokeStyle = '#ffd166'; ctx.lineWidth = e.phase >= 3 ? 8 : 5;
+    ctx.beginPath(); ctx.arc(x, y + 10, 72 + e.phase * 14, 0, Math.PI * 2); ctx.stroke();
+  }
 
   if (e.type === 'anielle') {
     // Reforço visual do cabelo cacheado e da fofoca: aparece por cima sem cortar o sprite.
@@ -1649,6 +1781,16 @@ function drawEffect(fx) {
       const a = i * Math.PI * 2 / 8 + progress * 2.4;
       drawDiamondShape(fx.x + Math.cos(a) * (fx.r || 40) * progress, fx.y + Math.sin(a) * (fx.r || 40) * .55 * progress, 6 + i % 2, color, .75 * remain);
     }
+  } else if (fx.type === 'pity') {
+    ctx.globalAlpha = .55 * remain;
+    drawHeartShape(fx.x, fx.y - 8 - progress * 12, Math.max(12, (fx.r || 60) * .22), color, .55 * remain);
+    ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(fx.x, fx.y + 18, (fx.r || 70) * (.55 + progress*.2), (fx.r || 70) * .26, 0, 0, Math.PI * 2); ctx.stroke();
+  } else if (fx.type === 'sparkDodge') {
+    ctx.globalAlpha = .76 * remain;
+    for (let i = 0; i < 7; i++) {
+      const a = i * Math.PI * 2 / 7 + progress * 2;
+      drawSparkShape(fx.x + Math.cos(a) * (fx.r || 38) * progress, fx.y + Math.sin(a) * (fx.r || 38) * .5 * progress, 7, color, .76 * remain);
+    }
   } else if (fx.type === 'ring' || fx.type === 'hit' || fx.type === 'hazard' || fx.type === 'slash') {
     ctx.globalAlpha = remain;
     ctx.strokeStyle = color; ctx.lineWidth = fx.type === 'hazard' ? 10 : 6;
@@ -1697,6 +1839,7 @@ function drawCooldownOverlay() {
 
 function draw(t = 0) {
   requestAnimationFrame(draw);
+  updateStageIntroClass();
   const targetFps = getTargetFps();
   const minFrame = 1000 / targetFps;
   if (t - lastDrawTime < minFrame) return;

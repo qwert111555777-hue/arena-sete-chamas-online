@@ -614,3 +614,16 @@ body.quality-performance .hero-bg { filter: none; }
 .quick-rules strong { color: var(--gold); }
 /* Versão v8: sem mensagens flutuantes/texto extra durante a luta; ficam só HUD e barras essenciais. */
 .messages-hud { display: none !important; }
+
+body.stage-intro-active .game-hud,
+body.stage-intro-active .team-hud,
+body.stage-intro-active .ability-hud,
+body.stage-intro-active .boss-hud,
+body.stage-intro-active .controls,
+body.stage-intro-active .orientation-hint {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(-8px) scale(.98);
+  transition: opacity .16s ease, transform .16s ease;
+}
+body.stage-intro-active .controls { transform: translateY(18px) scale(.98); }

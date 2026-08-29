@@ -48,11 +48,11 @@ for name, m in sorted(meta.items()):
 
 # Verifica que cenários não são a mesma imagem e são realistas/compactos por dimensão/tamanho.
 stage_files = [
-    'stage1_lagoa_porta.jpg',
-    'stage2_feira_coruja.jpg',
-    'stage3_tanque_missionarios.jpg',
-    'stage4_recanto_serra.jpg',
-    'stage5_riacho_curva.jpg',
+    'stage1_lama_esgoto.jpg',
+    'stage2_ifs_mito.jpg',
+    'stage3_terreiro_lenda.jpg',
+    'stage4_supermercado_vanjo.jpg',
+    'stage5_reino_comidas.jpg',
 ]
 stage_imgs = []
 for f in stage_files:

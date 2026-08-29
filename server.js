@@ -51,10 +51,10 @@ const HEROES = {
 };
 
 const DIFFICULTY = {
-  // Mais vida para lutas duradouras; menos dano, principalmente no fácil.
-  facil: { key: 'facil', label: 'Fácil', enemyHp: 1.05, enemyDmg: 0.35, enemySpeed: 0.82, respawn: 2.5, healBetween: 1.0 },
-  medio: { key: 'medio', label: 'Médio', enemyHp: 1.32, enemyDmg: 0.58, enemySpeed: 0.92, respawn: 3.7, healBetween: 0.86 },
-  dificil: { key: 'dificil', label: 'Difícil', enemyHp: 1.7, enemyDmg: 0.78, enemySpeed: 1.0, respawn: 5.2, healBetween: 0.72 }
+  // Levels corrigidos: fácil tem dano baixo e reviver rápido; médio é padrão; difícil é intenso sem virar injusto.
+  facil: { key: 'facil', label: 'Fácil', enemyHp: 1.02, enemyDmg: 0.28, enemySpeed: 0.78, respawn: 2.0, healBetween: 1.0, levelHp: 0.07, levelDmg: 0.025 },
+  medio: { key: 'medio', label: 'Médio', enemyHp: 1.32, enemyDmg: 0.50, enemySpeed: 0.90, respawn: 3.2, healBetween: 0.90, levelHp: 0.09, levelDmg: 0.035 },
+  dificil: { key: 'dificil', label: 'Difícil', enemyHp: 1.66, enemyDmg: 0.66, enemySpeed: 0.98, respawn: 4.6, healBetween: 0.76, levelHp: 0.115, levelDmg: 0.045 }
 };
 
 const ENEMIES = {
@@ -68,42 +68,46 @@ const ENEMIES = {
 
 const STAGES = [
   {
-    title: 'Lagoa da Porta: Falsidade e Gulodice',
-    venue: 'Parque Lagoa da Porta',
-    subtitle: 'Otávio e Anielle aparecem na praça da lagoa para abrir a confusão.',
-    background: 'stage1_lagoa_porta',
+    level: 1,
+    title: 'Lama e Esgoto: Otávio + Anielle',
+    venue: 'Lugar sujo de lama e esgoto',
+    subtitle: 'Otávio manipula com promessa de lanche enquanto Anielle espalha fofoca venenosa.',
+    background: 'stage1_lama_esgoto',
     enemies: ['otavio', 'anielle']
   },
   {
-    title: 'Feira da Coruja: Ascensão da Mito',
-    venue: 'Complexo da Feira da Coruja / Av. Luiz Alves de Oliveira Filho',
-    subtitle: 'Barracas de bordados e confecções viram campo escorregadio da Mito.',
-    background: 'stage2_feira_coruja',
+    level: 2,
+    title: 'IFS: Brilho do Mito',
+    venue: 'Campus inspirado no IFS',
+    subtitle: 'Mito usa Testa Astral e transforma o pátio em chão de Gloss Caótico.',
+    background: 'stage2_ifs_mito',
     enemies: ['mito']
   },
   {
-    title: 'Tanque dos Missionários: A Lenda Motorizada',
-    venue: 'Parque Municipal Tanque dos Missionários',
-    subtitle: 'A pista do parque vira rota da Bros 2009 amarela.',
-    background: 'stage3_tanque_missionarios',
+    level: 3,
+    title: 'Casa Mística: A Lenda',
+    venue: 'Terreiro/casa mística da Lenda',
+    subtitle: 'Velas, fumaça e a Bros 2009 amarela anunciam a investida da Lenda.',
+    background: 'stage3_terreiro_lenda',
     enemies: ['lenda']
   },
   {
-    title: 'Recanto da Serra: O Sumiço do Vanjo',
-    venue: 'Eco Parque Recanto da Serra / Museu dos Tropeiros, Povoado Jacaré',
-    subtitle: 'Trilhas, bodega e ponte dos tropeiros cercam o sumiço do Vanjo.',
-    background: 'stage4_recanto_serra',
+    level: 4,
+    title: 'Supermercado: O Sumiço do Vanjo',
+    venue: 'Supermercado de bairro',
+    subtitle: 'Vanjo some entre caixas, carrinhos e prateleiras antes de voltar furioso.',
+    background: 'stage4_supermercado_vanjo',
     enemies: ['vanjo']
   },
   {
-    title: 'Riacho da Curva: Napoleão Supremo',
-    venue: 'Riacho da Curva / zona rural de Tobias Barreto',
-    subtitle: 'O chefão final chega perto do riacho com fome extrema.',
-    background: 'stage5_riacho_curva',
+    level: 5,
+    title: 'Reino de Comidas: Napoleão',
+    venue: 'Reino final de comidas',
+    subtitle: 'Napoleão domina mesas, lanches e molhos antes da batalha final.',
+    background: 'stage5_reino_comidas',
     enemies: ['napoleao']
   }
 ];
-
 let nextEntityId = 1;
 const rooms = new Map();
 const socketRoom = new Map();
@@ -227,6 +231,10 @@ function addPlayer(room, socket, name) {
     damageBoost: 1,
     damageBoostTimer: 0,
     slowTimer: 0,
+    dodgeTimer: 0,
+    dodgeChance: 0,
+    ego: 0,
+    egoTimer: 0,
     respawnTimer: 0,
     hitFlash: 0,
     action: 'idle',
@@ -361,13 +369,15 @@ function spawnStage(room) {
   const stage = STAGES[room.stageIndex];
   const diff = DIFFICULTY[room.difficulty];
   const playerCount = Math.max(1, [...room.players.values()].filter(p => p.hero).length);
-  const hpScale = diff.enemyHp * (1.2 + playerCount * 0.55);
+  const stageLevelScale = 1 + room.stageIndex * (diff.levelHp || 0.09);
+  const damageLevelScale = 1 + room.stageIndex * (diff.levelDmg || 0.035);
+  const hpScale = diff.enemyHp * stageLevelScale * (1.18 + playerCount * 0.52);
   room.enemies = [];
   room.projectiles = [];
   room.effects = [];
   room.stageCleared = false;
   room.stageTimer = 0;
-  room.stageStartTimer = 2.8;
+  room.stageStartTimer = 4.8;
 
   const spawnPositions = [
     [{ x: 1260, y: 370 }, { x: 1260, y: 530 }],
@@ -386,13 +396,14 @@ function spawnStage(room) {
       x: pos.x + rand(-35, 35), y: pos.y + rand(-40, 40),
       vx: 0, vy: 0,
       maxHp: Math.round(base.hp * hpScale), hp: Math.round(base.hp * hpScale),
-      dmg: base.dmg * diff.enemyDmg, speed: base.speed * diff.enemySpeed, radius: base.radius,
+      dmg: base.dmg * diff.enemyDmg * damageLevelScale, speed: base.speed * diff.enemySpeed, radius: base.radius,
       color: base.color, boss: true,
       attackCd: rand(0.6, 1.2), specialCd: rand(4, 7),
       stun: 0, slow: 0, mark: 0, forcedTarget: null, forcedTimer: 0,
       invisible: false, vanishTimer: 0, vanishCd: 3.2,
-      foodTimer: 5.5, grow: 1,
-      action: 'idle', actionTimer: 0, decoyHits: 0,
+      foodTimer: 5.5, grow: 1, rage: 0, phase: 1,
+      defenseTimer: 0, pityTarget: null, pityTimer: 0,
+      action: 'idle', actionTimer: 0, decoyHits: type === 'anielle' ? 1 : 0,
       hitFlash: 0
     };
     clampEntity(enemy, ENEMY_BOUNDS);
@@ -483,6 +494,20 @@ function damageEnemy(room, enemy, amount, fromPlayer, options = {}) {
     final = Math.max(1, Math.round(final * 0.35));
     addEffect(room, { type: 'illusionBreak', x: enemy.x + rand(-28, 28), y: enemy.y + rand(-18, 18), r: enemy.radius + 44, color: '#ba7cff', ttl: 0.55, life: 0.55 });
   }
+  if (enemy.type === 'mito' && Math.random() < 0.08 && !options.guaranteed) {
+    final = Math.max(1, Math.round(final * 0.45));
+    addEffect(room, { type: 'sparkDodge', x: enemy.x, y: enemy.y - enemy.radius, r: enemy.radius + 18, color: '#ff70df', ttl: 0.32, life: 0.32 });
+  }
+  if (enemy.type === 'lenda' && (enemy.defenseTimer || 0) > 0) {
+    const reflected = attacker ? Math.max(2, Math.round(final * 0.10)) : 0;
+    final = Math.max(1, Math.round(final * 0.62));
+    if (attacker && reflected > 0) damagePlayer(room, attacker, reflected, enemy.name);
+    addEffect(room, { type: 'ring', x: enemy.x, y: enemy.y, r: enemy.radius + 56, color: '#ffb12c', ttl: 0.32, life: 0.32 });
+  }
+  if (enemy.type === 'napoleao' && enemy.pityTarget === fromPlayer && (enemy.pityTimer || 0) > 0) {
+    final = Math.max(1, Math.round(final * 0.58));
+    addEffect(room, { type: 'pity', x: enemy.x, y: enemy.y - enemy.radius, r: enemy.radius + 38, color: '#ffd88a', ttl: 0.38, life: 0.38 });
+  }
   enemy.hp = Math.max(0, enemy.hp - final);
   enemy.hitFlash = 0.16;
   if ((enemy.actionTimer || 0) <= 0.12) setAction(enemy, enemy.hp <= 0 ? 'defeat' : 'hit', enemy.hp <= 0 ? 0.8 : 0.18);
@@ -506,10 +531,25 @@ function shieldAbsorb(p, amount) {
   return remaining;
 }
 
+function enemyDamage(e, amount) {
+  let out = amount;
+  if (e.mark > 0) out *= 0.82; // Geovanna: alvo marcado causa menos dano.
+  if (e.type === 'vanjo') out *= Math.min(1.32, 1 + (e.rage || 0) * 0.012);
+  if (e.type === 'napoleao' && (e.phase || 1) >= 3) out *= 1.08;
+  return out;
+}
+
 function damagePlayer(room, p, amount, sourceName = 'Inimigo', options = {}) {
   if (!p || p.dead || p.hp <= 0) return 0;
   let final = Math.max(1, Math.round(amount));
+  if ((p.dodgeTimer || 0) > 0 && Math.random() < (p.dodgeChance || 0)) {
+    addEffect(room, { type: 'ring', x: p.x, y: p.y, r: 58, color: '#bff3ff', ttl: 0.28, life: 0.28 });
+    return 0;
+  }
+  if (p.hero === 'arthur' && (p.ego || 0) > 0) final = Math.round(final * (1 + Math.min(0.12, (p.ego || 0) * 0.018)));
+  const beforeShield = final;
   final = shieldAbsorb(p, final);
+  if (p.hero === 'guilherme') p.aura = clamp((p.aura || 0) + Math.max(2, beforeShield * 0.10), 0, 100);
   if (final <= 0) {
     addFloatingText(room, p.x, p.y - 38, 'bloqueou', '#80f7ff');
     return 0;
@@ -593,8 +633,10 @@ function playerNormalAttack(room, p) {
     const crit = Math.random() < 0.13;
     spawnPlayerProjectile(room, p, { dir, speed: 690, radius: 9, damage: crit ? 23 : 15, color: crit ? '#fffb8a' : '#18d4ff', ttl: 1.1, shape: 'codeSlash' });
     if (crit) {
-      p.damageBoost = Math.max(p.damageBoost || 1, 1.12);
-      p.damageBoostTimer = Math.max(p.damageBoostTimer || 0, 1.8);
+      p.ego = clamp((p.ego || 0) + 1, 0, 6);
+      p.egoTimer = Math.max(p.egoTimer || 0, 4.0);
+      p.damageBoost = Math.max(p.damageBoost || 1, 1.10 + (p.ego || 0) * 0.025);
+      p.damageBoostTimer = Math.max(p.damageBoostTimer || 0, 2.1);
       giveUltimate(p, 3);
     }
   } else if (p.hero === 'guilherme') {
@@ -637,7 +679,11 @@ function playerSpecial(room, p) {
 
   if (p.hero === 'romulo') {
     for (const ally of room.players.values()) {
-      if (!ally.dead) ally.shield = Math.max(ally.shield, 30);
+      if (!ally.dead) {
+        ally.shield = Math.max(ally.shield, 34);
+        ally.dodgeTimer = Math.max(ally.dodgeTimer || 0, 2.6);
+        ally.dodgeChance = Math.max(ally.dodgeChance || 0, 0.38);
+      }
     }
     for (const e of room.enemies) if (e.hp > 0) e.slow = Math.max(e.slow || 0, 2.2);
     addEffect(room, { type: 'ring', x: p.x, y: p.y, r: 220, color: '#9ee9ff', ttl: 0.65, life: 0.65 });
@@ -650,7 +696,7 @@ function playerSpecial(room, p) {
     const e = nearestEnemy(room, p);
     if (e) {
       e.stun = Math.max(e.stun || 0, 2.0);
-      damageEnemy(room, e, 24, p.id, { color: '#18d4ff' });
+      damageEnemy(room, e, 24 + (p.ego || 0) * 4, p.id, { color: '#18d4ff', guaranteed: true });
       addEffect(room, { type: 'ring', x: e.x, y: e.y, r: 110, color: '#18d4ff', ttl: 0.55, life: 0.55 });
       addMessage(room, `${p.name} hackeou ${e.name}.`, 'good');
     }
@@ -725,6 +771,8 @@ function playerUltimate(room, p) {
       if (!ally.dead) {
         ally.damageBoost = Math.max(ally.damageBoost || 1, 1.25);
         ally.damageBoostTimer = Math.max(ally.damageBoostTimer || 0, 5.0);
+        ally.dodgeTimer = Math.max(ally.dodgeTimer || 0, 3.2);
+        ally.dodgeChance = Math.max(ally.dodgeChance || 0, 0.44);
       }
     }
     addEffect(room, { type: 'ring', x: WORLD.w / 2, y: WORLD.h / 2, r: 430, color: '#baf2ff', ttl: 1.0, life: 1.0 });
@@ -736,8 +784,10 @@ function playerUltimate(room, p) {
     for (const e of room.enemies) {
       if (e.hp <= 0) continue;
       e.stun = Math.max(e.stun || 0, 1.6);
-      damageEnemy(room, e, 46, p.id, { color: '#19e0ff', crit: true });
+      damageEnemy(room, e, 46 + (p.ego || 0) * 7, p.id, { color: '#19e0ff', crit: true, guaranteed: true });
     }
+    p.ego = 0;
+    p.egoTimer = 0;
     addEffect(room, { type: 'ring', x: p.x, y: p.y, r: 380, color: '#19e0ff', ttl: 0.9, life: 0.9 });
     addMessage(room, `${p.name} virou ADMIN SUPREMO!`, 'ultimate');
     return;
@@ -769,6 +819,10 @@ function updatePlayers(room, dt) {
     p.damageBoostTimer = Math.max(0, (p.damageBoostTimer || 0) - dt);
     if (p.damageBoostTimer <= 0) p.damageBoost = 1;
     p.slowTimer = Math.max(0, (p.slowTimer || 0) - dt);
+    p.dodgeTimer = Math.max(0, (p.dodgeTimer || 0) - dt);
+    if (p.dodgeTimer <= 0) p.dodgeChance = 0;
+    p.egoTimer = Math.max(0, (p.egoTimer || 0) - dt);
+    if (p.egoTimer <= 0) p.ego = 0;
     p.shield = Math.max(0, p.shield || 0);
 
     if (p.dead) {
@@ -869,12 +923,16 @@ function updateEnemies(room, dt) {
     e.stun = Math.max(0, (e.stun || 0) - dt);
     e.slow = Math.max(0, (e.slow || 0) - dt);
     e.mark = Math.max(0, (e.mark || 0) - dt);
+    e.defenseTimer = Math.max(0, (e.defenseTimer || 0) - dt);
+    e.pityTimer = Math.max(0, (e.pityTimer || 0) - dt);
+    if (e.pityTimer <= 0) e.pityTarget = null;
     e.forcedTimer = Math.max(0, (e.forcedTimer || 0) - dt);
     if (e.forcedTimer <= 0) e.forcedTarget = null;
     e.attackCd = Math.max(0, (e.attackCd || 0) - dt);
     e.specialCd = Math.max(0, (e.specialCd || 0) - dt);
 
     if (e.type === 'vanjo') {
+      e.rage = Math.min(26, (e.rage || 0) + dt);
       e.vanishCd = Math.max(0, (e.vanishCd || 0) - dt);
       if (e.invisible) {
         e.vanishTimer = Math.max(0, (e.vanishTimer || 0) - dt);
@@ -888,7 +946,7 @@ function updateEnemies(room, dt) {
           e.invisible = false;
           setAction(e, 'special', 0.7);
           e.attackCd = 0.2;
-          enemyMelee(room, e, target, 125, e.dmg * 0.8, '#ff5b5b');
+          enemyMelee(room, e, target, 125, enemyDamage(e, e.dmg * 0.8), '#ff5b5b');
           addMessage(room, 'Vanjo voltou do sumiço rabugento!', 'bad');
         }
         continue;
@@ -896,6 +954,8 @@ function updateEnemies(room, dt) {
     }
 
     if (e.type === 'napoleao') {
+      const hpRatio = e.hp / Math.max(1, e.maxHp);
+      e.phase = hpRatio < 0.34 ? 3 : hpRatio < 0.67 ? 2 : 1;
       e.foodTimer = Math.max(0, (e.foodTimer || 0) - dt);
       if (e.foodTimer <= 0) {
         e.foodTimer = 6.2;
@@ -958,17 +1018,17 @@ function updateEnemies(room, dt) {
         addFloatingText(room, e.x, e.y - 50, `+${heal}`, '#83ffae');
         addEffect(room, { type: 'ring', x: e.x, y: e.y, r: 80, color: '#83ffae', ttl: 0.45, life: 0.45 });
       }
-      if (d < 115) enemyMelee(room, e, target, 92, e.dmg, '#ff9861');
-      else spawnEnemyProjectile(room, e, target, { speed: 440, radius: 14, damage: e.dmg * 0.78, slow: 1.0, color: '#ff9861', label: 'manipulação', shape: 'lure' });
+      if (d < 115) enemyMelee(room, e, target, 92, enemyDamage(e, e.dmg), '#ff9861');
+      else spawnEnemyProjectile(room, e, target, { speed: 440, radius: 14, damage: enemyDamage(e, e.dmg * 0.78), slow: 1.0, color: '#ff9861', label: 'manipulação', shape: 'lure' });
       e.attackCd = 1.25;
     } else if (e.type === 'anielle') {
       // Língua Grande: golpe visual em cone/onda de fofoca, sem texto na tela.
       setAction(e, 'attack', 0.48);
       const tx = target.x, ty = target.y;
       addEffect(room, { type: 'gossipWave', x: e.x, y: e.y, x2: tx, y2: ty, r: 85, color: '#ba7cff', ttl: 0.42, life: 0.42 });
-      damagePlayer(room, target, e.dmg * 0.88, e.name, { slow: 0.9 });
+      damagePlayer(room, target, enemyDamage(e, e.dmg * 0.88), e.name, { slow: 0.9 });
       for (const p of room.players.values()) {
-        if (p !== target && !p.dead && Math.hypot(p.x - tx, p.y - ty) < 95) damagePlayer(room, p, e.dmg * 0.35, e.name, { slow: 0.5 });
+        if (p !== target && !p.dead && Math.hypot(p.x - tx, p.y - ty) < 95) damagePlayer(room, p, enemyDamage(e, e.dmg * 0.35), e.name, { slow: 0.5 });
       }
       if (e.specialCd <= 0) {
         // Falsidade: cria uma cópia ilusória que absorve parte do próximo golpe.
@@ -983,10 +1043,10 @@ function updateEnemies(room, dt) {
     } else if (e.type === 'mito') {
       // Mito NÃO arremessa gloss. O ataque é Testa Astral: feixe da testa.
       setAction(e, 'attack', 0.52);
-      if (d < 150) enemyMelee(room, e, target, 112, e.dmg * 0.72, '#ff70df');
+      if (d < 150) enemyMelee(room, e, target, 112, enemyDamage(e, e.dmg * 0.72), '#ff70df');
       else {
         addEffect(room, { type: 'beam', x: e.x, y: e.y - 34, x2: target.x, y2: target.y - 18, r: 18, color: '#ff70df', ttl: 0.35, life: 0.35 });
-        damagePlayer(room, target, e.dmg * 0.86, e.name, { slow: 0.8 });
+        damagePlayer(room, target, enemyDamage(e, e.dmg * 0.86), e.name, { slow: 0.8 });
       }
       if (e.specialCd <= 0) {
         // Gloss Caótico: o chão fica escorregadio em poças brilhantes, não é projétil.
@@ -996,7 +1056,7 @@ function updateEnemies(room, dt) {
         for (const c of centers) {
           addEffect(room, { type: 'puddle', x: c.x, y: c.y, r: 115, color: '#ff70df', ttl: 1.35, life: 1.35 });
           for (const p of room.players.values()) {
-            if (!p.dead && Math.hypot(p.x - c.x, p.y - c.y) < 128) damagePlayer(room, p, e.dmg * 0.35, e.name, { slow: 1.7 });
+            if (!p.dead && Math.hypot(p.x - c.x, p.y - c.y) < 128) damagePlayer(room, p, enemyDamage(e, e.dmg * 0.35), e.name, { slow: 1.7 });
           }
         }
         addEffect(room, { type: 'ring', x: e.x, y: e.y, r: 220, color: '#ff70df', ttl: 0.58, life: 0.58 });
@@ -1004,17 +1064,22 @@ function updateEnemies(room, dt) {
       }
       e.attackCd = 1.05;
     } else if (e.type === 'lenda') {
-      if (e.specialCd <= 0 && d > 145) {
+      if (e.specialCd <= 0 && e.hp / e.maxHp < 0.55) {
+        e.defenseTimer = 2.6;
+        setAction(e, 'special', 0.72);
+        addEffect(room, { type: 'ring', x: e.x, y: e.y, r: 150, color: '#ffb12c', ttl: 0.62, life: 0.62 });
+        e.specialCd = 5.4;
+      } else if (e.specialCd <= 0 && d > 145) {
         const chargeX = dx / d, chargeY = dy / d;
         const cx = e.x + chargeX * 170, cy = e.y + chargeY * 170;
         e.x = cx; e.y = cy;
         clampEntity(e, ENEMY_BOUNDS);
         setAction(e, 'special', 0.62);
-        enemyMelee(room, e, target, 145, e.dmg * 1.05, '#ffb12c');
+        enemyMelee(room, e, target, 145, enemyDamage(e, e.dmg * 1.05), '#ffb12c');
         addMessage(room, 'Lenda acelerou a Bros 2009 amarela!', 'bad');
         e.specialCd = 5.8;
       } else {
-        enemyMelee(room, e, target, 118, e.dmg, '#ffb12c');
+        enemyMelee(room, e, target, 118, enemyDamage(e, e.dmg), '#ffb12c');
       }
       e.attackCd = 1.35;
     } else if (e.type === 'vanjo') {
@@ -1026,27 +1091,35 @@ function updateEnemies(room, dt) {
         addEffect(room, { type: 'ring', x: e.x, y: e.y, r: 120, color: '#c7c7c7', ttl: 0.45, life: 0.45 });
         addMessage(room, 'Vanjo usou Sumiço!', 'bad');
       } else {
-        if (d < 140) enemyMelee(room, e, target, 125, e.dmg, '#ff5757');
-        else spawnEnemyProjectile(room, e, target, { speed: 410, radius: 18, damage: e.dmg * 0.82, color: '#ff5757', label: 'caixa', shape: 'box' });
+        if (d < 140) enemyMelee(room, e, target, 125, enemyDamage(e, e.dmg), '#ff5757');
+        else spawnEnemyProjectile(room, e, target, { speed: 410, radius: 18, damage: enemyDamage(e, e.dmg * 0.82), color: '#ff5757', label: 'caixa', shape: 'box' });
         e.attackCd = 1.45;
       }
     } else if (e.type === 'napoleao') {
       if (d < 140 + e.radius * 0.35) {
-        enemyMelee(room, e, target, 115 + e.radius * 0.55, e.dmg, '#ffc86d');
+        enemyMelee(room, e, target, 115 + e.radius * 0.55, enemyDamage(e, e.dmg), '#ffc86d');
         e.hp = Math.min(e.maxHp, e.hp + Math.round(9 * diff.enemyHp));
         addFloatingText(room, e.x, e.y - e.radius - 18, '+lanche', '#ffd88a');
       } else {
-        spawnEnemyProjectile(room, e, target, { speed: 450, radius: 16, damage: e.dmg * 0.85, slow: 0.8, color: '#ffc86d', label: 'comida', shape: 'food' });
+        spawnEnemyProjectile(room, e, target, { speed: 450, radius: 16, damage: enemyDamage(e, e.dmg * 0.85), slow: 0.8, color: '#ffc86d', label: 'comida', shape: 'food' });
       }
       if (e.specialCd <= 0) {
-        const tx = target.x, ty = target.y;
-        e.x = tx + rand(-65, 65);
-        e.y = ty + rand(-65, 65);
-        clampEntity(e, ENEMY_BOUNDS);
-        setAction(e, 'special', 0.75);
-        enemyMelee(room, e, target, 155 + e.radius * 0.45, e.dmg * 1.05, '#ffcf72');
-        e.specialCd = 6.3;
-        addMessage(room, 'Napoleão fez a entrada Garfield!', 'bad');
+        if ((e.phase || 1) < 2) {
+          e.pityTarget = target.id;
+          e.pityTimer = 3.0;
+          setAction(e, 'special', 0.75);
+          addEffect(room, { type: 'pity', x: target.x, y: target.y - 34, r: 85, color: '#ffd88a', ttl: 0.72, life: 0.72 });
+          e.specialCd = 5.6;
+        } else {
+          const tx = target.x, ty = target.y;
+          e.x = tx + rand(-65, 65);
+          e.y = ty + rand(-65, 65);
+          clampEntity(e, ENEMY_BOUNDS);
+          setAction(e, 'special', 0.75);
+          enemyMelee(room, e, target, 155 + e.radius * 0.45, enemyDamage(e, e.dmg * 1.05), '#ffcf72');
+          e.specialCd = 6.3;
+          addMessage(room, 'Napoleão entrou na Forma Garfield!', 'bad');
+        }
       }
       e.attackCd = 1.15;
     }
@@ -1125,6 +1198,7 @@ function gameSnapshot(room) {
     gameOver: room.gameOver,
     victory: room.victory,
     stageIndex: room.stageIndex,
+    stageLevel: stage.level || (room.stageIndex + 1),
     stageCount: STAGES.length,
     stageTitle: stage.title,
     stageVenue: stage.venue,
@@ -1141,13 +1215,14 @@ function gameSnapshot(room) {
       dead: p.dead, respawnTimer: p.respawnTimer,
       attackCd: p.attackCd, specialCd: p.specialCd,
       ultimate: Math.round(p.ultimate || 0), aura: Math.round(p.aura || 0), rivalry: Math.round(p.rivalry || 0),
-      damageBoostTimer: p.damageBoostTimer || 0, kills: p.kills || 0
+      damageBoostTimer: p.damageBoostTimer || 0, dodgeTimer: p.dodgeTimer || 0, ego: p.ego || 0, kills: p.kills || 0
     })),
     enemies: room.enemies.map(e => ({
       id: e.id, type: e.type, name: e.name, x: e.x, y: e.y, vx: Math.round(e.vx || 0), vy: Math.round(e.vy || 0),
       action: e.action || 'idle', actionTimer: e.actionTimer || 0,
       hp: Math.round(e.hp), maxHp: e.maxHp, radius: e.radius, color: e.color,
-      stun: e.stun, slow: e.slow, mark: e.mark, invisible: e.invisible, grow: e.grow || 1, decoyHits: e.decoyHits || 0, hitFlash: e.hitFlash || 0,
+      stun: e.stun, slow: e.slow, mark: e.mark, invisible: e.invisible, grow: e.grow || 1, decoyHits: e.decoyHits || 0,
+      defenseTimer: e.defenseTimer || 0, rage: e.rage || 0, pityTimer: e.pityTimer || 0, phase: e.phase || 1, hitFlash: e.hitFlash || 0,
       attackCd: e.attackCd || 0, specialCd: e.specialCd || 0, vanishCd: e.vanishCd || 0, foodTimer: e.foodTimer || 0
     })),
     projectiles: room.projectiles.map(p => ({

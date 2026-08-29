@@ -26,9 +26,9 @@ const assetMatches = [...(html + css + js).matchAll(/assets\/[A-Za-z0-9_\.\-\/]+
 const missingAssets = [...new Set(assetMatches)].filter(a => !exists(path.join('public', a)));
 ok(missingAssets.length === 0, `sem assets faltando${missingAssets.length ? ': ' + missingAssets.join(', ') : ''}`);
 
-ok(/client\.js\?v=10/.test(html), 'HTML usando client.js?v=10 para limpar cache');
-ok(/styles\.css\?v=10/.test(html), 'HTML usando styles.css?v=10 para limpar cache');
-ok(/ASSET_VERSION = '10'/.test(js), 'assets com versao v10');
+ok(/client\.js\?v=11/.test(html), 'HTML usando client.js?v=11 para limpar cache');
+ok(/styles\.css\?v=11/.test(html), 'HTML usando styles.css?v=11 para limpar cache');
+ok(/ASSET_VERSION = '11'/.test(js), 'assets com versao v11');
 ok(!/assets\/sprites_opt\//.test(js), 'cliente nao carrega sprites antigos pesados');
 ok(/assets\/spritesheets\//.test(js), 'cliente usa spritesheets animados');
 ok(/perfLevel/.test(js) && /recordFrameCost/.test(js) && /setPerfLevel/.test(js), 'guarda anti-lag dinamico existe');
@@ -38,17 +38,20 @@ ok(/type: 'beam'/.test(server) && /type: 'puddle'/.test(server), 'Mito usa Testa
 ok(/function addFloatingText[\s\S]*return;/.test(server), 'texto flutuante da arena desligado');
 ok(/messages-hud \{ display: none !important; \}/.test(css), 'mensagens da luta escondidas');
 ok(/SHOW_STAGE_INTRO/.test(js) && /drawStageIntro/.test(js) && /stageStartTimer/.test(server), 'inicio de fase com tela de preparo/countdown');
-ok(/drawStageAnimation/.test(js), 'cenario animado existe');
+ok(/drawIntroSprite/.test(js) && /VS/.test(js) && /A batalha começa/.test(js) && /room\.stageStartTimer = 4\.8/.test(server), 'cinematica VS antes das batalhas');
+ok(/drawStageAnimation/.test(js) && /lama_esgoto/.test(js) && /ifs_mito/.test(js) && /terreiro_lenda/.test(js) && /supermercado_vanjo/.test(js) && /reino_comidas/.test(js), 'cenarios novos com animacao especifica');
 ok(/drawHeroWeapon/.test(js) && /drawEnemyWeapon/.test(js), 'armas/itens visuais desenhados para personagens');
 ok(/venceu seus piores medos/.test(js) && !/miss[aã]o conclu/i.test(js + server + html), 'frase final motivadora e sem missao concluida');
+ok(/levelHp/.test(server) && /stageLevelScale/.test(server) && /stageLevel/.test(server), 'levels/fases escalam vida e dano corretamente');
+ok(/enemyDamage/.test(server) && /dodgeTimer/.test(server) && /defenseTimer/.test(server) && /pityTimer/.test(server) && /rage/.test(server), 'habilidades corrigidas: marca, esquiva, defesa, pena e raiva');
 ok(/WORLD\.h - 245/.test(server), 'limite inferior seguro para nao esconder pes na UI');
 
 const stageFiles = [
-  'public/assets/stages/stage1_lagoa_porta.jpg',
-  'public/assets/stages/stage2_feira_coruja.jpg',
-  'public/assets/stages/stage3_tanque_missionarios.jpg',
-  'public/assets/stages/stage4_recanto_serra.jpg',
-  'public/assets/stages/stage5_riacho_curva.jpg'
+  'public/assets/stages/stage1_lama_esgoto.jpg',
+  'public/assets/stages/stage2_ifs_mito.jpg',
+  'public/assets/stages/stage3_terreiro_lenda.jpg',
+  'public/assets/stages/stage4_supermercado_vanjo.jpg',
+  'public/assets/stages/stage5_reino_comidas.jpg'
 ];
 for (const f of stageFiles) {
   const bytes = fs.statSync(path.join(root, f)).size;
