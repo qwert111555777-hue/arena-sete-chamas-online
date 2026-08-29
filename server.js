@@ -747,6 +747,10 @@ function updatePlayers(room, dt) {
       continue;
     }
 
+    // Regeneração leve para deixar a partida mais duradoura e intensa, sem morrer rápido.
+    const regen = room.difficulty === 'facil' ? 6.0 : room.difficulty === 'medio' ? 3.8 : 2.2;
+    if (p.hp > 0 && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + regen * dt);
+
     const input = p.input || defaultInput();
     let mx = clamp(Number(input.mx) || 0, -1, 1);
     let my = clamp(Number(input.my) || 0, -1, 1);
@@ -1190,7 +1194,7 @@ setInterval(() => {
     room.lastTick = now;
     updateRoom(room, dt);
     room.tickCount++;
-    if (room.started && room.tickCount % 2 === 0) io.to(code).emit('state', gameSnapshot(room));
+    if (room.started && room.tickCount % 3 === 0) io.to(code).emit('state', gameSnapshot(room));
 
     // cleanup salas antigas sem jogadores conectados
     const connected = [...room.players.values()].some(p => p.connected);

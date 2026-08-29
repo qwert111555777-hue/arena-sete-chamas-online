@@ -75,8 +75,8 @@ const SPRITE_FILES = {
 };
 
 const SPRITE_HEIGHT = {
-  albert: 158, geovanna: 142, romulo: 150, arthur: 146, guilherme: 146,
-  otavio: 158, anielle: 136, mito: 188, lenda: 190, vanjo: 184, napoleao: 172
+  albert: 185, geovanna: 168, romulo: 176, arthur: 172, guilherme: 172,
+  otavio: 192, anielle: 182, mito: 230, lenda: 235, vanjo: 228, napoleao: 225
 };
 
 const assets = { arena: null, sprites: {}, stages: {} };
@@ -117,6 +117,8 @@ let lastCanvasW = 0;
 let lastCanvasH = 0;
 let lastDrawTime = 0;
 let lastHudUpdate = 0;
+const spriteMotion = new Map();
+let bgCache = { key: null, quality: null, canvas: null };
 
 function resolveQuality() {
   if (qualitySetting === 'max') return 'max';
@@ -169,6 +171,7 @@ function myLobbyPlayer() { return lobby?.players?.find(p => p.id === meId) || nu
 function myGamePlayer() { return game?.players?.find(p => p.id === meId) || null; }
 function isHost() { return lobby?.hostId === meId || game?.hostId === meId; }
 function pct(a, b) { return Math.max(0, Math.min(100, Math.round((a / Math.max(1, b)) * 100))); }
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
 socket.on('connect', () => {
   meId = socket.id;
@@ -668,7 +671,7 @@ setInterval(() => {
   composeInput();
   socket.emit('input', inputState);
   lastSocketInput = performance.now();
-}, 50);
+}, device.mobile ? 75 : 60);
 
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
@@ -765,6 +768,47 @@ function drawCurlyHair(x, y, color, scale = 1, amount = 9, spread = 18) {
   }
 }
 
+function getMotion(id, targetX, targetY) {
+  const t = performance.now();
+  let m = spriteMotion.get(id);
+  if (!m) {
+    m = { x: targetX, y: targetY, lastTargetX: targetX, lastTargetY: targetY, lastT: t, speed: 0, phase: Math.random() * 6.28 };
+    spriteMotion.set(id, m);
+  }
+  const dt = clamp((t - m.lastT) / 1000, 0.001, 0.08);
+  const targetStep = Math.hypot(targetX - m.lastTargetX, targetY - m.lastTargetY);
+  const instantSpeed = targetStep / dt;
+  m.speed = m.speed * 0.78 + instantSpeed * 0.22;
+  const distToTarget = Math.hypot(targetX - m.x, targetY - m.y);
+  if (distToTarget > 240) {
+    m.x = targetX;
+    m.y = targetY;
+  } else {
+    const follow = quality === 'performance' ? 0.42 : 0.30;
+    m.x += (targetX - m.x) * follow;
+    m.y += (targetY - m.y) * follow;
+  }
+  const moving = m.speed > 22 || distToTarget > 4;
+  m.phase += (moving ? 8.5 : 1.7) * dt;
+  m.lastTargetX = targetX;
+  m.lastTargetY = targetY;
+  m.lastT = t;
+  m.moving = moving;
+  return m;
+}
+
+function drawStepDust(x, y, phase, color = '#f2d7a7') {
+  if (quality === 'performance') return;
+  const a = Math.abs(Math.sin(phase));
+  if (a < .72) return;
+  ctx.save();
+  ctx.globalAlpha = .18 * a;
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.ellipse(x - 18, y + 2, 13 * a, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x + 18, y + 2, 13 * a, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
 function spriteDimensions(key, height) {
   const img = assets.sprites[key];
   if (!assetReady(img)) return { img: null, w: height * .55, h: height };
@@ -772,27 +816,39 @@ function spriteDimensions(key, height) {
   return { img, w: height * ratio, h: height };
 }
 
-function drawSpriteImage(key, x, footY, height, facing = 1, alpha = 1, glow = null) {
+function drawSpriteImage(key, x, footY, height, facing = 1, alpha = 1, glow = null, motion = null, action = {}) {
   const { img, w, h } = spriteDimensions(key, height);
-  const bob = quality === 'performance' ? 0 : Math.sin(performance.now() / 185 + x * .013) * 2.2;
+  const moving = !!motion?.moving;
+  const phase = motion?.phase || performance.now() / 220;
+  const idleBob = quality === 'performance' ? 0 : Math.sin(phase) * 1.35;
+  const walkBob = quality === 'performance' ? 0 : Math.abs(Math.sin(phase * 1.65)) * (moving ? 8 : 0);
+  const bob = moving ? walkBob : idleBob;
+  const tilt = quality === 'performance' ? 0 : (moving ? Math.sin(phase * 1.65) * 0.055 * facing : Math.sin(phase * .55) * 0.012);
+  const stretch = quality === 'performance' ? 0 : (moving ? Math.abs(Math.cos(phase * 1.65)) * 0.035 : Math.sin(phase * .8) * 0.006);
+  const sx = facing * (1 + (moving ? Math.sin(phase * 1.65) * 0.025 : 0));
+  const sy = 1 + stretch;
+  const side = quality === 'performance' ? 0 : (moving ? Math.sin(phase * 1.65) * 2.2 : 0);
+  const attackPulse = action.attack ? 1 : 0;
   ctx.save();
   ctx.globalAlpha *= alpha;
   if (glow && quality !== 'performance') { ctx.shadowColor = glow; ctx.shadowBlur = quality === 'max' ? 18 : 10; }
   if (assetReady(img)) {
-    ctx.translate(x, footY - h / 2 + bob);
-    ctx.scale(facing, 1);
+    ctx.translate(x + side + (attackPulse ? facing * 7 : 0), footY - h / 2 + bob);
+    ctx.rotate(tilt);
+    ctx.scale(sx * (attackPulse ? 1.035 : 1), sy * (attackPulse ? .98 : 1));
     ctx.drawImage(img, -w / 2, -h / 2, w, h);
   } else {
     ctx.fillStyle = glow || '#fff';
     ctx.beginPath(); ctx.arc(x, footY - h / 2, h * .22, 0, Math.PI * 2); ctx.fill();
   }
   ctx.restore();
-  return { w, h, top: footY - h + bob, bottom: footY + bob };
+  return { w, h, top: footY - h + bob - Math.abs(tilt) * 20, bottom: footY + bob };
 }
 
 function drawPlayer(p) {
   const colors = HERO_COLORS[p.hero] || ['#777', '#aaa', '#ffd8bd'];
-  const x = p.x, y = p.y;
+  const motion = getMotion('p-' + p.id, p.x, p.y);
+  const x = motion.x, y = motion.y;
   const alpha = p.dead ? .35 : 1;
   const height = SPRITE_HEIGHT[p.hero] || 146;
   const footY = y + 48;
@@ -802,7 +858,8 @@ function drawPlayer(p) {
   ctx.globalAlpha = alpha;
 
   ctx.fillStyle = 'rgba(0,0,0,.34)';
-  ctx.beginPath(); ctx.ellipse(x, footY + 2, 40, 14, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x, footY + 2, motion.moving ? 46 : 40, motion.moving ? 16 : 14, 0, 0, Math.PI * 2); ctx.fill();
+  drawStepDust(x, footY + 2, motion.phase);
 
   if (p.hero === 'guilherme' || p.aura > 20 || p.ultimate >= 100) {
     ctx.save();
@@ -828,7 +885,7 @@ function drawPlayer(p) {
   }
 
   const glow = p.ultimate >= 100 ? '#ffd166' : (p.hero === 'guilherme' ? '#7bd3ff' : null);
-  const drawn = drawSpriteImage(p.hero, x, footY, height, facing, 1, glow);
+  const drawn = drawSpriteImage(p.hero, x, footY, height, facing, 1, glow, motion, { attack: p.attackCd > 0.32 });
 
   if (p.dead) {
     ctx.fillStyle = '#fff'; ctx.font = 'bold 18px system-ui'; ctx.textAlign = 'center';
@@ -854,7 +911,8 @@ function drawEnemy(e) {
     ctx.save(); ctx.globalAlpha = .22; drawSmoke(e.x, e.y, e.radius + 26); ctx.restore();
     return;
   }
-  const x = e.x, y = e.y;
+  const motion = getMotion('e-' + e.id, e.x, e.y);
+  const x = motion.x, y = motion.y;
   const grow = e.type === 'napoleao' ? (e.grow || 1) : 1;
   const height = (SPRITE_HEIGHT[e.type] || 160) * grow;
   const footY = y + e.radius + 34 * grow;
@@ -866,6 +924,7 @@ function drawEnemy(e) {
 
   ctx.fillStyle = 'rgba(0,0,0,.38)';
   ctx.beginPath(); ctx.ellipse(x, footY + 4, Math.max(42, e.radius * 1.4) * grow, Math.max(13, e.radius * .36) * grow, 0, 0, Math.PI*2); ctx.fill();
+  drawStepDust(x, footY + 4, motion.phase, e.type === 'lenda' ? '#ffb032' : '#d7c7b0');
 
   if (e.stun > 0) {
     ctx.save();
@@ -883,7 +942,7 @@ function drawEnemy(e) {
     ctx.restore();
   }
 
-  const drawn = drawSpriteImage(e.type, x, footY, height, facing, 1, glow);
+  const drawn = drawSpriteImage(e.type, x, footY, height, facing, 1, glow, motion, { attack: e.attackCd > 0.85 || e.specialCd > 4.5 });
 
   if (e.stun > 0) drawStatusText(x, drawn.top - 44, 'STUN', '#7bd3ff');
   if (e.mark > 0) drawStatusText(x, drawn.top - 26, 'MARCADO', '#ff78cc');
