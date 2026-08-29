@@ -636,7 +636,7 @@ function updateGameHud() {
     overlay.classList.remove('hidden');
     $('endTitle').textContent = game.victory ? 'Vitória final!' : 'Ainda não acabou...';
     $('endText').textContent = game.victory
-      ? 'Agora que vocês venceram seus piores medos, respirem fundo, sigam leves e apenas sejam felizes.'
+      ? 'Agora que você venceu seus piores medos, apenas seja feliz. Vocês derrotaram Napoleão juntos e podem seguir leves.'
       : 'Vocês caíram nesta tentativa, mas coragem também é levantar de novo e proteger quem está do lado.';
     $('playAgainBtn').textContent = isHost() ? 'Voltar ao lobby' : 'Aguardando host';
   } else {

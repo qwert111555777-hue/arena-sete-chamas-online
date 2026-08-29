@@ -1080,7 +1080,7 @@ function handleStageAndGameOver(room, dt) {
       if (room.stageIndex >= STAGES.length - 1) {
         room.gameOver = true;
         room.victory = true;
-        addMessage(room, 'Agora que vocês venceram seus piores medos, respirem fundo e sejam felizes.', 'ultimate');
+        addMessage(room, 'Agora que você venceu seus piores medos, apenas seja feliz.', 'ultimate');
       } else {
         room.stageIndex++;
         const healFactor = DIFFICULTY[room.difficulty].healBetween;

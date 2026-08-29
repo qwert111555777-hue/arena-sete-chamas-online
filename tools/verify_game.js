@@ -40,7 +40,7 @@ ok(/messages-hud \{ display: none !important; \}/.test(css), 'mensagens da luta 
 ok(/SHOW_STAGE_INTRO/.test(js) && /drawStageIntro/.test(js) && /stageStartTimer/.test(server), 'inicio de fase com tela de preparo/countdown');
 ok(/drawStageAnimation/.test(js), 'cenario animado existe');
 ok(/drawHeroWeapon/.test(js) && /drawEnemyWeapon/.test(js), 'armas/itens visuais desenhados para personagens');
-ok(/venceram seus piores medos/.test(js) && !/miss[aã]o conclu/i.test(js + server + html), 'frase final motivadora e sem missao concluida');
+ok(/venceu seus piores medos/.test(js) && !/miss[aã]o conclu/i.test(js + server + html), 'frase final motivadora e sem missao concluida');
 ok(/WORLD\.h - 245/.test(server), 'limite inferior seguro para nao esconder pes na UI');
 
 const stageFiles = [
