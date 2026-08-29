@@ -1,0 +1,26 @@
+# Comandos para enviar ao GitHub
+# Rode dentro da pasta rpg_online no seu computador.
+
+# 1) Iniciar git
+git init
+
+# 2) Adicionar arquivos
+git add .
+
+# 3) Criar commit
+git commit -m "Primeira versão do jogo online"
+
+# 4) Usar branch main
+git branch -M main
+
+# 5) Conectar no GitHub
+# Troque SEU_USUARIO pelo seu nome de usuário do GitHub.
+git remote add origin https://github.com/SEU_USUARIO/arena-sete-chamas-online.git
+
+# 6) Enviar
+git push -u origin main
+
+# Depois, para atualizar o jogo:
+# git add .
+# git commit -m "Atualização do jogo"
+# git push

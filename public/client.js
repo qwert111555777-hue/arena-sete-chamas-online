@@ -1,0 +1,943 @@
+const $ = (id) => document.getElementById(id);
+
+const socket = io({ transports: ['websocket', 'polling'] });
+let meId = null;
+let heroes = {};
+let difficulties = {};
+let stages = [];
+let lobby = null;
+let game = null;
+let openRooms = [];
+let currentScreen = 'menuScreen';
+let toastTimer = null;
+
+const HERO_INFO = {
+  albert: {
+    icon: 'A', role: 'Tanque ofensivo', short: 'Competitivo, briga toda hora e fica mais forte quando apanha.',
+    passive: 'Rivalidade aumenta o dano ao receber golpe.'
+  },
+  geovanna: {
+    icon: 'G', role: 'Suporte/controle', short: 'Ciúmes, psicóloga e faz tudo para vencer.',
+    passive: 'Cura melhor quando alguém está em perigo.'
+  },
+  romulo: {
+    icon: 'R', role: 'Estrategista', short: 'Jogador nato, calculista e prevê movimentos.',
+    passive: 'Escudos e lentidão nos chefes.'
+  },
+  arthur: {
+    icon: 'AR', role: 'Dano/controle', short: 'Ego alto e hacker de sistemas.',
+    passive: 'Crítico carrega ego e aumenta dano.'
+  },
+  guilherme: {
+    icon: 'GU', role: 'Buffer/aura', short: 'Beta que farma aura e usa estratégia de guerra.',
+    passive: 'Acumula aura para um ultimate gigante.'
+  }
+};
+
+const HERO_COLORS = {
+  albert: ['#1e57d6', '#a0162c', '#ffe0bd'],
+  geovanna: ['#ffd447', '#ff69b4', '#ffe6d2'],
+  romulo: ['#858b95', '#3ea86d', '#9a5b3e'],
+  arthur: ['#111111', '#18d4ff', '#8d4c35'],
+  guilherme: ['#16a9ff', '#9df4ff', '#ffe2bd']
+};
+
+
+const SPRITE_FILES = {
+  albert: 'assets/sprites/albert.png',
+  geovanna: 'assets/sprites/geovanna.png',
+  romulo: 'assets/sprites/romulo.png',
+  arthur: 'assets/sprites/arthur.png',
+  guilherme: 'assets/sprites/guilherme.png',
+  otavio: 'assets/sprites/otavio.png',
+  anielle: 'assets/sprites/anielle.png',
+  mito: 'assets/sprites/mito.png',
+  lenda: 'assets/sprites/lenda.png',
+  vanjo: 'assets/sprites/vanjo.png',
+  napoleao: 'assets/sprites/napoleao.png'
+};
+
+const SPRITE_HEIGHT = {
+  albert: 158, geovanna: 142, romulo: 150, arthur: 146, guilherme: 146,
+  otavio: 158, anielle: 136, mito: 188, lenda: 190, vanjo: 184, napoleao: 172
+};
+
+const assets = { arena: null, sprites: {} };
+function loadAsset(src) {
+  const img = new Image();
+  img.decoding = 'async';
+  img.src = src;
+  return img;
+}
+function assetReady(img) { return !!img && img.complete && img.naturalWidth > 0; }
+assets.arena = loadAsset('assets/arena_brawl_fantasy.png');
+Object.entries(SPRITE_FILES).forEach(([key, src]) => { assets.sprites[key] = loadAsset(src); });
+
+const keys = {};
+const inputState = { mx: 0, my: 0, aimX: null, aimY: null, attack: false, special: false, ultimate: false };
+let mouseDownAttack = false;
+let pointerAim = { x: 1000, y: 450 };
+let aimManual = false;
+let joystickVec = { x: 0, y: 0 };
+let specialPulseUntil = 0;
+let ultimatePulseUntil = 0;
+let attackTouchDown = false;
+let lastSocketInput = 0;
+
+const canvas = $('gameCanvas');
+const ctx = canvas.getContext('2d');
+let dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+let view = { scale: 1, ox: 0, oy: 0, w: 1600, h: 900, cssW: 1600, cssH: 900 };
+
+function toast(message) {
+  const el = $('toast');
+  el.textContent = message;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2300);
+}
+
+function showScreen(id) {
+  currentScreen = id;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+  resizeCanvas();
+}
+
+function getPlayerName() {
+  return $('nameInput').value.trim() || `Player${Math.floor(Math.random() * 99)}`;
+}
+
+function heroName(key) { return heroes[key]?.name || key; }
+function diffLabel(key) { return difficulties[key]?.label || key; }
+function myLobbyPlayer() { return lobby?.players?.find(p => p.id === meId) || null; }
+function myGamePlayer() { return game?.players?.find(p => p.id === meId) || null; }
+function isHost() { return lobby?.hostId === meId || game?.hostId === meId; }
+function pct(a, b) { return Math.max(0, Math.min(100, Math.round((a / Math.max(1, b)) * 100))); }
+
+socket.on('connect', () => {
+  meId = socket.id;
+});
+
+socket.on('hello', (data) => {
+  meId = data.id;
+  heroes = data.heroes || {};
+  difficulties = data.difficulties || {};
+  stages = data.stages || [];
+  renderDifficultyButtons();
+  renderHeroCards();
+  renderOpenRooms();
+});
+
+socket.on('lobby', (data) => {
+  lobby = data;
+  if (!game || !data.started) showScreen('lobbyScreen');
+  renderLobby();
+});
+
+socket.on('state', (data) => {
+  game = data;
+  if (currentScreen !== 'gameScreen') showScreen('gameScreen');
+  updateGameHud();
+});
+
+socket.on('roomList', (rooms) => {
+  openRooms = Array.isArray(rooms) ? rooms : [];
+  renderOpenRooms();
+});
+
+socket.on('disconnect', () => toast('Conexão perdida. Tentando reconectar...'));
+
+$('createBtn').addEventListener('click', () => {
+  socket.emit('createRoom', { name: getPlayerName() }, (res) => {
+    if (!res?.ok) return toast(res?.error || 'Erro ao criar sala.');
+    meId = res.playerId || socket.id;
+    lobby = res.lobby;
+    showScreen('lobbyScreen');
+    renderLobby();
+    toast(`Sala ${res.code} criada!`);
+  });
+});
+
+$('joinBtn').addEventListener('click', () => joinTypedRoom());
+$('roomInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinTypedRoom(); });
+$('roomInput').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4); });
+
+function joinTypedRoom() {
+  const code = $('roomInput').value.trim().toUpperCase();
+  joinRoomByCode(code);
+}
+
+function joinRoomByCode(code) {
+  code = String(code || '').trim().toUpperCase();
+  if (!code) return toast('Digite o código da sala.');
+  socket.emit('joinRoom', { code, name: getPlayerName() }, (res) => {
+    if (!res?.ok) return toast(res?.error || 'Não foi possível entrar.');
+    meId = res.playerId || socket.id;
+    lobby = res.lobby;
+    showScreen('lobbyScreen');
+    renderLobby();
+    toast(`Entrou na sala ${res.code}!`);
+  });
+}
+
+$('copyBtn').addEventListener('click', async () => {
+  if (!lobby?.code) return;
+  try {
+    await navigator.clipboard.writeText(lobby.code);
+    toast(`Código ${lobby.code} copiado!`);
+  } catch {
+    toast(`Código da sala: ${lobby.code}`);
+  }
+});
+
+$('refreshRoomsBtn').addEventListener('click', () => {
+  socket.emit('listRooms', (res) => {
+    if (res?.ok) {
+      openRooms = res.rooms || [];
+      renderOpenRooms();
+      toast('Lista de salas atualizada.');
+    }
+  });
+});
+
+function openHowTo() { $('howToModal').classList.remove('hidden'); }
+function closeHowTo() { $('howToModal').classList.add('hidden'); }
+$('howToBtn').addEventListener('click', openHowTo);
+$('lobbyHowToBtn').addEventListener('click', openHowTo);
+$('closeHowToBtn').addEventListener('click', closeHowTo);
+$('howToModal').addEventListener('click', (e) => { if (e.target.id === 'howToModal') closeHowTo(); });
+
+$('leaveBtn').addEventListener('click', () => {
+  location.href = location.pathname;
+});
+
+$('readyBtn').addEventListener('click', () => {
+  const me = myLobbyPlayer();
+  if (!me?.hero) return toast('Escolha um herói primeiro.');
+  socket.emit('setReady', !me.ready, (res) => {
+    if (!res?.ok) toast(res?.error || 'Não foi possível ficar pronto.');
+  });
+});
+
+$('startBtn').addEventListener('click', () => {
+  socket.emit('startGame', (res) => {
+    if (!res?.ok) toast(res?.error || 'Não foi possível iniciar.');
+  });
+});
+
+$('backLobbyBtn').addEventListener('click', () => {
+  if (game?.gameOver && isHost()) {
+    socket.emit('restartLobby', () => {});
+  } else {
+    toast(game?.gameOver ? 'Aguarde o host voltar ao lobby.' : 'A partida está rolando. Derrote os chefes!');
+  }
+});
+
+$('playAgainBtn').addEventListener('click', () => {
+  if (isHost()) socket.emit('restartLobby', () => {});
+  else toast('Só o host pode voltar ao lobby.');
+});
+
+function renderOpenRooms() {
+  const box = $('openRoomsList');
+  if (!box) return;
+  if (!openRooms.length) {
+    box.innerHTML = '<div class="empty-rooms">Nenhuma sala criada ainda. Clique em <strong>Criar sala</strong> ou espere a sala dos seus amigos aparecer aqui.</div>';
+    return;
+  }
+  box.innerHTML = openRooms.map(room => {
+    const heroText = room.heroes?.length ? room.heroes.map(heroName).join(', ') : 'ninguém escolheu ainda';
+    return `<div class="open-room">
+      <div>
+        <strong>Sala ${room.code}</strong>
+        <small>Host: ${room.hostName || 'Host'} · ${room.players}/${room.maxPlayers} jogadores · ${diffLabel(room.difficulty)}</small>
+        <div class="room-meta"><span>${room.ready || 0} prontos</span><span>Heróis: ${heroText}</span></div>
+      </div>
+      <button class="small-btn primary" data-join-room="${room.code}">Entrar</button>
+    </div>`;
+  }).join('');
+  box.querySelectorAll('[data-join-room]').forEach(btn => {
+    btn.addEventListener('click', () => joinRoomByCode(btn.dataset.joinRoom));
+  });
+}
+
+function renderDifficultyButtons() {
+  const box = $('difficultyButtons');
+  if (!box || !Object.keys(difficulties).length) return;
+  const text = {
+    facil: 'Chefes mais leves e reviver rápido.',
+    medio: 'Equilíbrio para jogar em grupo.',
+    dificil: 'Chefes agressivos e pouco perdão.'
+  };
+  box.innerHTML = Object.values(difficulties).map(d => `
+    <div class="diff-card" data-diff="${d.key}">
+      <strong>${d.label}</strong>
+      <span>${text[d.key] || ''}</span>
+    </div>`).join('');
+  box.querySelectorAll('.diff-card').forEach(card => {
+    card.addEventListener('click', () => {
+      if (!isHost()) return toast('Só o host muda a dificuldade.');
+      socket.emit('setDifficulty', card.dataset.diff, () => {});
+    });
+  });
+}
+
+function renderHeroCards() {
+  const box = $('heroCards');
+  if (!box || !Object.keys(heroes).length) return;
+  box.innerHTML = Object.keys(heroes).map(key => {
+    const h = heroes[key];
+    const info = HERO_INFO[key] || {};
+    const colors = HERO_COLORS[key] || ['#777', '#aaa', '#fff'];
+    return `
+      <article class="hero-card" data-hero="${key}">
+        <div class="hero-thumb-wrap" style="background:linear-gradient(135deg, ${colors[0]}55, ${colors[1]}55)">
+          <img class="hero-thumb" src="${SPRITE_FILES[key]}" alt="${h.name}" loading="lazy" />
+        </div>
+        <h4>${h.name}</h4>
+        <p><strong>${h.title}</strong></p>
+        <p>${info.short || ''}</p>
+        <div class="skills">
+          <span>⚔️ ${h.attackName}</span>
+          <span>✨ ${h.specialName}</span>
+          <span>🔥 ${h.ultimateName}</span>
+        </div>
+        <div class="taken-by"></div>
+      </article>`;
+  }).join('');
+  box.querySelectorAll('.hero-card').forEach(card => {
+    card.addEventListener('click', () => {
+      if (!lobby || lobby.started) return;
+      if (card.classList.contains('taken') && !card.classList.contains('selected')) return toast('Esse herói já foi escolhido.');
+      socket.emit('selectHero', card.dataset.hero, (res) => {
+        if (!res?.ok) toast(res?.error || 'Não foi possível escolher.');
+      });
+    });
+  });
+}
+
+function renderLobby() {
+  if (!lobby) return;
+  $('roomTitle').textContent = `Sala ${lobby.code}`;
+
+  document.querySelectorAll('.diff-card').forEach(card => {
+    card.classList.toggle('active', card.dataset.diff === lobby.difficulty);
+    card.style.pointerEvents = isHost() && !lobby.started ? 'auto' : 'none';
+  });
+
+  const me = myLobbyPlayer();
+  const list = $('playersList');
+  list.innerHTML = lobby.players.map(p => {
+    const hero = p.hero ? heroName(p.hero) : 'sem herói';
+    const status = p.ready ? 'Pronto' : 'Aguardando';
+    return `<div class="player-row ${p.ready ? 'ready' : ''}">
+      <div>
+        <strong>${p.host ? '👑 ' : ''}${p.name}</strong>
+        <div class="status"><span class="hero-name">${hero}</span> · ${p.connected ? status : 'desconectado'}</div>
+      </div>
+      <div>${p.ready ? '✅' : '⏳'}</div>
+    </div>`;
+  }).join('') || '<p class="muted">Nenhum jogador ainda.</p>';
+
+  $('readyBtn').textContent = me?.ready ? 'Cancelar pronto' : 'Estou pronto';
+  $('readyBtn').disabled = !me?.hero || lobby.started;
+  const connected = lobby.players.filter(p => p.connected);
+  $('startBtn').style.display = isHost() ? 'block' : 'none';
+  $('startBtn').disabled = lobby.started || !connected.length || connected.some(p => !p.hero || !p.ready);
+
+  document.querySelectorAll('.hero-card').forEach(card => {
+    const key = card.dataset.hero;
+    const takenById = lobby.taken?.[key];
+    const takenBy = lobby.players.find(p => p.id === takenById);
+    const selected = me?.hero === key;
+    card.classList.toggle('selected', selected);
+    card.classList.toggle('taken', !!takenById && !selected);
+    const takenDiv = card.querySelector('.taken-by');
+    if (takenById && !selected) takenDiv.textContent = `Escolhido por ${takenBy?.name || 'alguém'}`;
+    else if (selected) takenDiv.textContent = 'Selecionado por você';
+    else takenDiv.textContent = '';
+  });
+}
+
+function updateGameHud() {
+  if (!game) return;
+  $('hudRoom').textContent = game.code;
+  $('hudDiff').textContent = diffLabel(game.difficulty);
+  $('hudStage').textContent = `${game.stageIndex + 1}/${game.stageCount} · ${game.stageTitle}`;
+  $('hudSub').textContent = game.stageCleared ? `Próxima fase em ${Math.max(0, Math.ceil(game.stageTimer))}...` : game.stageSubtitle;
+
+  const team = $('teamHud');
+  team.innerHTML = game.players.map(p => {
+    const h = heroes[p.hero] || {};
+    const colors = HERO_COLORS[p.hero] || ['#777', '#aaa'];
+    return `<div class="team-row">
+      <div class="team-face" style="background:${colors[0]}">${(HERO_INFO[p.hero]?.icon || h.name?.[0] || '?')}</div>
+      <div class="team-bars">
+        <strong>${p.name}${p.id === meId ? ' (você)' : ''}</strong>
+        <div class="bar"><span class="hpbar" style="width:${pct(p.hp, p.maxHp)}%"></span></div>
+        <div class="bar"><span class="ultbar" style="width:${p.ultimate}%"></span></div>
+      </div>
+      <span>${p.dead ? Math.ceil(p.respawnTimer) + 's' : Math.round(p.hp)}</span>
+    </div>`;
+  }).join('');
+
+  const boss = $('bossHud');
+  boss.innerHTML = game.enemies.filter(e => e.hp > 0).map(e => `
+    <div class="boss-line">
+      <div class="boss-name"><span>${enemyIcon(e.type)} ${e.name}</span><span>${Math.round(e.hp)}/${e.maxHp}</span></div>
+      <div class="bar"><span class="hpbar" style="width:${pct(e.hp, e.maxHp)}%; background:linear-gradient(90deg,#ff6262,#ffcc5c)"></span></div>
+    </div>`).join('') || '<strong>Fase vencida!</strong>';
+
+  $('messagesHud').innerHTML = (game.messages || []).slice(-4).reverse().map(m => `<div class="msg ${m.kind}">${m.text}</div>`).join('');
+
+  const overlay = $('endOverlay');
+  if (game.gameOver) {
+    overlay.classList.remove('hidden');
+    $('endTitle').textContent = game.victory ? 'Vitória!' : 'Derrota...';
+    $('endText').textContent = game.victory
+      ? 'Vocês derrotaram Napoleão e salvaram a arena.'
+      : 'Todos os heróis caíram. Tentem de novo com outra estratégia.';
+    $('playAgainBtn').textContent = isHost() ? 'Voltar ao lobby' : 'Aguardando host';
+  } else {
+    overlay.classList.add('hidden');
+  }
+}
+
+function enemyIcon(type) {
+  return ({ otavio: '🍔', anielle: '🗣️', mito: '💄', lenda: '🏍️', vanjo: '📦', napoleao: '🐶' })[type] || '👾';
+}
+
+function resizeCanvas() {
+  if (!canvas) return;
+  dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+  const rect = canvas.getBoundingClientRect();
+  const cssW = Math.max(1, rect.width || innerWidth);
+  const cssH = Math.max(1, rect.height || innerHeight);
+  canvas.width = Math.floor(cssW * dpr);
+  canvas.height = Math.floor(cssH * dpr);
+  canvas.style.width = `${cssW}px`;
+  canvas.style.height = `${cssH}px`;
+  const world = game?.world || { w: 1600, h: 900 };
+  const scale = Math.min(cssW / world.w, cssH / world.h);
+  view = { scale, ox: (cssW - world.w * scale) / 2, oy: (cssH - world.h * scale) / 2, w: world.w, h: world.h, cssW, cssH };
+}
+window.addEventListener('resize', resizeCanvas);
+
+function screenToWorld(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  const x = (clientX - rect.left - view.ox) / view.scale;
+  const y = (clientY - rect.top - view.oy) / view.scale;
+  return { x: Math.max(0, Math.min(view.w, x)), y: Math.max(0, Math.min(view.h, y)) };
+}
+
+canvas.addEventListener('mousemove', (e) => { pointerAim = screenToWorld(e.clientX, e.clientY); aimManual = true; });
+canvas.addEventListener('mousedown', (e) => {
+  pointerAim = screenToWorld(e.clientX, e.clientY);
+  aimManual = true;
+  if (e.button === 0) mouseDownAttack = true;
+});
+window.addEventListener('mouseup', () => { mouseDownAttack = false; });
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+window.addEventListener('keydown', (e) => {
+  keys[e.key.toLowerCase()] = true;
+  if (currentScreen === 'gameScreen' && [' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key.toLowerCase())) e.preventDefault();
+});
+window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+
+function setupActionButton(id, action) {
+  const btn = $(id);
+  const down = (e) => {
+    e.preventDefault();
+    if (action === 'attack') attackTouchDown = true;
+    if (action === 'special') specialPulseUntil = performance.now() + 180;
+    if (action === 'ultimate') ultimatePulseUntil = performance.now() + 180;
+  };
+  const up = (e) => {
+    e.preventDefault();
+    if (action === 'attack') attackTouchDown = false;
+  };
+  btn.addEventListener('pointerdown', down);
+  btn.addEventListener('pointerup', up);
+  btn.addEventListener('pointercancel', up);
+  btn.addEventListener('pointerleave', up);
+}
+setupActionButton('attackTouch', 'attack');
+setupActionButton('specialTouch', 'special');
+setupActionButton('ultimateTouch', 'ultimate');
+
+const joy = $('joystick');
+const stick = $('stick');
+let joyPointer = null;
+function updateJoy(e) {
+  const rect = joy.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  let dx = e.clientX - cx;
+  let dy = e.clientY - cy;
+  const max = rect.width * 0.34;
+  const len = Math.hypot(dx, dy);
+  if (len > max) { dx = dx / len * max; dy = dy / len * max; }
+  joystickVec = { x: dx / max, y: dy / max };
+  stick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+}
+joy.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  joyPointer = e.pointerId;
+  joy.setPointerCapture(e.pointerId);
+  updateJoy(e);
+});
+joy.addEventListener('pointermove', (e) => { if (e.pointerId === joyPointer) updateJoy(e); });
+function resetJoy(e) {
+  if (e && e.pointerId !== joyPointer) return;
+  joyPointer = null;
+  joystickVec = { x: 0, y: 0 };
+  stick.style.transform = 'translate(-50%, -50%)';
+}
+joy.addEventListener('pointerup', resetJoy);
+joy.addEventListener('pointercancel', resetJoy);
+
+function composeInput() {
+  let mx = 0, my = 0;
+  if (keys.a || keys.arrowleft) mx -= 1;
+  if (keys.d || keys.arrowright) mx += 1;
+  if (keys.w || keys.arrowup) my -= 1;
+  if (keys.s || keys.arrowdown) my += 1;
+  if (Math.abs(joystickVec.x) > 0.05 || Math.abs(joystickVec.y) > 0.05) {
+    mx = joystickVec.x;
+    my = joystickVec.y;
+  }
+  const len = Math.hypot(mx, my);
+  if (len > 1) { mx /= len; my /= len; }
+  inputState.mx = mx;
+  inputState.my = my;
+  inputState.aimX = aimManual ? pointerAim.x : null;
+  inputState.aimY = aimManual ? pointerAim.y : null;
+  inputState.attack = mouseDownAttack || attackTouchDown || keys[' '] || keys.enter;
+  const t = performance.now();
+  inputState.special = keys.q || t < specialPulseUntil;
+  inputState.ultimate = keys.e || t < ultimatePulseUntil;
+}
+
+setInterval(() => {
+  if (!game || currentScreen !== 'gameScreen' || !socket.connected) return;
+  composeInput();
+  socket.emit('input', inputState);
+  lastSocketInput = performance.now();
+}, 50);
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function drawImageCover(img, x, y, w, h) {
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  const scale = Math.max(w / iw, h / ih);
+  const sw = w / scale;
+  const sh = h / scale;
+  const sx = (iw - sw) / 2;
+  const sy = (ih - sh) / 2;
+  ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+}
+
+function drawArena() {
+  if (assetReady(assets.arena)) {
+    drawImageCover(assets.arena, 0, 0, view.w, view.h);
+    ctx.save();
+    const pulse = .18 + Math.sin(performance.now() / 600) * .04;
+    ctx.fillStyle = `rgba(16, 8, 24, ${pulse})`;
+    ctx.fillRect(0, 0, view.w, view.h);
+    ctx.restore();
+  } else {
+    const grd = ctx.createLinearGradient(0, 0, view.w, view.h);
+    grd.addColorStop(0, '#5b2f5f');
+    grd.addColorStop(.45, '#2c5a48');
+    grd.addColorStop(1, '#26193e');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, view.w, view.h);
+  }
+
+  // Vinheta e brilho central para dar acabamento de jogo mobile.
+  ctx.save();
+  const rg = ctx.createRadialGradient(view.w / 2, view.h / 2, 80, view.w / 2, view.h / 2, view.w * .62);
+  rg.addColorStop(0, 'rgba(255, 226, 128, .10)');
+  rg.addColorStop(.55, 'rgba(90, 43, 116, .04)');
+  rg.addColorStop(1, 'rgba(0, 0, 0, .34)');
+  ctx.fillStyle = rg;
+  ctx.fillRect(0, 0, view.w, view.h);
+
+  ctx.strokeStyle = '#ffe08a88';
+  ctx.lineWidth = 8;
+  roundRect(ctx, 18, 18, view.w - 36, view.h - 36, 28); ctx.stroke();
+
+  const runePulse = .25 + Math.sin(performance.now() / 420) * .08;
+  ctx.globalAlpha = runePulse;
+  ctx.strokeStyle = '#ff77ea';
+  ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.arc(view.w / 2, view.h / 2, 132, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+}
+
+function drawBar(x, y, w, h, value, max, color, back = '#0008') {
+  ctx.fillStyle = back;
+  roundRect(ctx, x, y, w, h, h/2); ctx.fill();
+  ctx.fillStyle = color;
+  roundRect(ctx, x, y, w * Math.max(0, Math.min(1, value / Math.max(1, max))), h, h/2); ctx.fill();
+  ctx.strokeStyle = '#fff5'; ctx.lineWidth = 1.5; roundRect(ctx, x, y, w, h, h/2); ctx.stroke();
+}
+
+function drawNameplate(entity, x, y, w = 82) {
+  ctx.save();
+  ctx.font = 'bold 16px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = '#0009';
+  ctx.strokeText(entity.name, x, y);
+  ctx.fillStyle = '#fff6dd';
+  ctx.fillText(entity.name, x, y);
+  drawBar(x - w/2, y + 8, w, 8, entity.hp, entity.maxHp, '#45ed82');
+  if (entity.shield > 0) drawBar(x - w/2, y + 19, w, 5, entity.shield, 60, '#77e6ff', '#0005');
+  ctx.restore();
+}
+
+function drawCurlyHair(x, y, color, scale = 1, amount = 9, spread = 18) {
+  ctx.fillStyle = color;
+  for (let i = 0; i < amount; i++) {
+    const a = (i / amount) * Math.PI * 2;
+    const rx = Math.cos(a) * spread * scale;
+    const ry = Math.sin(a) * spread * .55 * scale;
+    ctx.beginPath(); ctx.arc(x + rx, y + ry, 8 * scale, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function spriteDimensions(key, height) {
+  const img = assets.sprites[key];
+  if (!assetReady(img)) return { img: null, w: height * .55, h: height };
+  const ratio = img.naturalWidth / Math.max(1, img.naturalHeight);
+  return { img, w: height * ratio, h: height };
+}
+
+function drawSpriteImage(key, x, footY, height, facing = 1, alpha = 1, glow = null) {
+  const { img, w, h } = spriteDimensions(key, height);
+  const bob = Math.sin(performance.now() / 185 + x * .013) * 2.2;
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = 18; }
+  if (assetReady(img)) {
+    ctx.translate(x, footY - h / 2 + bob);
+    ctx.scale(facing, 1);
+    ctx.drawImage(img, -w / 2, -h / 2, w, h);
+  } else {
+    ctx.fillStyle = glow || '#fff';
+    ctx.beginPath(); ctx.arc(x, footY - h / 2, h * .22, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+  return { w, h, top: footY - h + bob, bottom: footY + bob };
+}
+
+function drawPlayer(p) {
+  const colors = HERO_COLORS[p.hero] || ['#777', '#aaa', '#ffd8bd'];
+  const x = p.x, y = p.y;
+  const alpha = p.dead ? .35 : 1;
+  const height = SPRITE_HEIGHT[p.hero] || 146;
+  const footY = y + 48;
+  const facing = (p.dirX || 1) < -0.12 ? -1 : 1;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  ctx.fillStyle = 'rgba(0,0,0,.34)';
+  ctx.beginPath(); ctx.ellipse(x, footY + 2, 40, 14, 0, 0, Math.PI * 2); ctx.fill();
+
+  if (p.hero === 'guilherme' || p.aura > 20 || p.ultimate >= 100) {
+    ctx.save();
+    ctx.globalAlpha = .23 + Math.sin(performance.now()/170) * .06;
+    ctx.strokeStyle = p.hero === 'guilherme' ? '#8ff7ff' : '#ffd166';
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(x, y, 46 + Math.sin(performance.now()/220)*5, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+  }
+  if (p.damageBoostTimer > 0) {
+    ctx.save();
+    ctx.globalAlpha = .22;
+    ctx.strokeStyle = '#ffe45d'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(x, y + 2, 55, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+  if (p.shield > 0) {
+    ctx.save();
+    ctx.globalAlpha = .24;
+    ctx.fillStyle = '#7bd3ff';
+    ctx.beginPath(); ctx.arc(x, y + 2, 54, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  const glow = p.ultimate >= 100 ? '#ffd166' : (p.hero === 'guilherme' ? '#7bd3ff' : null);
+  const drawn = drawSpriteImage(p.hero, x, footY, height, facing, 1, glow);
+
+  if (p.dead) {
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 18px system-ui'; ctx.textAlign = 'center';
+    ctx.lineWidth = 4; ctx.strokeStyle = '#0009';
+    const text = `revive ${Math.ceil(p.respawnTimer)}s`;
+    ctx.strokeText(text, x, drawn.top - 18); ctx.fillText(text, x, drawn.top - 18);
+  }
+
+  drawNameplate({ name: p.name, hp: p.hp, maxHp: p.maxHp, shield: p.shield }, x, drawn.top - 30, 96);
+  if (p.id === meId) {
+    ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(x, y + 5, 58, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = '#ffd166'; ctx.font = 'bold 15px system-ui'; ctx.textAlign = 'center';
+    ctx.lineWidth = 4; ctx.strokeStyle = '#0009';
+    ctx.strokeText('VOCÊ', x, footY + 34); ctx.fillText('VOCÊ', x, footY + 34);
+  }
+  ctx.restore();
+}
+
+function drawEnemy(e) {
+  if (e.hp <= 0) return;
+  if (e.invisible) {
+    ctx.save(); ctx.globalAlpha = .22; drawSmoke(e.x, e.y, e.radius + 26); ctx.restore();
+    return;
+  }
+  const x = e.x, y = e.y;
+  const grow = e.type === 'napoleao' ? (e.grow || 1) : 1;
+  const height = (SPRITE_HEIGHT[e.type] || 160) * grow;
+  const footY = y + e.radius + 34 * grow;
+  const facing = x > view.w / 2 ? -1 : 1;
+  const glow = e.mark > 0 ? '#ff73cc' : (e.type === 'napoleao' ? '#ffd166' : e.color);
+
+  ctx.save();
+  if (e.hitFlash > 0) ctx.globalAlpha = .68;
+
+  ctx.fillStyle = 'rgba(0,0,0,.38)';
+  ctx.beginPath(); ctx.ellipse(x, footY + 4, Math.max(42, e.radius * 1.4) * grow, Math.max(13, e.radius * .36) * grow, 0, 0, Math.PI*2); ctx.fill();
+
+  if (e.stun > 0) {
+    ctx.save();
+    ctx.globalAlpha = .8;
+    ctx.strokeStyle = '#7bd3ff'; ctx.lineWidth = 5;
+    ctx.setLineDash([10, 8]);
+    ctx.beginPath(); ctx.arc(x, y - e.radius * .45, e.radius + 22, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+  if (e.slow > 0) {
+    ctx.save();
+    ctx.globalAlpha = .25;
+    ctx.fillStyle = '#7bd3ff';
+    ctx.beginPath(); ctx.arc(x, y + 8, e.radius + 46, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  const drawn = drawSpriteImage(e.type, x, footY, height, facing, 1, glow);
+
+  if (e.stun > 0) drawStatusText(x, drawn.top - 44, 'STUN', '#7bd3ff');
+  if (e.mark > 0) drawStatusText(x, drawn.top - 26, 'MARCADO', '#ff78cc');
+  drawNameplate({ name: e.name, hp: e.hp, maxHp: e.maxHp }, x, drawn.top - 18, Math.max(100, e.radius * 2.7));
+  ctx.restore();
+}
+
+function drawStatusText(x, y, text, color) {
+  ctx.save(); ctx.font = 'bold 14px system-ui'; ctx.textAlign = 'center'; ctx.lineWidth = 4; ctx.strokeStyle = '#000'; ctx.strokeText(text, x, y); ctx.fillStyle = color; ctx.fillText(text, x, y); ctx.restore();
+}
+
+function drawSmoke(x, y, r) {
+  ctx.fillStyle = '#c9c6d2';
+  for (let i = 0; i < 8; i++) {
+    const a = i/8*Math.PI*2 + performance.now()/600;
+    ctx.beginPath(); ctx.arc(x + Math.cos(a)*r*.45, y + Math.sin(a)*r*.22, r*.24, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+function drawOtavio(e, x, y) {
+  ctx.fillStyle = '#7b2638'; roundRect(ctx, x-28, y-24, 56, 58, 15); ctx.fill();
+  ctx.fillStyle = '#8d563d'; ctx.beginPath(); ctx.arc(x, y-46, 25, 0, Math.PI*2); ctx.fill();
+  drawCurlyHair(x-3, y-65, '#2a170f', .8, 8, 20);
+  ctx.fillStyle = '#22140f'; ctx.beginPath(); ctx.ellipse(x, y-38, 13, 9, 0, 0, Math.PI*2); ctx.fill();
+  evilEyes(x, y-50); evilSmile(x, y-38, true);
+  ctx.fillStyle = '#f4c15d'; ctx.beginPath(); ctx.arc(x+42, y-38, 14, 0, Math.PI*2); ctx.fill();
+}
+
+function drawAnielle(e, x, y) {
+  ctx.fillStyle = '#267a4a'; roundRect(ctx, x-22, y-22, 44, 54, 13); ctx.fill();
+  ctx.fillStyle = '#9a5b3e'; ctx.beginPath(); ctx.ellipse(x, y-49, 21, 25, 0, 0, Math.PI*2); ctx.fill();
+  drawCurlyHair(x, y-53, '#2b1c16', .8, 10, 23);
+  evilEyes(x, y-52); evilSmile(x, y-43, false);
+  ctx.strokeStyle = '#ff6fa9'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x+7,y-41); ctx.quadraticCurveTo(x+22,y-36,x+16,y-27); ctx.stroke();
+}
+
+function drawMito(e, x, y) {
+  ctx.save();
+  ctx.shadowColor = '#df7fff'; ctx.shadowBlur = 20;
+  ctx.fillStyle = '#34204d'; roundRect(ctx, x-22, y-16, 44, 70, 18); ctx.fill();
+  ctx.fillStyle = '#c471ff'; ctx.beginPath(); ctx.ellipse(x, y-72, 30, 46, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#2d1745'; ctx.beginPath(); ctx.ellipse(x-22, y-68, 9, 31, 0, 0, Math.PI*2); ctx.ellipse(x+22, y-68, 9, 31, 0, 0, Math.PI*2); ctx.fill();
+  evilEyes(x, y-67, '#bbffff'); evilSmile(x, y-54, false, '#180a20');
+  ctx.strokeStyle = '#ff77ea'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(x, y-8, 50 + Math.sin(performance.now()/120)*4, 0, Math.PI*1.5); ctx.stroke();
+  ctx.restore();
+}
+
+function drawLenda(e, x, y) {
+  ctx.fillStyle = '#a45520'; ctx.beginPath(); ctx.ellipse(x, y+5, 44, 58, 0, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#ffb032'; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(x, y+5, 48, 0, Math.PI*2); ctx.stroke();
+  ctx.fillStyle = '#a2623e'; ctx.beginPath(); ctx.arc(x, y-58, 28, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#1c100c'; ctx.beginPath(); ctx.ellipse(x, y-47, 19, 15, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#21140e'; ctx.beginPath(); ctx.ellipse(x-20, y-58, 9, 18, .2, 0, Math.PI*2); ctx.fill();
+  evilEyes(x, y-63); evilSmile(x, y-48, true);
+  ctx.save(); ctx.translate(x+58, y-18); ctx.rotate(.12); ctx.fillStyle = '#ffde38'; roundRect(ctx, -25, -18, 50, 36, 12); ctx.fill(); ctx.fillStyle = '#ff68bd'; ctx.beginPath(); ctx.arc(0, -22, 16, 0, Math.PI*2); ctx.fill(); ctx.restore();
+}
+
+function drawVanjo(e, x, y) {
+  ctx.fillStyle = '#ef3f3f'; ctx.beginPath(); ctx.ellipse(x, y+5, 43, 62, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#f0c6ad'; ctx.beginPath(); ctx.arc(x, y-62, 28, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#2d241b'; roundRect(ctx, x-18, y-90, 36, 15, 5); ctx.fill();
+  angryEyes(x, y-66); ctx.strokeStyle = '#5d1a1a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x-10,y-49); ctx.lineTo(x+10,y-49); ctx.stroke();
+  ctx.fillStyle = '#fff'; roundRect(ctx, x-18, y-20, 36, 14, 4); ctx.fill(); ctx.fillStyle = '#c21'; ctx.font = 'bold 9px system-ui'; ctx.textAlign = 'center'; ctx.fillText('MERC', x, y-10);
+}
+
+function drawNapoleao(e, x, y) {
+  const s = e.grow || 1;
+  ctx.save();
+  ctx.shadowColor = '#ffd166'; ctx.shadowBlur = 16;
+  ctx.fillStyle = '#b86d3c'; ctx.beginPath(); ctx.ellipse(x, y+8, 48*s, 38*s, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#fff2d8'; ctx.beginPath(); ctx.ellipse(x, y+15, 31*s, 23*s, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#b86d3c'; ctx.beginPath(); ctx.ellipse(x, y-35, 34*s, 30*s, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#5a2f20'; ctx.beginPath(); ctx.ellipse(x-30*s, y-29, 12*s, 32*s, -.2, 0, Math.PI*2); ctx.ellipse(x+30*s, y-29, 12*s, 32*s, .2, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#fff2d8'; ctx.beginPath(); ctx.ellipse(x, y-27, 22*s, 16*s, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#1b1110'; ctx.beginPath(); ctx.ellipse(x, y-27, 7*s, 5*s, 0, 0, Math.PI*2); ctx.fill();
+  sadEyes(x, y-42, s); sadMouth(x, y-18, s);
+  ctx.fillStyle = '#ffd84f'; ctx.beginPath(); ctx.moveTo(x-17*s, y-68); ctx.lineTo(x-8*s, y-88); ctx.lineTo(x, y-69); ctx.lineTo(x+9*s, y-88); ctx.lineTo(x+18*s, y-68); ctx.closePath(); ctx.fill();
+  const foods = ['🍔','🍗','🧀','🍩'];
+  ctx.font = `${18*s}px system-ui`;
+  for (let i=0;i<4;i++) {
+    const a = performance.now()/650 + i*Math.PI/2;
+    ctx.fillText(foods[i], x + Math.cos(a)*72*s, y-16 + Math.sin(a)*45*s);
+  }
+  ctx.restore();
+}
+
+function evilEyes(x, y, color = '#111') {
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.ellipse(x-8, y, 4, 3, -.2, 0, Math.PI*2); ctx.ellipse(x+8, y, 4, 3, .2, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#111'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x-14,y-5); ctx.lineTo(x-3,y-2); ctx.moveTo(x+14,y-5); ctx.lineTo(x+3,y-2); ctx.stroke();
+}
+function angryEyes(x, y) {
+  ctx.strokeStyle = '#111'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x-16,y-7); ctx.lineTo(x-4,y-3); ctx.moveTo(x+16,y-7); ctx.lineTo(x+4,y-3); ctx.stroke();
+  ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(x-8,y,2.5,0,Math.PI*2); ctx.arc(x+8,y,2.5,0,Math.PI*2); ctx.fill();
+}
+function sadEyes(x, y, s = 1) {
+  ctx.fillStyle = '#111'; ctx.beginPath(); ctx.ellipse(x-9*s,y,3*s,5*s,0,0,Math.PI*2); ctx.ellipse(x+9*s,y,3*s,5*s,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#111'; ctx.lineWidth = 2*s; ctx.beginPath(); ctx.arc(x-9*s,y-4*s,8*s,Math.PI*1.1,Math.PI*1.8); ctx.arc(x+9*s,y-4*s,8*s,Math.PI*1.2,Math.PI*1.9); ctx.stroke();
+}
+function evilSmile(x, y, beard = false, color = '#111') {
+  ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, 12, 0.05, Math.PI - 0.05); ctx.stroke();
+  if (beard) { ctx.fillStyle = '#1c100c'; ctx.beginPath(); ctx.ellipse(x, y+7, 12, 7, 0, 0, Math.PI*2); ctx.fill(); }
+}
+function sadMouth(x, y, s = 1) {
+  ctx.strokeStyle = '#111'; ctx.lineWidth = 2*s; ctx.beginPath(); ctx.arc(x, y+7*s, 10*s, Math.PI*1.1, Math.PI*1.9); ctx.stroke();
+}
+
+function drawProjectile(pr) {
+  ctx.save();
+  ctx.shadowColor = pr.color || '#fff'; ctx.shadowBlur = 16;
+  ctx.fillStyle = pr.color || '#fff';
+  ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.radius, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#fff8'; ctx.beginPath(); ctx.arc(pr.x - pr.radius*.25, pr.y - pr.radius*.25, pr.radius*.35, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawEffect(fx) {
+  const progress = 1 - (fx.ttl / Math.max(.001, fx.life || 1));
+  ctx.save();
+  if (fx.type === 'text') {
+    ctx.globalAlpha = 1 - progress;
+    ctx.font = 'bold 23px system-ui'; ctx.textAlign = 'center';
+    ctx.lineWidth = 5; ctx.strokeStyle = '#0009'; ctx.strokeText(fx.text, fx.x, fx.y - progress * 32);
+    ctx.fillStyle = fx.color || '#fff'; ctx.fillText(fx.text, fx.x, fx.y - progress * 32);
+  } else if (fx.type === 'ring' || fx.type === 'hit' || fx.type === 'hazard' || fx.type === 'slash') {
+    ctx.globalAlpha = 1 - progress;
+    ctx.strokeStyle = fx.color || '#fff'; ctx.lineWidth = fx.type === 'hazard' ? 10 : 6;
+    if (fx.type === 'hazard') ctx.setLineDash([15, 10]);
+    ctx.beginPath(); ctx.arc(fx.x, fx.y, (fx.r || 50) * (.45 + progress*.65), 0, Math.PI*2); ctx.stroke();
+    if (fx.type === 'hazard') {
+      ctx.globalAlpha = .13 * (1-progress);
+      ctx.fillStyle = fx.color || '#fff'; ctx.beginPath(); ctx.arc(fx.x, fx.y, fx.r || 50, 0, Math.PI*2); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+function drawAimLine() {
+  const me = myGamePlayer();
+  if (!me || me.dead || !aimManual) return;
+  ctx.save();
+  ctx.globalAlpha = .42;
+  ctx.strokeStyle = '#fff6'; ctx.lineWidth = 3; ctx.setLineDash([10, 10]);
+  ctx.beginPath(); ctx.moveTo(me.x, me.y); ctx.lineTo(pointerAim.x, pointerAim.y); ctx.stroke();
+  ctx.fillStyle = '#fff8'; ctx.beginPath(); ctx.arc(pointerAim.x, pointerAim.y, 10, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawCooldownOverlay() {
+  const me = myGamePlayer();
+  if (!me) return;
+  const h = heroes[me.hero] || {};
+  const specialReady = me.specialCd <= .05 && !me.dead;
+  const ultimateReady = me.ultimate >= 100 && !me.dead;
+  $('specialTouch').style.filter = specialReady ? 'brightness(1)' : 'grayscale(.45) brightness(.75)';
+  $('ultimateTouch').style.filter = ultimateReady ? 'brightness(1.15)' : 'grayscale(.45) brightness(.75)';
+  $('specialTouch').querySelector('span').textContent = specialReady ? 'Q' : `${Math.ceil(me.specialCd)}s`;
+  $('ultimateTouch').querySelector('span').textContent = ultimateReady ? 'E pronto' : `${Math.round(me.ultimate)}%`;
+  $('attackTouch').querySelector('span').textContent = h.attackName || 'Mouse/Espaço';
+}
+
+function draw() {
+  requestAnimationFrame(draw);
+  resizeCanvas();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, view.cssW, view.cssH);
+  ctx.fillStyle = '#120914'; ctx.fillRect(0, 0, view.cssW, view.cssH);
+
+  ctx.save();
+  ctx.translate(view.ox, view.oy);
+  ctx.scale(view.scale, view.scale);
+  drawArena();
+
+  if (game) {
+    (game.effects || []).filter(fx => fx.type !== 'text').forEach(drawEffect);
+    (game.projectiles || []).forEach(drawProjectile);
+    const entities = [
+      ...(game.players || []).map(p => ({ kind: 'player', y: p.y, data: p })),
+      ...(game.enemies || []).map(e => ({ kind: 'enemy', y: e.y, data: e }))
+    ].sort((a, b) => a.y - b.y);
+    for (const item of entities) item.kind === 'player' ? drawPlayer(item.data) : drawEnemy(item.data);
+    drawAimLine();
+    (game.effects || []).filter(fx => fx.type === 'text').forEach(drawEffect);
+  } else {
+    ctx.fillStyle = '#fff6dd'; ctx.font = 'bold 42px system-ui'; ctx.textAlign = 'center';
+    ctx.fillText('Arena das Sete Chamas', view.w/2, view.h/2);
+  }
+  ctx.restore();
+
+  if (game && currentScreen === 'gameScreen') drawCooldownOverlay();
+}
+requestAnimationFrame(draw);
+
+// Entrada automática via link ?room=ABCD
+window.addEventListener('load', () => {
+  $('nameInput').value = localStorage.getItem('arenaNome') || '';
+  $('nameInput').addEventListener('input', () => localStorage.setItem('arenaNome', $('nameInput').value));
+  const params = new URLSearchParams(location.search);
+  const code = params.get('room');
+  if (code) $('roomInput').value = code.toUpperCase().slice(0, 4);
+  socket.emit('listRooms', (res) => {
+    if (res?.ok) { openRooms = res.rooms || []; renderOpenRooms(); }
+  });
+});

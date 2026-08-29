@@ -1,0 +1,1171 @@
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const { Server } = require('socket.io');
+
+const PORT = process.env.PORT || 3000;
+const PUBLIC_DIR = path.join(__dirname, 'public');
+const WORLD = { w: 1600, h: 900 };
+const MAX_PLAYERS = 5;
+
+const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.svg': 'image/svg+xml; charset=utf-8',
+  '.json': 'application/json; charset=utf-8'
+};
+
+const HEROES = {
+  albert: {
+    key: 'albert', name: 'Albert', title: 'Brigão Competitivo', color: '#1e57d6', alt: '#a0162c',
+    hp: 150, speed: 235, radius: 23, attackCd: 0.48, specialCd: 7.5,
+    attackName: 'Soco de Discussão', specialName: 'Briga Sem Fim', ultimateName: 'Eu Não Perco'
+  },
+  geovanna: {
+    key: 'geovanna', name: 'Geovanna', title: 'Psicóloga Ciumenta', color: '#ffd447', alt: '#ff69b4',
+    hp: 105, speed: 245, radius: 21, attackCd: 0.55, specialCd: 7,
+    attackName: 'Olhar de Ciúmes', specialName: 'Sessão de Psicóloga', ultimateName: 'Ciúmes Estratégico'
+  },
+  romulo: {
+    key: 'romulo', name: 'Rômulo', title: 'Jogador Nato', color: '#858b95', alt: '#3ea86d',
+    hp: 118, speed: 238, radius: 22, attackCd: 0.5, specialCd: 8,
+    attackName: 'Jogada Segura', specialName: 'Prever Movimento', ultimateName: 'Xeque-Mate Gamer'
+  },
+  arthur: {
+    key: 'arthur', name: 'Arthur', title: 'Hacker do Ego', color: '#111111', alt: '#18d4ff',
+    hp: 110, speed: 252, radius: 21, attackCd: 0.44, specialCd: 7.5,
+    attackName: 'Código Cortante', specialName: 'Hack de Sistema', ultimateName: 'Admin Supremo'
+  },
+  guilherme: {
+    key: 'guilherme', name: 'Guilherme', title: 'General da Aura', color: '#16a9ff', alt: '#9df4ff',
+    hp: 112, speed: 240, radius: 21, attackCd: 0.52, specialCd: 8.5,
+    attackName: 'Corte Social', specialName: 'Estratégia de Guerra', ultimateName: 'Operação Aura Máxima'
+  }
+};
+
+const DIFFICULTY = {
+  facil: { key: 'facil', label: 'Fácil', enemyHp: 0.78, enemyDmg: 0.76, enemySpeed: 0.9, respawn: 3.8, healBetween: 0.72 },
+  medio: { key: 'medio', label: 'Médio', enemyHp: 1, enemyDmg: 1, enemySpeed: 1, respawn: 5.5, healBetween: 0.55 },
+  dificil: { key: 'dificil', label: 'Difícil', enemyHp: 1.32, enemyDmg: 1.24, enemySpeed: 1.08, respawn: 7.5, healBetween: 0.38 }
+};
+
+const ENEMIES = {
+  otavio: { type: 'otavio', name: 'Otávio', hp: 185, dmg: 20, speed: 92, radius: 31, color: '#8f3149', boss: true },
+  anielle: { type: 'anielle', name: 'Anielle', hp: 155, dmg: 17, speed: 115, radius: 25, color: '#2f8a5a', boss: true },
+  mito: { type: 'mito', name: 'Mito', hp: 310, dmg: 22, speed: 150, radius: 30, color: '#c96cff', boss: true },
+  lenda: { type: 'lenda', name: 'Lenda', hp: 455, dmg: 30, speed: 82, radius: 42, color: '#ff9e2c', boss: true },
+  vanjo: { type: 'vanjo', name: 'Vanjo', hp: 520, dmg: 32, speed: 78, radius: 45, color: '#ef3f3f', boss: true },
+  napoleao: { type: 'napoleao', name: 'Napoleão', hp: 680, dmg: 28, speed: 92, radius: 42, color: '#c58146', boss: true }
+};
+
+const STAGES = [
+  { title: 'Fase 1: Falsidade e Gulodice', subtitle: 'Derrote Otávio e Anielle juntos.', enemies: ['otavio', 'anielle'] },
+  { title: 'Fase 2: Ascensão da Mito', subtitle: 'A transformação de Anielle domina o campo com gloss.', enemies: ['mito'] },
+  { title: 'Fase 3: A Lenda Motorizada', subtitle: 'Otávio volta como Lenda, com barriga, barba e egoísmo.', enemies: ['lenda'] },
+  { title: 'Fase 4: O Sumiço do Vanjo', subtitle: 'Vanjo aparece, some e volta mais rabugento.', enemies: ['vanjo'] },
+  { title: 'Chefão Final: Napoleão', subtitle: 'O basset hound faminto cresce cada vez que come.', enemies: ['napoleao'] }
+];
+
+let nextEntityId = 1;
+const rooms = new Map();
+const socketRoom = new Map();
+
+const server = http.createServer((req, res) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    let pathname = decodeURIComponent(url.pathname);
+    if (pathname === '/health') {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' });
+      res.end(JSON.stringify({ ok: true, service: 'arena-sete-chamas-online', rooms: rooms.size }));
+      return;
+    }
+    if (pathname === '/') pathname = '/index.html';
+    const filePath = path.normalize(path.join(PUBLIC_DIR, pathname));
+    if (!filePath.startsWith(PUBLIC_DIR)) {
+      res.writeHead(403);
+      res.end('Forbidden');
+      return;
+    }
+    fs.readFile(filePath, (err, data) => {
+      if (err) {
+        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('Arquivo não encontrado');
+        return;
+      }
+      const ext = path.extname(filePath).toLowerCase();
+      res.writeHead(200, {
+        'Content-Type': MIME[ext] || 'application/octet-stream',
+        'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=3600'
+      });
+      res.end(data);
+    });
+  } catch (err) {
+    res.writeHead(500);
+    res.end('Erro interno');
+  }
+});
+
+const io = new Server(server, {
+  cors: { origin: '*' },
+  maxHttpBufferSize: 1e5
+});
+
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+function nowMs() { return Date.now(); }
+function sanitizeName(name) {
+  return String(name || 'Jogador').replace(/[<>]/g, '').trim().slice(0, 18) || 'Jogador';
+}
+function rand(min, max) { return min + Math.random() * (max - min); }
+function makeId(prefix) { return `${prefix}${nextEntityId++}`; }
+function randomCode() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  do {
+    code = Array.from({ length: 4 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
+  } while (rooms.has(code));
+  return code;
+}
+
+function makeRoom(hostId) {
+  const code = randomCode();
+  return {
+    code,
+    hostId,
+    createdAt: nowMs(),
+    lastActive: nowMs(),
+    difficulty: 'medio',
+    players: new Map(),
+    started: false,
+    gameOver: false,
+    victory: false,
+    stageIndex: 0,
+    stageTimer: 0,
+    stageCleared: false,
+    enemies: [],
+    projectiles: [],
+    effects: [],
+    messages: [],
+    tickCount: 0,
+    lastTick: nowMs()
+  };
+}
+
+function defaultInput() {
+  return { mx: 0, my: 0, aimX: null, aimY: null, attack: false, special: false, ultimate: false };
+}
+
+function addPlayer(room, socket, name) {
+  const player = {
+    id: socket.id,
+    name: sanitizeName(name),
+    hero: null,
+    ready: false,
+    connected: true,
+    x: 0,
+    y: 0,
+    vx: 0,
+    vy: 0,
+    dirX: 1,
+    dirY: 0,
+    hp: 1,
+    maxHp: 1,
+    shield: 0,
+    attackCd: 0,
+    specialCd: 0,
+    ultimate: 0,
+    aura: 0,
+    rivalry: 0,
+    damageBoost: 1,
+    damageBoostTimer: 0,
+    slowTimer: 0,
+    respawnTimer: 0,
+    dead: false,
+    kills: 0,
+    input: defaultInput()
+  };
+  room.players.set(socket.id, player);
+  socketRoom.set(socket.id, room.code);
+  socket.join(room.code);
+  room.lastActive = nowMs();
+  return player;
+}
+
+function removeOrDisconnectPlayer(socketId) {
+  const code = socketRoom.get(socketId);
+  if (!code) return;
+  const room = rooms.get(code);
+  if (!room) return;
+  const player = room.players.get(socketId);
+  if (!player) return;
+
+  if (!room.started) {
+    room.players.delete(socketId);
+  } else {
+    player.connected = false;
+    player.input = defaultInput();
+  }
+
+  if (room.hostId === socketId) {
+    const newHost = [...room.players.values()].find(p => p.connected);
+    room.hostId = newHost ? newHost.id : null;
+  }
+  socketRoom.delete(socketId);
+
+  room.lastActive = nowMs();
+  if (room.players.size === 0 || !room.hostId) {
+    if (!room.started) rooms.delete(code);
+  } else {
+    emitLobby(room);
+  }
+  emitRoomList();
+}
+
+function lobbySnapshot(room) {
+  const taken = {};
+  for (const p of room.players.values()) if (p.hero) taken[p.hero] = p.id;
+  return {
+    code: room.code,
+    hostId: room.hostId,
+    maxPlayers: MAX_PLAYERS,
+    difficulty: room.difficulty,
+    started: room.started,
+    gameOver: room.gameOver,
+    victory: room.victory,
+    players: [...room.players.values()].map(p => ({
+      id: p.id, name: p.name, hero: p.hero, ready: p.ready, connected: p.connected, host: p.id === room.hostId
+    })),
+    taken
+  };
+}
+
+function emitLobby(room) {
+  io.to(room.code).emit('lobby', lobbySnapshot(room));
+}
+
+function publicRoomsSnapshot() {
+  const list = [];
+  for (const room of rooms.values()) {
+    const connectedPlayers = [...room.players.values()].filter(p => p.connected);
+    if (room.started || room.gameOver || connectedPlayers.length <= 0 || connectedPlayers.length >= MAX_PLAYERS) continue;
+    const host = room.players.get(room.hostId) || connectedPlayers[0];
+    list.push({
+      code: room.code,
+      hostName: host ? host.name : 'Host',
+      players: connectedPlayers.length,
+      maxPlayers: MAX_PLAYERS,
+      difficulty: room.difficulty,
+      ready: connectedPlayers.filter(p => p.ready).length,
+      heroes: connectedPlayers.map(p => p.hero).filter(Boolean),
+      createdAt: room.createdAt
+    });
+  }
+  list.sort((a, b) => b.createdAt - a.createdAt);
+  return list.slice(0, 12);
+}
+
+function emitRoomList() {
+  io.emit('roomList', publicRoomsSnapshot());
+}
+
+function addMessage(room, text, kind = 'info') {
+  room.messages.push({ id: makeId('m'), text, kind, t: nowMs() });
+  if (room.messages.length > 8) room.messages.shift();
+}
+
+function initializePlayers(room) {
+  const positions = [
+    { x: 250, y: 450 }, { x: 310, y: 370 }, { x: 310, y: 530 }, { x: 380, y: 420 }, { x: 380, y: 490 }
+  ];
+  let i = 0;
+  for (const p of room.players.values()) {
+    const h = HEROES[p.hero];
+    const pos = positions[i % positions.length];
+    p.x = pos.x; p.y = pos.y;
+    p.vx = 0; p.vy = 0; p.dirX = 1; p.dirY = 0;
+    p.maxHp = h.hp;
+    p.hp = h.hp;
+    p.shield = 0;
+    p.attackCd = 0;
+    p.specialCd = 0;
+    p.ultimate = 0;
+    p.aura = p.hero === 'guilherme' ? 12 : 0;
+    p.rivalry = 0;
+    p.damageBoost = 1;
+    p.damageBoostTimer = 0;
+    p.slowTimer = 0;
+    p.respawnTimer = 0;
+    p.dead = false;
+    p.kills = 0;
+    p.input = defaultInput();
+    i++;
+  }
+}
+
+function spawnStage(room) {
+  const stage = STAGES[room.stageIndex];
+  const diff = DIFFICULTY[room.difficulty];
+  const playerCount = Math.max(1, [...room.players.values()].filter(p => p.hero).length);
+  const hpScale = diff.enemyHp * (0.82 + playerCount * 0.24);
+  room.enemies = [];
+  room.projectiles = [];
+  room.effects = [];
+  room.stageCleared = false;
+  room.stageTimer = 0;
+
+  const spawnPositions = [
+    [{ x: 1260, y: 370 }, { x: 1260, y: 530 }],
+    [{ x: 1250, y: 450 }],
+    [{ x: 1240, y: 450 }],
+    [{ x: 1240, y: 450 }],
+    [{ x: 1220, y: 450 }]
+  ];
+  const positions = spawnPositions[room.stageIndex] || [{ x: 1240, y: 450 }];
+
+  stage.enemies.forEach((type, i) => {
+    const base = ENEMIES[type];
+    const pos = positions[i % positions.length];
+    const enemy = {
+      id: makeId('e'), type: base.type, name: base.name,
+      x: pos.x + rand(-35, 35), y: pos.y + rand(-40, 40),
+      vx: 0, vy: 0,
+      maxHp: Math.round(base.hp * hpScale), hp: Math.round(base.hp * hpScale),
+      dmg: base.dmg * diff.enemyDmg, speed: base.speed * diff.enemySpeed, radius: base.radius,
+      color: base.color, boss: true,
+      attackCd: rand(0.6, 1.2), specialCd: rand(4, 7),
+      stun: 0, slow: 0, mark: 0, forcedTarget: null, forcedTimer: 0,
+      invisible: false, vanishTimer: 0, vanishCd: 3.2,
+      foodTimer: 5.5, grow: 1,
+      hitFlash: 0
+    };
+    room.enemies.push(enemy);
+  });
+  addMessage(room, `${stage.title} começou!`, 'stage');
+}
+
+function startGame(room) {
+  initializePlayers(room);
+  room.started = true;
+  room.gameOver = false;
+  room.victory = false;
+  room.stageIndex = 0;
+  room.tickCount = 0;
+  room.lastTick = nowMs();
+  spawnStage(room);
+  emitLobby(room);
+}
+
+function nearestEnemy(room, p) {
+  let best = null;
+  let bestD = Infinity;
+  for (const e of room.enemies) {
+    if (e.hp <= 0 || e.invisible) continue;
+    const d = dist(p, e);
+    if (d < bestD) { bestD = d; best = e; }
+  }
+  return best;
+}
+
+function nearestPlayer(room, e) {
+  let best = null;
+  let bestD = Infinity;
+  for (const p of room.players.values()) {
+    if (p.dead || p.hp <= 0) continue;
+    const d = dist(e, p);
+    if (d < bestD) { bestD = d; best = p; }
+  }
+  return best;
+}
+
+function lowestAlivePlayer(room) {
+  const alive = [...room.players.values()].filter(p => !p.dead && p.hp > 0);
+  alive.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
+  return alive[0] || null;
+}
+
+function getAimDirection(room, p) {
+  const input = p.input || defaultInput();
+  let dx = Number(input.aimX) - p.x;
+  let dy = Number(input.aimY) - p.y;
+  let len = Math.hypot(dx, dy);
+  if (!Number.isFinite(len) || len < 18) {
+    const e = nearestEnemy(room, p);
+    if (e) { dx = e.x - p.x; dy = e.y - p.y; len = Math.hypot(dx, dy); }
+  }
+  if (!Number.isFinite(len) || len < 0.001) {
+    dx = p.dirX || 1; dy = p.dirY || 0; len = Math.hypot(dx, dy) || 1;
+  }
+  return { x: dx / len, y: dy / len };
+}
+
+function addEffect(room, effect) {
+  room.effects.push({ id: makeId('fx'), ttl: effect.ttl || 0.45, life: effect.ttl || 0.45, ...effect });
+  if (room.effects.length > 80) room.effects.splice(0, room.effects.length - 80);
+}
+
+function addFloatingText(room, x, y, text, color = '#fff') {
+  addEffect(room, { type: 'text', x, y, text, color, ttl: 0.9, life: 0.9 });
+}
+
+function giveUltimate(p, amount) {
+  p.ultimate = clamp((p.ultimate || 0) + amount, 0, 100);
+}
+
+function damageEnemy(room, enemy, amount, fromPlayer, options = {}) {
+  if (!enemy || enemy.hp <= 0 || enemy.invisible) return 0;
+  const attacker = fromPlayer ? room.players.get(fromPlayer) : null;
+  const boost = attacker ? (attacker.damageBoost || 1) : 1;
+  let final = amount * boost;
+  if (enemy.mark > 0) final *= 1.28;
+  if (options.crit) final *= 1.45;
+  final = Math.max(1, Math.round(final));
+  enemy.hp = Math.max(0, enemy.hp - final);
+  enemy.hitFlash = 0.12;
+  addFloatingText(room, enemy.x + rand(-12, 12), enemy.y - enemy.radius - 12, `-${final}`, options.color || '#ffe36e');
+  addEffect(room, { type: 'hit', x: enemy.x, y: enemy.y, r: enemy.radius + 8, color: options.color || '#ffe36e', ttl: 0.25, life: 0.25 });
+  if (attacker) {
+    giveUltimate(attacker, final * 0.18);
+    if (attacker.hero === 'guilherme') attacker.aura = clamp((attacker.aura || 0) + final * 0.07, 0, 100);
+    if (enemy.hp <= 0) attacker.kills++;
+  }
+  return final;
+}
+
+function shieldAbsorb(p, amount) {
+  let remaining = amount;
+  if (p.shield > 0) {
+    const absorbed = Math.min(p.shield, remaining);
+    p.shield -= absorbed;
+    remaining -= absorbed;
+  }
+  return remaining;
+}
+
+function damagePlayer(room, p, amount, sourceName = 'Inimigo', options = {}) {
+  if (!p || p.dead || p.hp <= 0) return 0;
+  let final = Math.max(1, Math.round(amount));
+  final = shieldAbsorb(p, final);
+  if (final <= 0) {
+    addFloatingText(room, p.x, p.y - 38, 'bloqueou', '#80f7ff');
+    return 0;
+  }
+  p.hp = Math.max(0, p.hp - final);
+  addFloatingText(room, p.x, p.y - 38, `-${final}`, '#ff7777');
+  addEffect(room, { type: 'hit', x: p.x, y: p.y, r: 32, color: '#ff6565', ttl: 0.28, life: 0.28 });
+  if (p.hero === 'albert') p.rivalry = clamp((p.rivalry || 0) + 1, 0, 8);
+  if (p.hero === 'geovanna' && p.hp / p.maxHp < 0.35) giveUltimate(p, 5);
+  if (options.slow) p.slowTimer = Math.max(p.slowTimer || 0, options.slow);
+  if (p.hp <= 0) {
+    p.dead = true;
+    p.respawnTimer = DIFFICULTY[room.difficulty].respawn;
+    addMessage(room, `${p.name} foi derrubado por ${sourceName}!`, 'bad');
+  }
+  return final;
+}
+
+function spawnPlayerProjectile(room, p, cfg) {
+  const dir = cfg.dir || getAimDirection(room, p);
+  const start = cfg.startDist || 28;
+  room.projectiles.push({
+    id: makeId('pr'), owner: 'player', from: p.id, hero: p.hero,
+    x: p.x + dir.x * start, y: p.y + dir.y * start,
+    vx: dir.x * cfg.speed, vy: dir.y * cfg.speed,
+    radius: cfg.radius || 9, damage: cfg.damage || 10,
+    ttl: cfg.ttl || 1.2, color: cfg.color || '#fff', pierce: cfg.pierce || 0,
+    slow: cfg.slow || 0, stun: cfg.stun || 0, mark: cfg.mark || 0
+  });
+}
+
+function spawnEnemyProjectile(room, e, target, cfg = {}) {
+  if (!target) return;
+  let dx = target.x - e.x, dy = target.y - e.y;
+  let len = Math.hypot(dx, dy) || 1;
+  dx /= len; dy /= len;
+  room.projectiles.push({
+    id: makeId('ep'), owner: 'enemy', from: e.id, enemyType: e.type,
+    x: e.x + dx * (e.radius + 10), y: e.y + dy * (e.radius + 10),
+    vx: dx * (cfg.speed || 430), vy: dy * (cfg.speed || 430),
+    radius: cfg.radius || 11, damage: cfg.damage || e.dmg,
+    ttl: cfg.ttl || 1.6, color: cfg.color || e.color, pierce: cfg.pierce || 0,
+    slow: cfg.slow || 0, label: cfg.label || ''
+  });
+}
+
+function playerNormalAttack(room, p) {
+  const h = HEROES[p.hero];
+  const dir = getAimDirection(room, p);
+  p.dirX = dir.x; p.dirY = dir.y;
+  p.attackCd = h.attackCd;
+
+  if (p.hero === 'albert') {
+    const cx = p.x + dir.x * 54, cy = p.y + dir.y * 54;
+    const dmg = 18 + (p.rivalry || 0) * 2;
+    let hits = 0;
+    for (const e of room.enemies) {
+      if (e.hp <= 0 || e.invisible) continue;
+      if (Math.hypot(e.x - cx, e.y - cy) <= e.radius + 70) {
+        damageEnemy(room, e, dmg, p.id, { color: '#ffdf58' });
+        e.forcedTarget = p.id; e.forcedTimer = Math.max(e.forcedTimer || 0, 1.6);
+        hits++;
+      }
+    }
+    addEffect(room, { type: 'slash', x: cx, y: cy, r: 74, color: '#ffdf58', ttl: 0.2, life: 0.2 });
+    if (hits) giveUltimate(p, 4 + hits * 2);
+    return;
+  }
+
+  if (p.hero === 'geovanna') {
+    spawnPlayerProjectile(room, p, { dir, speed: 560, radius: 12, damage: 13, color: '#ff77c8', slow: 1.1, ttl: 1.3 });
+  } else if (p.hero === 'romulo') {
+    spawnPlayerProjectile(room, p, { dir, speed: 620, radius: 10, damage: 16, color: '#c9f2ff', ttl: 1.22 });
+  } else if (p.hero === 'arthur') {
+    const crit = Math.random() < 0.13;
+    spawnPlayerProjectile(room, p, { dir, speed: 690, radius: 9, damage: crit ? 23 : 15, color: crit ? '#fffb8a' : '#18d4ff', ttl: 1.1 });
+    if (crit) {
+      p.damageBoost = Math.max(p.damageBoost || 1, 1.12);
+      p.damageBoostTimer = Math.max(p.damageBoostTimer || 0, 1.8);
+      giveUltimate(p, 3);
+    }
+  } else if (p.hero === 'guilherme') {
+    p.aura = clamp((p.aura || 0) + 4, 0, 100);
+    spawnPlayerProjectile(room, p, { dir, speed: 600, radius: 11, damage: 13 + Math.floor((p.aura || 0) / 20), color: '#8ff6ff', ttl: 1.25 });
+  }
+}
+
+function playerSpecial(room, p) {
+  const h = HEROES[p.hero];
+  p.specialCd = h.specialCd;
+
+  if (p.hero === 'albert') {
+    p.shield = Math.max(p.shield, 55);
+    p.rivalry = clamp((p.rivalry || 0) + 2, 0, 8);
+    for (const e of room.enemies) {
+      if (e.hp <= 0) continue;
+      if (dist(p, e) < 520) { e.forcedTarget = p.id; e.forcedTimer = 3.2; }
+    }
+    addEffect(room, { type: 'ring', x: p.x, y: p.y, r: 145, color: '#ffd24a', ttl: 0.55, life: 0.55 });
+    addMessage(room, `${p.name}: Briga Sem Fim!`, 'good');
+    return;
+  }
+
+  if (p.hero === 'geovanna') {
+    const target = lowestAlivePlayer(room);
+    if (target) {
+      const lowBonus = target.hp / target.maxHp < 0.35 ? 18 : 0;
+      const heal = Math.round(38 + lowBonus);
+      target.hp = Math.min(target.maxHp, target.hp + heal);
+      target.slowTimer = 0;
+      addFloatingText(room, target.x, target.y - 45, `+${heal}`, '#7df4a8');
+      addEffect(room, { type: 'ring', x: target.x, y: target.y, r: 95, color: '#ff8ad6', ttl: 0.65, life: 0.65 });
+      giveUltimate(p, 9);
+      addMessage(room, `${p.name} fez uma Sessão de Psicóloga em ${target.name}.`, 'good');
+    }
+    return;
+  }
+
+  if (p.hero === 'romulo') {
+    for (const ally of room.players.values()) {
+      if (!ally.dead) ally.shield = Math.max(ally.shield, 30);
+    }
+    for (const e of room.enemies) if (e.hp > 0) e.slow = Math.max(e.slow || 0, 2.2);
+    addEffect(room, { type: 'ring', x: p.x, y: p.y, r: 220, color: '#9ee9ff', ttl: 0.65, life: 0.65 });
+    addMessage(room, `${p.name} previu o movimento dos inimigos.`, 'good');
+    giveUltimate(p, 8);
+    return;
+  }
+
+  if (p.hero === 'arthur') {
+    const e = nearestEnemy(room, p);
+    if (e) {
+      e.stun = Math.max(e.stun || 0, 2.0);
+      damageEnemy(room, e, 24, p.id, { color: '#18d4ff' });
+      addEffect(room, { type: 'ring', x: e.x, y: e.y, r: 110, color: '#18d4ff', ttl: 0.55, life: 0.55 });
+      addMessage(room, `${p.name} hackeou ${e.name}.`, 'good');
+    }
+    return;
+  }
+
+  if (p.hero === 'guilherme') {
+    p.aura = clamp((p.aura || 0) + 18, 0, 100);
+    for (const ally of room.players.values()) {
+      if (!ally.dead) {
+        ally.shield = Math.max(ally.shield, 28 + Math.floor((p.aura || 0) / 8));
+        ally.damageBoost = Math.max(ally.damageBoost || 1, 1.18);
+        ally.damageBoostTimer = Math.max(ally.damageBoostTimer || 0, 4.2);
+      }
+    }
+    addEffect(room, { type: 'ring', x: p.x, y: p.y, r: 240, color: '#7ff5ff', ttl: 0.8, life: 0.8 });
+    addMessage(room, `${p.name} ativou Estratégia de Guerra.`, 'good');
+  }
+}
+
+function playerUltimate(room, p) {
+  p.ultimate = 0;
+  const dir = getAimDirection(room, p);
+  p.dirX = dir.x; p.dirY = dir.y;
+
+  if (p.hero === 'albert') {
+    const target = nearestEnemy(room, p);
+    const cx = target ? target.x : p.x + dir.x * 160;
+    const cy = target ? target.y : p.y + dir.y * 160;
+    let defeated = false;
+    for (const e of room.enemies) {
+      if (e.hp <= 0 || e.invisible) continue;
+      if (Math.hypot(e.x - cx, e.y - cy) <= e.radius + 155) {
+        const before = e.hp;
+        damageEnemy(room, e, 58 + (p.rivalry || 0) * 4, p.id, { color: '#ffd84a', crit: true });
+        if (before > 0 && e.hp <= 0) defeated = true;
+      }
+    }
+    p.rivalry = 0;
+    if (defeated) p.attackCd = 0;
+    addEffect(room, { type: 'ring', x: cx, y: cy, r: 170, color: '#ffd84a', ttl: 0.8, life: 0.8 });
+    addMessage(room, `${p.name} usou EU NÃO PERCO!`, 'ultimate');
+    return;
+  }
+
+  if (p.hero === 'geovanna') {
+    for (const ally of room.players.values()) {
+      if (!ally.dead) {
+        ally.hp = Math.min(ally.maxHp, ally.hp + 30);
+        addFloatingText(room, ally.x, ally.y - 44, '+30', '#83ffae');
+      }
+    }
+    for (const e of room.enemies) {
+      if (e.hp <= 0) continue;
+      e.mark = Math.max(e.mark || 0, 6);
+      e.slow = Math.max(e.slow || 0, 3.5);
+      damageEnemy(room, e, 16, p.id, { color: '#ff73cc' });
+    }
+    addEffect(room, { type: 'ring', x: p.x, y: p.y, r: 330, color: '#ff73cc', ttl: 1.0, life: 1.0 });
+    addMessage(room, `${p.name} ativou CIÚMES ESTRATÉGICO!`, 'ultimate');
+    return;
+  }
+
+  if (p.hero === 'romulo') {
+    for (const e of room.enemies) {
+      if (e.hp <= 0) continue;
+      e.stun = Math.max(e.stun || 0, 3.0);
+      damageEnemy(room, e, 18, p.id, { color: '#aeefff' });
+    }
+    for (const ally of room.players.values()) {
+      if (!ally.dead) {
+        ally.damageBoost = Math.max(ally.damageBoost || 1, 1.25);
+        ally.damageBoostTimer = Math.max(ally.damageBoostTimer || 0, 5.0);
+      }
+    }
+    addEffect(room, { type: 'ring', x: WORLD.w / 2, y: WORLD.h / 2, r: 430, color: '#baf2ff', ttl: 1.0, life: 1.0 });
+    addMessage(room, `${p.name} declarou XEQUE-MATE GAMER!`, 'ultimate');
+    return;
+  }
+
+  if (p.hero === 'arthur') {
+    for (const e of room.enemies) {
+      if (e.hp <= 0) continue;
+      e.stun = Math.max(e.stun || 0, 1.6);
+      damageEnemy(room, e, 46, p.id, { color: '#19e0ff', crit: true });
+    }
+    addEffect(room, { type: 'ring', x: p.x, y: p.y, r: 380, color: '#19e0ff', ttl: 0.9, life: 0.9 });
+    addMessage(room, `${p.name} virou ADMIN SUPREMO!`, 'ultimate');
+    return;
+  }
+
+  if (p.hero === 'guilherme') {
+    const aura = p.aura || 0;
+    const dmg = 34 + Math.round(aura * 0.62);
+    for (const e of room.enemies) {
+      if (e.hp <= 0) continue;
+      damageEnemy(room, e, dmg, p.id, { color: '#8ff7ff', crit: true });
+    }
+    for (const ally of room.players.values()) if (!ally.dead) ally.shield = Math.max(ally.shield, 35);
+    p.aura = 0;
+    addEffect(room, { type: 'ring', x: WORLD.w / 2, y: WORLD.h / 2, r: 520, color: '#8ff7ff', ttl: 1.1, life: 1.1 });
+    addMessage(room, `${p.name} lançou OPERAÇÃO AURA MÁXIMA!`, 'ultimate');
+  }
+}
+
+function updatePlayers(room, dt) {
+  for (const p of room.players.values()) {
+    const h = HEROES[p.hero];
+    if (!h) continue;
+
+    p.attackCd = Math.max(0, (p.attackCd || 0) - dt);
+    p.specialCd = Math.max(0, (p.specialCd || 0) - dt);
+    p.damageBoostTimer = Math.max(0, (p.damageBoostTimer || 0) - dt);
+    if (p.damageBoostTimer <= 0) p.damageBoost = 1;
+    p.slowTimer = Math.max(0, (p.slowTimer || 0) - dt);
+    p.shield = Math.max(0, p.shield || 0);
+
+    if (p.dead) {
+      p.respawnTimer = Math.max(0, (p.respawnTimer || 0) - dt);
+      const aliveCount = [...room.players.values()].filter(a => !a.dead && a.hp > 0).length;
+      if (p.respawnTimer <= 0 && aliveCount > 0 && !room.gameOver) {
+        p.dead = false;
+        p.hp = Math.round(p.maxHp * 0.48);
+        p.shield = 24;
+        p.x = 240 + rand(-30, 30);
+        p.y = 450 + rand(-80, 80);
+        addEffect(room, { type: 'ring', x: p.x, y: p.y, r: 100, color: '#83ffae', ttl: 0.65, life: 0.65 });
+        addMessage(room, `${p.name} voltou para a arena!`, 'good');
+      }
+      continue;
+    }
+
+    const input = p.input || defaultInput();
+    let mx = clamp(Number(input.mx) || 0, -1, 1);
+    let my = clamp(Number(input.my) || 0, -1, 1);
+    const len = Math.hypot(mx, my);
+    if (len > 1) { mx /= len; my /= len; }
+    if (len > 0.05) { p.dirX = mx; p.dirY = my; }
+    const speed = h.speed * (p.slowTimer > 0 ? 0.62 : 1);
+    p.x = clamp(p.x + mx * speed * dt, 42, WORLD.w - 42);
+    p.y = clamp(p.y + my * speed * dt, 42, WORLD.h - 42);
+
+    if (input.attack && p.attackCd <= 0) playerNormalAttack(room, p);
+    if (input.special && p.specialCd <= 0) playerSpecial(room, p);
+    if (input.ultimate && p.ultimate >= 100) playerUltimate(room, p);
+  }
+}
+
+function updateProjectiles(room, dt) {
+  for (const pr of room.projectiles) {
+    pr.ttl -= dt;
+    pr.x += pr.vx * dt;
+    pr.y += pr.vy * dt;
+    if (pr.x < -80 || pr.x > WORLD.w + 80 || pr.y < -80 || pr.y > WORLD.h + 80) pr.ttl = 0;
+
+    if (pr.ttl <= 0) continue;
+
+    if (pr.owner === 'player') {
+      for (const e of room.enemies) {
+        if (e.hp <= 0 || e.invisible) continue;
+        if (Math.hypot(e.x - pr.x, e.y - pr.y) <= e.radius + pr.radius) {
+          damageEnemy(room, e, pr.damage, pr.from, { color: pr.color });
+          if (pr.slow) e.slow = Math.max(e.slow || 0, pr.slow);
+          if (pr.stun) e.stun = Math.max(e.stun || 0, pr.stun);
+          if (pr.mark) e.mark = Math.max(e.mark || 0, pr.mark);
+          if (pr.pierce > 0) pr.pierce--; else { pr.ttl = 0; break; }
+        }
+      }
+    } else {
+      for (const p of room.players.values()) {
+        if (p.dead || p.hp <= 0) continue;
+        if (Math.hypot(p.x - pr.x, p.y - pr.y) <= HEROES[p.hero].radius + pr.radius) {
+          damagePlayer(room, p, pr.damage, ENEMIES[pr.enemyType]?.name || 'Inimigo', { slow: pr.slow });
+          if (pr.pierce > 0) pr.pierce--; else { pr.ttl = 0; break; }
+        }
+      }
+    }
+  }
+  room.projectiles = room.projectiles.filter(pr => pr.ttl > 0).slice(-120);
+}
+
+function enemyMelee(room, e, target, radius, damage, color) {
+  addEffect(room, { type: 'ring', x: e.x, y: e.y, r: radius, color, ttl: 0.34, life: 0.34 });
+  for (const p of room.players.values()) {
+    if (p.dead || p.hp <= 0) continue;
+    if (Math.hypot(p.x - e.x, p.y - e.y) <= radius + HEROES[p.hero].radius) {
+      damagePlayer(room, p, damage, e.name);
+    }
+  }
+}
+
+function updateEnemies(room, dt) {
+  const diff = DIFFICULTY[room.difficulty];
+
+  for (const e of room.enemies) {
+    if (e.hp <= 0) continue;
+    e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt);
+    e.stun = Math.max(0, (e.stun || 0) - dt);
+    e.slow = Math.max(0, (e.slow || 0) - dt);
+    e.mark = Math.max(0, (e.mark || 0) - dt);
+    e.forcedTimer = Math.max(0, (e.forcedTimer || 0) - dt);
+    if (e.forcedTimer <= 0) e.forcedTarget = null;
+    e.attackCd = Math.max(0, (e.attackCd || 0) - dt);
+    e.specialCd = Math.max(0, (e.specialCd || 0) - dt);
+
+    if (e.type === 'vanjo') {
+      e.vanishCd = Math.max(0, (e.vanishCd || 0) - dt);
+      if (e.invisible) {
+        e.vanishTimer = Math.max(0, (e.vanishTimer || 0) - dt);
+        if (e.vanishTimer <= 0) {
+          const target = nearestPlayer(room, e);
+          if (target) {
+            e.x = clamp(target.x + rand(-150, 150), 70, WORLD.w - 70);
+            e.y = clamp(target.y + rand(-120, 120), 70, WORLD.h - 70);
+          }
+          e.invisible = false;
+          e.attackCd = 0.2;
+          enemyMelee(room, e, target, 125, e.dmg * 0.8, '#ff5b5b');
+          addMessage(room, 'Vanjo voltou do sumiço rabugento!', 'bad');
+        }
+        continue;
+      }
+    }
+
+    if (e.type === 'napoleao') {
+      e.foodTimer = Math.max(0, (e.foodTimer || 0) - dt);
+      if (e.foodTimer <= 0) {
+        e.foodTimer = 6.2;
+        e.grow = Math.min(1.8, (e.grow || 1) + 0.08);
+        e.radius = Math.min(76, e.radius + 3);
+        e.dmg += 1.6 * diff.enemyDmg;
+        e.hp = Math.min(e.maxHp, e.hp + Math.round(22 * diff.enemyHp));
+        addEffect(room, { type: 'ring', x: e.x, y: e.y, r: e.radius + 42, color: '#ffcf72', ttl: 0.55, life: 0.55 });
+        addFloatingText(room, e.x, e.y - e.radius - 18, 'FOME +', '#ffcf72');
+      }
+    }
+
+    if (e.stun > 0) continue;
+
+    let target = null;
+    if (e.forcedTarget) {
+      const forced = room.players.get(e.forcedTarget);
+      if (forced && !forced.dead && forced.hp > 0) target = forced;
+    }
+    if (!target) target = nearestPlayer(room, e);
+    if (!target) continue;
+
+    const dx = target.x - e.x;
+    const dy = target.y - e.y;
+    const d = Math.hypot(dx, dy) || 1;
+    const slowFactor = e.slow > 0 ? 0.55 : 1;
+
+    let desiredRange = 95;
+    if (['anielle', 'mito'].includes(e.type)) desiredRange = 310;
+    if (e.type === 'otavio') desiredRange = 130;
+    if (e.type === 'napoleao') desiredRange = 120 + e.radius * 0.4;
+
+    if (d > desiredRange) {
+      e.x = clamp(e.x + (dx / d) * e.speed * slowFactor * dt, 40, WORLD.w - 40);
+      e.y = clamp(e.y + (dy / d) * e.speed * slowFactor * dt, 40, WORLD.h - 40);
+    } else if (d < desiredRange * 0.55 && ['anielle', 'mito'].includes(e.type)) {
+      e.x = clamp(e.x - (dx / d) * e.speed * 0.45 * slowFactor * dt, 40, WORLD.w - 40);
+      e.y = clamp(e.y - (dy / d) * e.speed * 0.45 * slowFactor * dt, 40, WORLD.h - 40);
+    }
+
+    if (e.attackCd > 0) continue;
+
+    if (e.type === 'otavio') {
+      if (e.specialCd <= 0 && e.hp / e.maxHp < 0.67) {
+        const heal = Math.round(26 * diff.enemyHp);
+        e.hp = Math.min(e.maxHp, e.hp + heal);
+        e.specialCd = 6.8;
+        addFloatingText(room, e.x, e.y - 50, `+${heal}`, '#83ffae');
+        addEffect(room, { type: 'ring', x: e.x, y: e.y, r: 80, color: '#83ffae', ttl: 0.45, life: 0.45 });
+      }
+      if (d < 115) enemyMelee(room, e, target, 92, e.dmg, '#ff9861');
+      else spawnEnemyProjectile(room, e, target, { speed: 440, radius: 14, damage: e.dmg * 0.78, slow: 1.0, color: '#ff9861', label: 'manipulação' });
+      e.attackCd = 1.25;
+    } else if (e.type === 'anielle') {
+      spawnEnemyProjectile(room, e, target, { speed: 500, radius: 12, damage: e.dmg, slow: 0.9, color: '#ba7cff', label: 'fofoca' });
+      if (e.specialCd <= 0) {
+        for (const p of room.players.values()) if (!p.dead) p.slowTimer = Math.max(p.slowTimer || 0, 1.2);
+        addEffect(room, { type: 'ring', x: e.x, y: e.y, r: 190, color: '#ba7cff', ttl: 0.5, life: 0.5 });
+        e.specialCd = 5.5;
+      }
+      e.attackCd = 1.35;
+    } else if (e.type === 'mito') {
+      if (d < 145) enemyMelee(room, e, target, 115, e.dmg * 0.9, '#ff70df');
+      else spawnEnemyProjectile(room, e, target, { speed: 585, radius: 15, damage: e.dmg, slow: 1.4, color: '#ff70df', label: 'gloss' });
+      if (e.specialCd <= 0) {
+        const tx = target.x, ty = target.y;
+        addEffect(room, { type: 'hazard', x: tx, y: ty, r: 120, color: '#ff70df', ttl: 1.0, life: 1.0 });
+        for (const p of room.players.values()) {
+          if (!p.dead && Math.hypot(p.x - tx, p.y - ty) < 135) damagePlayer(room, p, e.dmg * 0.55, e.name, { slow: 1.5 });
+        }
+        e.specialCd = 4.8;
+      }
+      e.attackCd = 0.95;
+    } else if (e.type === 'lenda') {
+      if (e.specialCd <= 0 && d > 145) {
+        const chargeX = dx / d, chargeY = dy / d;
+        const cx = e.x + chargeX * 170, cy = e.y + chargeY * 170;
+        e.x = clamp(cx, 60, WORLD.w - 60); e.y = clamp(cy, 60, WORLD.h - 60);
+        enemyMelee(room, e, target, 145, e.dmg * 1.05, '#ffb12c');
+        addMessage(room, 'Lenda acelerou a Bros 2009 amarela!', 'bad');
+        e.specialCd = 5.8;
+      } else {
+        enemyMelee(room, e, target, 118, e.dmg, '#ffb12c');
+      }
+      e.attackCd = 1.35;
+    } else if (e.type === 'vanjo') {
+      if (e.vanishCd <= 0) {
+        e.invisible = true;
+        e.vanishTimer = 1.1;
+        e.vanishCd = 7.8;
+        addEffect(room, { type: 'ring', x: e.x, y: e.y, r: 120, color: '#c7c7c7', ttl: 0.45, life: 0.45 });
+        addMessage(room, 'Vanjo usou Sumiço!', 'bad');
+      } else {
+        if (d < 140) enemyMelee(room, e, target, 125, e.dmg, '#ff5757');
+        else spawnEnemyProjectile(room, e, target, { speed: 410, radius: 18, damage: e.dmg * 0.82, color: '#ff5757', label: 'caixa' });
+        e.attackCd = 1.45;
+      }
+    } else if (e.type === 'napoleao') {
+      if (d < 140 + e.radius * 0.35) {
+        enemyMelee(room, e, target, 115 + e.radius * 0.55, e.dmg, '#ffc86d');
+        e.hp = Math.min(e.maxHp, e.hp + Math.round(9 * diff.enemyHp));
+        addFloatingText(room, e.x, e.y - e.radius - 18, '+lanche', '#ffd88a');
+      } else {
+        spawnEnemyProjectile(room, e, target, { speed: 450, radius: 16, damage: e.dmg * 0.85, slow: 0.8, color: '#ffc86d', label: 'comida' });
+      }
+      if (e.specialCd <= 0) {
+        const tx = target.x, ty = target.y;
+        e.x = clamp(tx + rand(-65, 65), 70, WORLD.w - 70);
+        e.y = clamp(ty + rand(-65, 65), 70, WORLD.h - 70);
+        enemyMelee(room, e, target, 155 + e.radius * 0.45, e.dmg * 1.05, '#ffcf72');
+        e.specialCd = 6.3;
+        addMessage(room, 'Napoleão fez a entrada Garfield!', 'bad');
+      }
+      e.attackCd = 1.15;
+    }
+  }
+}
+
+function updateEffects(room, dt) {
+  for (const fx of room.effects) fx.ttl -= dt;
+  room.effects = room.effects.filter(fx => fx.ttl > 0).slice(-80);
+}
+
+function handleStageAndGameOver(room, dt) {
+  if (room.gameOver) return;
+  const alivePlayers = [...room.players.values()].filter(p => !p.dead && p.hp > 0).length;
+  if (alivePlayers === 0 && room.started) {
+    room.gameOver = true;
+    room.victory = false;
+    addMessage(room, 'Todos caíram. A partida foi perdida.', 'bad');
+    return;
+  }
+
+  const aliveEnemies = room.enemies.filter(e => e.hp > 0).length;
+  if (aliveEnemies === 0 && !room.stageCleared) {
+    room.stageCleared = true;
+    room.stageTimer = 4.0;
+    addMessage(room, `${STAGES[room.stageIndex].title} vencida!`, 'good');
+  }
+  if (room.stageCleared) {
+    room.stageTimer -= dt;
+    if (room.stageTimer <= 0) {
+      if (room.stageIndex >= STAGES.length - 1) {
+        room.gameOver = true;
+        room.victory = true;
+        addMessage(room, 'Vitória! Napoleão foi derrotado!', 'ultimate');
+      } else {
+        room.stageIndex++;
+        const healFactor = DIFFICULTY[room.difficulty].healBetween;
+        for (const p of room.players.values()) {
+          if (!p.hero) continue;
+          p.dead = false;
+          p.respawnTimer = 0;
+          p.hp = Math.max(p.hp, Math.round(p.maxHp * healFactor));
+          p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * 0.22));
+          p.shield = Math.max(p.shield, 20);
+          p.attackCd = 0;
+          p.specialCd = Math.max(0, p.specialCd - 3);
+        }
+        spawnStage(room);
+      }
+    }
+  }
+}
+
+function updateRoom(room, dt) {
+  if (!room.started || room.gameOver) return;
+  updatePlayers(room, dt);
+  updateEnemies(room, dt);
+  updateProjectiles(room, dt);
+  updateEffects(room, dt);
+  handleStageAndGameOver(room, dt);
+}
+
+function gameSnapshot(room) {
+  const stage = STAGES[room.stageIndex] || STAGES[0];
+  return {
+    code: room.code,
+    hostId: room.hostId,
+    difficulty: room.difficulty,
+    world: WORLD,
+    started: room.started,
+    gameOver: room.gameOver,
+    victory: room.victory,
+    stageIndex: room.stageIndex,
+    stageCount: STAGES.length,
+    stageTitle: stage.title,
+    stageSubtitle: stage.subtitle,
+    stageCleared: room.stageCleared,
+    stageTimer: room.stageTimer,
+    players: [...room.players.values()].filter(p => p.hero).map(p => ({
+      id: p.id, name: p.name, hero: p.hero, connected: p.connected,
+      x: p.x, y: p.y, dirX: p.dirX, dirY: p.dirY,
+      hp: Math.round(p.hp), maxHp: p.maxHp, shield: Math.round(p.shield || 0),
+      dead: p.dead, respawnTimer: p.respawnTimer,
+      attackCd: p.attackCd, specialCd: p.specialCd,
+      ultimate: Math.round(p.ultimate || 0), aura: Math.round(p.aura || 0), rivalry: Math.round(p.rivalry || 0),
+      damageBoostTimer: p.damageBoostTimer || 0, kills: p.kills || 0
+    })),
+    enemies: room.enemies.map(e => ({
+      id: e.id, type: e.type, name: e.name, x: e.x, y: e.y,
+      hp: Math.round(e.hp), maxHp: e.maxHp, radius: e.radius, color: e.color,
+      stun: e.stun, slow: e.slow, mark: e.mark, invisible: e.invisible, grow: e.grow || 1, hitFlash: e.hitFlash || 0
+    })),
+    projectiles: room.projectiles.map(p => ({
+      id: p.id, owner: p.owner, hero: p.hero, enemyType: p.enemyType, x: p.x, y: p.y,
+      radius: p.radius, color: p.color, label: p.label || ''
+    })),
+    effects: room.effects.map(fx => ({
+      id: fx.id, type: fx.type, x: fx.x, y: fx.y, r: fx.r, color: fx.color, ttl: fx.ttl, life: fx.life, text: fx.text
+    })),
+    messages: room.messages
+  };
+}
+
+io.on('connection', (socket) => {
+  socket.emit('hello', { id: socket.id, heroes: HEROES, difficulties: DIFFICULTY, stages: STAGES, maxPlayers: MAX_PLAYERS });
+  socket.emit('roomList', publicRoomsSnapshot());
+
+  socket.on('listRooms', (cb = () => {}) => {
+    cb({ ok: true, rooms: publicRoomsSnapshot() });
+    socket.emit('roomList', publicRoomsSnapshot());
+  });
+
+  socket.on('createRoom', (payload = {}, cb = () => {}) => {
+    const room = makeRoom(socket.id);
+    rooms.set(room.code, room);
+    addPlayer(room, socket, payload.name);
+    cb({ ok: true, code: room.code, playerId: socket.id, lobby: lobbySnapshot(room) });
+    emitLobby(room);
+    emitRoomList();
+  });
+
+  socket.on('joinRoom', (payload = {}, cb = () => {}) => {
+    const code = String(payload.code || '').trim().toUpperCase();
+    const room = rooms.get(code);
+    if (!room) return cb({ ok: false, error: 'Sala não encontrada.' });
+    const connectedCount = [...room.players.values()].filter(p => p.connected).length;
+    if (!room.players.has(socket.id) && connectedCount >= MAX_PLAYERS) return cb({ ok: false, error: 'Sala cheia.' });
+    if (room.started && !room.players.has(socket.id)) return cb({ ok: false, error: 'A partida já começou. Crie outra sala.' });
+    if (!room.players.has(socket.id)) addPlayer(room, socket, payload.name);
+    room.lastActive = nowMs();
+    cb({ ok: true, code: room.code, playerId: socket.id, lobby: lobbySnapshot(room) });
+    emitLobby(room);
+    emitRoomList();
+  });
+
+  socket.on('selectHero', (heroKey, cb = () => {}) => {
+    const room = rooms.get(socketRoom.get(socket.id));
+    if (!room || room.started) return cb({ ok: false, error: 'Não dá para trocar agora.' });
+    const p = room.players.get(socket.id);
+    if (!p) return cb({ ok: false, error: 'Jogador não encontrado.' });
+    if (!HEROES[heroKey]) return cb({ ok: false, error: 'Herói inválido.' });
+    const taken = [...room.players.values()].find(other => other.id !== socket.id && other.hero === heroKey);
+    if (taken) return cb({ ok: false, error: 'Esse herói já foi escolhido.' });
+    p.hero = heroKey;
+    p.ready = false;
+    room.lastActive = nowMs();
+    cb({ ok: true });
+    emitLobby(room);
+    emitRoomList();
+  });
+
+  socket.on('setDifficulty', (difficulty, cb = () => {}) => {
+    const room = rooms.get(socketRoom.get(socket.id));
+    if (!room || room.hostId !== socket.id || room.started) return cb({ ok: false });
+    if (!DIFFICULTY[difficulty]) return cb({ ok: false });
+    room.difficulty = difficulty;
+    room.lastActive = nowMs();
+    cb({ ok: true });
+    emitLobby(room);
+    emitRoomList();
+  });
+
+  socket.on('setReady', (ready, cb = () => {}) => {
+    const room = rooms.get(socketRoom.get(socket.id));
+    if (!room || room.started) return cb({ ok: false });
+    const p = room.players.get(socket.id);
+    if (!p || !p.hero) return cb({ ok: false, error: 'Escolha um herói primeiro.' });
+    p.ready = !!ready;
+    room.lastActive = nowMs();
+    cb({ ok: true });
+    emitLobby(room);
+    emitRoomList();
+  });
+
+  socket.on('startGame', (cb = () => {}) => {
+    const room = rooms.get(socketRoom.get(socket.id));
+    if (!room || room.hostId !== socket.id) return cb({ ok: false, error: 'Só o host pode iniciar.' });
+    if (room.started && !room.gameOver) return cb({ ok: false, error: 'Já começou.' });
+    const players = [...room.players.values()].filter(p => p.connected);
+    if (players.length < 1) return cb({ ok: false, error: 'Precisa de pelo menos 1 jogador.' });
+    if (players.some(p => !p.hero)) return cb({ ok: false, error: 'Todos precisam escolher um herói.' });
+    if (players.some(p => !p.ready)) return cb({ ok: false, error: 'Todos precisam estar prontos.' });
+    startGame(room);
+    room.lastActive = nowMs();
+    cb({ ok: true });
+    emitRoomList();
+  });
+
+  socket.on('restartLobby', (cb = () => {}) => {
+    const room = rooms.get(socketRoom.get(socket.id));
+    if (!room || room.hostId !== socket.id) return cb({ ok: false });
+    room.started = false;
+    room.gameOver = false;
+    room.victory = false;
+    room.enemies = [];
+    room.projectiles = [];
+    room.effects = [];
+    room.messages = [];
+    for (const p of room.players.values()) {
+      p.ready = false;
+      p.input = defaultInput();
+    }
+    room.lastActive = nowMs();
+    cb({ ok: true });
+    emitLobby(room);
+    emitRoomList();
+  });
+
+  socket.on('input', (input = {}) => {
+    const room = rooms.get(socketRoom.get(socket.id));
+    if (!room || !room.started || room.gameOver) return;
+    const p = room.players.get(socket.id);
+    if (!p || !p.hero) return;
+    p.input = {
+      mx: clamp(Number(input.mx) || 0, -1, 1),
+      my: clamp(Number(input.my) || 0, -1, 1),
+      aimX: Number.isFinite(Number(input.aimX)) ? clamp(Number(input.aimX), 0, WORLD.w) : null,
+      aimY: Number.isFinite(Number(input.aimY)) ? clamp(Number(input.aimY), 0, WORLD.h) : null,
+      attack: !!input.attack,
+      special: !!input.special,
+      ultimate: !!input.ultimate
+    };
+    room.lastActive = nowMs();
+  });
+
+  socket.on('disconnect', () => removeOrDisconnectPlayer(socket.id));
+});
+
+setInterval(() => {
+  const now = nowMs();
+  for (const [code, room] of rooms) {
+    const dt = clamp((now - room.lastTick) / 1000, 0, 0.05);
+    room.lastTick = now;
+    updateRoom(room, dt);
+    room.tickCount++;
+    if (room.started && room.tickCount % 2 === 0) io.to(code).emit('state', gameSnapshot(room));
+
+    // cleanup salas antigas sem jogadores conectados
+    const connected = [...room.players.values()].some(p => p.connected);
+    if (!connected && now - room.lastActive > 10 * 60 * 1000) {
+      rooms.delete(code);
+      emitRoomList();
+    }
+  }
+}, 1000 / 30);
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Arena das Sete Chamas online em http://0.0.0.0:${PORT}`);
+});

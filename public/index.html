@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Arena das Sete Chamas Online</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="toast" class="toast"></div>
+
+  <section id="menuScreen" class="screen active menu-screen">
+    <div class="hero-bg"></div>
+    <main class="menu-card glass">
+      <div class="logo-line">🔥 Arena das Sete Chamas</div>
+      <h1>Jogo 2D online para até 5 amigos</h1>
+      <p class="lead">Escolha um dos cinco heróis e enfrente Otávio, Anielle, Mito, Lenda, Vanjo e Napoleão em uma arena animada.</p>
+
+      <div class="name-row">
+        <label>Seu nome</label>
+        <input id="nameInput" maxlength="18" placeholder="Ex: Player 1" />
+      </div>
+
+      <div class="join-grid">
+        <button id="createBtn" class="big-btn primary">Criar sala</button>
+        <div class="join-box">
+          <input id="roomInput" maxlength="4" placeholder="CÓDIGO" />
+          <button id="joinBtn" class="big-btn">Entrar por código</button>
+        </div>
+      </div>
+
+      <section class="rooms-box">
+        <div class="rooms-head">
+          <div>
+            <h3>Salas abertas</h3>
+            <p>Quando alguém criar uma sala, ela aparece aqui para entrar com um clique.</p>
+          </div>
+          <button id="refreshRoomsBtn" class="small-btn ghost">Atualizar</button>
+        </div>
+        <div id="openRoomsList" class="open-rooms-list">Carregando salas...</div>
+      </section>
+
+      <div class="mini-info">
+        <span>📱 Celular deitado igual Brawl Stars</span>
+        <span>🎮 PC: WASD + mouse + Q/E</span>
+        <span>👥 Máximo 5 jogadores</span>
+        <button id="howToBtn" class="small-btn ghost" type="button">Como jogar</button>
+      </div>
+    </main>
+  </section>
+
+  <section id="lobbyScreen" class="screen lobby-screen">
+    <header class="topbar glass">
+      <div>
+        <div class="tiny">Sala online</div>
+        <h2 id="roomTitle">Sala ----</h2>
+      </div>
+      <div class="top-actions">
+        <button id="lobbyHowToBtn" class="small-btn ghost">Como jogar</button>
+        <button id="copyBtn" class="small-btn">Copiar código</button>
+        <button id="leaveBtn" class="small-btn ghost">Sair</button>
+      </div>
+    </header>
+
+    <main class="lobby-grid">
+      <section class="glass panel">
+        <h3>1. Escolha a dificuldade</h3>
+        <p class="muted">Só o host muda. A dificuldade altera vida, dano, velocidade dos chefes e tempo de reviver.</p>
+        <div id="difficultyButtons" class="difficulty-buttons"></div>
+      </section>
+
+      <section class="glass panel players-panel">
+        <h3>Jogadores</h3>
+        <div id="playersList" class="players-list"></div>
+        <div class="start-row">
+          <button id="readyBtn" class="big-btn">Estou pronto</button>
+          <button id="startBtn" class="big-btn primary">Iniciar partida</button>
+        </div>
+      </section>
+
+      <section class="glass panel heroes-panel">
+        <div class="panel-title-row">
+          <div>
+            <h3>2. Escolha seu herói</h3>
+            <p class="muted">Só os heróis podem ser selecionados. Cada amigo escolhe um personagem diferente.</p>
+          </div>
+        </div>
+        <div id="heroCards" class="hero-cards"></div>
+      </section>
+
+      <aside class="glass panel art-panel">
+        <h3>Visual aprovado</h3>
+        <img src="assets/herois_2d_v9.png" alt="Heróis aprovados" />
+        <img src="assets/viloes_formas_2d_v2.png" alt="Vilões aprovados" />
+        <img src="assets/napoleao_boss_2d.png" alt="Napoleão" />
+      </aside>
+    </main>
+  </section>
+
+  <section id="gameScreen" class="screen game-screen">
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="game-hud top-hud glass">
+      <div>
+        <div class="tiny">Sala <strong id="hudRoom">----</strong> · <span id="hudDiff">Médio</span></div>
+        <h2 id="hudStage">Carregando...</h2>
+        <p id="hudSub">Prepare-se.</p>
+      </div>
+      <div class="hud-buttons">
+        <button id="backLobbyBtn" class="small-btn ghost">Lobby</button>
+      </div>
+    </div>
+
+    <div id="teamHud" class="team-hud glass"></div>
+    <div id="bossHud" class="boss-hud glass"></div>
+    <div id="messagesHud" class="messages-hud"></div>
+
+    <div class="controls">
+      <div id="joystick" class="joystick">
+        <div id="stick" class="stick"></div>
+      </div>
+      <div class="action-buttons">
+        <button id="attackTouch" class="action attack">ATACAR<span>Mouse/Espaço</span></button>
+        <button id="specialTouch" class="action special">HABILIDADE<span>Q</span></button>
+        <button id="ultimateTouch" class="action ultimate">ULTIMATE<span>E</span></button>
+      </div>
+    </div>
+
+    <div id="orientationHint" class="orientation-hint glass">
+      <h2>Vire o celular de lado</h2>
+      <p>Para jogar melhor, use o celular na horizontal, igual Brawl Stars: joystick à esquerda e botões à direita.</p>
+    </div>
+
+    <div id="endOverlay" class="end-overlay glass hidden">
+      <h1 id="endTitle">Fim</h1>
+      <p id="endText">Resultado</p>
+      <div class="end-actions">
+        <button id="playAgainBtn" class="big-btn primary">Voltar ao lobby</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="howToModal" class="modal-backdrop hidden">
+    <div class="how-modal glass">
+      <button id="closeHowToBtn" class="modal-close">×</button>
+      <h2>Como jogar</h2>
+      <div class="how-grid">
+        <article>
+          <h3>📱 Celular deitado</h3>
+          <ol>
+            <li>Vire o celular na horizontal.</li>
+            <li>Use o joystick da esquerda para andar.</li>
+            <li>Use os botões da direita para atacar, habilidade e ultimate.</li>
+            <li>No celular, a mira é automática no inimigo mais próximo.</li>
+          </ol>
+        </article>
+        <article>
+          <h3>💻 PC</h3>
+          <ol>
+            <li><strong>WASD</strong> ou setas: andar.</li>
+            <li><strong>Mouse</strong>: mirar.</li>
+            <li><strong>Clique esquerdo</strong> ou <strong>Espaço</strong>: atacar.</li>
+            <li><strong>Q</strong>: habilidade especial.</li>
+            <li><strong>E</strong>: ultimate quando carregar 100%.</li>
+          </ol>
+        </article>
+      </div>
+      <p class="muted">Objetivo: cinco amigos escolhem os heróis e derrotam os chefes em ordem. Os vilões não podem ser escolhidos.</p>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="client.js"></script>
+</body>
+</html>
