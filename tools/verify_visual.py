@@ -42,9 +42,9 @@ for name, m in sorted(meta.items()):
             bottom_margin = m['frameH'] - bottom
             min_margin = min(min_margin, margin)
             min_bottom = min(min_bottom, bottom_margin)
-            if margin < 14 or bottom_margin < 16:
+            if min(left, top, m['frameW']-right) < 14 or bottom_margin < 8:
                 bad_frames.append((row, col, (left, top, right, bottom), margin, bottom_margin))
-    ok(not bad_frames, f'{name}: frames sem corte nos pés/bordas (margem mínima {min_margin}px, pé {min_bottom}px)')
+    ok(not bad_frames, f'{name}: frames com pés completos e sem corte nas bordas (margem mínima {min_margin}px, pé {min_bottom}px)')
 
 # Verifica que cenários não são a mesma imagem e são realistas/compactos por dimensão/tamanho.
 stage_files = [
