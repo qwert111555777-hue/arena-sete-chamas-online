@@ -16,7 +16,7 @@
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; min-height: 100%; }
+html, body { margin: 0; min-height: 100%; width: 100%; height: 100%; }
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--text);
@@ -627,3 +627,113 @@ body.stage-intro-active .orientation-hint {
   transition: opacity .16s ease, transform .16s ease;
 }
 body.stage-intro-active .controls { transform: translateY(18px) scale(.98); }
+
+.fixed-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.16);
+  color: var(--muted);
+  background: rgba(0,0,0,.28);
+  font-size: .78rem;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+
+/* v12: layout celular primeiro. Nada de HUD enorme cobrindo pé/personagem quando vira a tela. */
+body.is-mobile .quality-label { display: none !important; }
+body.is-mobile .game-hud {
+  left: max(6px, env(safe-area-inset-left));
+  top: max(4px, env(safe-area-inset-top));
+  min-width: 0;
+  width: min(330px, 43vw);
+  max-width: 43vw;
+  padding: 6px 8px;
+  border-radius: 13px;
+  gap: 6px;
+}
+body.is-mobile .game-hud .tiny { font-size: .56rem; line-height: 1; }
+body.is-mobile .game-hud h2 {
+  margin: 1px 0 0;
+  font-size: .76rem;
+  line-height: 1.05;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.is-mobile .game-hud p { display: none; }
+body.is-mobile .hud-buttons { display: none; }
+body.is-mobile .team-hud,
+body.is-mobile .ability-hud { display: none !important; }
+body.is-mobile .boss-hud {
+  right: max(6px, env(safe-area-inset-right));
+  top: max(4px, env(safe-area-inset-top));
+  width: min(214px, 36vw);
+  padding: 6px;
+  border-radius: 13px;
+  max-height: 44vh;
+  overflow: hidden;
+}
+body.is-mobile .boss-line { margin-bottom: 5px; }
+body.is-mobile .boss-name { font-size: .70rem; line-height: 1.05; margin-bottom: 3px; }
+body.is-mobile .boss-skill,
+body.is-mobile .boss-line small { display: none !important; }
+body.is-mobile .boss-hud .bar { height: 5px; }
+body.is-mobile .controls {
+  bottom: max(4px, env(safe-area-inset-bottom));
+  padding: 0 max(7px, env(safe-area-inset-right)) 0 max(7px, env(safe-area-inset-left));
+}
+body.is-mobile .joystick {
+  width: 74px;
+  height: 74px;
+  opacity: .82;
+  background: rgba(255,255,255,.10);
+}
+body.is-mobile .stick { width: 34px; height: 34px; }
+body.is-mobile .action-buttons { gap: 6px; }
+body.is-mobile .action {
+  width: clamp(58px, 18vw, 86px);
+  min-width: 0;
+  height: 50px;
+  padding: 5px 6px;
+  border-radius: 14px;
+  font-size: .67rem;
+  line-height: 1.05;
+  box-shadow: 0 4px 0 rgba(0,0,0,.28), 0 10px 18px rgba(0,0,0,.22);
+}
+body.is-mobile .action span { font-size: .50rem; line-height: 1.05; }
+
+@media (orientation: landscape) and (max-height: 430px) {
+  .game-hud {
+    min-width: 0;
+    width: min(330px, 43vw);
+    max-width: 43vw;
+    padding: 6px 8px;
+  }
+  .game-hud p { display: none; }
+  .team-hud, .ability-hud { display: none !important; }
+  .boss-hud {
+    top: 4px;
+    right: 6px;
+    width: min(214px, 36vw);
+    padding: 6px;
+  }
+  .boss-skill, .boss-line small { display: none !important; }
+  .controls { bottom: 4px; padding: 0 7px; }
+  .joystick { width: 74px; height: 74px; }
+  .stick { width: 34px; height: 34px; }
+  .action-buttons { gap: 6px; }
+  .action { width: clamp(58px, 18vw, 86px); min-width: 0; height: 50px; padding: 5px 6px; font-size: .67rem; }
+  .action span { font-size: .50rem; }
+}
+@media (orientation: landscape) and (max-height: 285px) {
+  body.is-mobile .game-hud, .game-hud { display: none !important; }
+  body.is-mobile .boss-hud, .boss-hud { width: min(190px, 34vw); padding: 5px; }
+  body.is-mobile .joystick, .joystick { width: 64px; height: 64px; }
+  body.is-mobile .stick, .stick { width: 30px; height: 30px; }
+  body.is-mobile .action, .action { width: clamp(52px, 17vw, 70px); min-width: 0; height: 43px; font-size: .58rem; }
+  body.is-mobile .action span, .action span { display: none; }
+}

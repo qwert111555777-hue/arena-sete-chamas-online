@@ -10,7 +10,7 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '11';
+const ASSET_VERSION = '12';
 const SHOW_ARENA_TEXT = false;
 const SHOW_STAGE_INTRO = true;
 
@@ -159,10 +159,11 @@ const device = {
   memory: navigator.deviceMemory || 4,
   cores: navigator.hardwareConcurrency || 4
 };
-let qualitySetting = localStorage.getItem('arenaQuality') || 'auto';
-let quality = 'balanced';
+let qualitySetting = 'performance';
+let quality = 'performance';
 let dpr = 1;
 let view = { scale: 1, ox: 0, oy: 0, w: 1600, h: 900, cssW: 1600, cssH: 900 };
+let camera = { x: 800, y: 450, initialized: false };
 let lastCanvasW = 0;
 let lastCanvasH = 0;
 let lastDrawTime = 0;
@@ -176,37 +177,27 @@ let perfLevel = 0;
 const perfStats = { samples: [], lastCheck: 0, badChecks: 0, goodChecks: 0 };
 
 function resolveQuality() {
-  if (qualitySetting === 'max') return 'max';
-  if (qualitySetting === 'performance') return 'performance';
-  if (qualitySetting === 'balanced') return 'balanced';
-  // Auto prioriza não travar: celular fica desempenho, PC fica equilibrado.
-  if (device.mobile || device.memory <= 3 || device.cores <= 4) return 'performance';
-  return 'balanced';
+  // v12: modo único leve/universal. Sem escolha de gráfico, sem troca manual e sem layout quebrando no celular.
+  return 'performance';
 }
 
 function qualityDprCap() {
-  let cap = quality === 'max' ? (device.mobile ? 1.05 : 1.25) : quality === 'balanced' ? 0.95 : 0.75;
-  if (perfLevel >= 2) cap = Math.min(cap, 0.62);
-  else if (perfLevel >= 1) cap = Math.min(cap, 0.75);
+  let cap = device.mobile ? 0.88 : 1.0;
+  if (perfLevel >= 1) cap = Math.min(cap, 0.72);
   return cap;
 }
 
 function minDprCap() {
-  if (perfLevel >= 2) return 0.58;
-  if (perfLevel >= 1 || quality === 'performance') return 0.70;
-  return 0.82;
+  return device.mobile ? 0.62 : 0.70;
 }
 
 function getTargetFps() {
-  if (perfLevel >= 2) return 24;
   if (perfLevel >= 1) return 28;
-  if (quality === 'performance') return 30;
-  if (device.mobile && quality !== 'max') return 34;
-  return 45;
+  return device.mobile ? 30 : 36;
 }
 
 function setPerfLevel(level) {
-  level = clamp(level, 0, 2);
+  level = clamp(level, 0, 1);
   if (level === perfLevel) return;
   perfLevel = level;
   document.body.classList.toggle('perf-guard-1', perfLevel >= 1);
@@ -225,14 +216,14 @@ function recordFrameCost(dt) {
   const avg = perfStats.samples.reduce((a, b) => a + b, 0) / perfStats.samples.length;
   const slowFrames = perfStats.samples.filter(v => v > 45).length / perfStats.samples.length;
   const fps = 1000 / Math.max(1, avg);
-  if (fps < 22 || slowFrames > .32) {
+  if (fps < 18 || slowFrames > .45) {
     perfStats.badChecks++;
     perfStats.goodChecks = 0;
-    if (perfStats.badChecks >= 1) setPerfLevel(perfLevel + 1);
-  } else if (fps > 34 && slowFrames < .08) {
+    if (perfStats.badChecks >= 2) setPerfLevel(perfLevel + 1);
+  } else if (fps > 29 && slowFrames < .12) {
     perfStats.goodChecks++;
     perfStats.badChecks = 0;
-    if (perfStats.goodChecks >= 5) setPerfLevel(perfLevel - 1);
+    if (perfStats.goodChecks >= 6) setPerfLevel(perfLevel - 1);
   } else {
     perfStats.badChecks = 0;
     perfStats.goodChecks = 0;
@@ -244,8 +235,6 @@ function applyQuality() {
   quality = resolveQuality();
   document.body.classList.toggle('is-mobile', device.mobile);
   document.body.classList.toggle('quality-performance', quality === 'performance');
-  const select = $('qualitySelect');
-  if (select) select.value = qualitySetting;
   const badge = $('deviceBadge');
   if (badge) badge.textContent = device.mobile ? '📱 Modo celular detectado' : '💻 Modo PC detectado';
   resizeCanvas(true);
@@ -412,12 +401,10 @@ async function toggleFullscreen() {
 });
 document.addEventListener('fullscreenchange', () => resizeCanvas(true));
 
-$('qualitySelect').addEventListener('change', (e) => {
-  qualitySetting = e.target.value;
-  localStorage.setItem('arenaQuality', qualitySetting);
-  applyQuality();
-  toast(`Gráfico: ${e.target.options[e.target.selectedIndex].text}`);
-});
+const qualitySelect = document.getElementById('qualitySelect');
+if (qualitySelect) {
+  qualitySelect.addEventListener('change', () => applyQuality());
+}
 
 $('leaveBtn').addEventListener('click', () => {
   location.href = location.pathname;
@@ -596,7 +583,7 @@ function renderLobby() {
 function updateGameHud() {
   if (!game) return;
   $('hudRoom').textContent = game.code;
-  $('hudDiff').textContent = `${diffLabel(game.difficulty)} · ${quality === 'max' ? 'gráfico máximo' : quality === 'performance' ? 'desempenho' : 'equilibrado'}`;
+  $('hudDiff').textContent = `${diffLabel(game.difficulty)} · modo leve universal`;
   $('hudStage').textContent = `${game.stageIndex + 1}/${game.stageCount} · ${game.stageTitle}`;
   $('hudSub').textContent = game.stageCleared ? `Próxima fase em ${Math.max(0, Math.ceil(game.stageTimer))}...` : `${game.stageVenue || ''} · ${game.stageSubtitle}`;
 
@@ -672,9 +659,9 @@ function enemyIcon(type) {
 
 function resizeCanvas(force = false) {
   if (!canvas) return;
-  const rect = canvas.getBoundingClientRect();
-  const cssW = Math.max(1, Math.round(rect.width || innerWidth));
-  const cssH = Math.max(1, Math.round(rect.height || innerHeight));
+  const vv = window.visualViewport;
+  const cssW = Math.max(1, Math.round(vv?.width || innerWidth || canvas.getBoundingClientRect().width || 1));
+  const cssH = Math.max(1, Math.round(vv?.height || innerHeight || canvas.getBoundingClientRect().height || 1));
   const cap = qualityDprCap();
   const nextDpr = Math.max(minDprCap(), Math.min(window.devicePixelRatio || 1, cap));
   const nextW = Math.floor(cssW * nextDpr);
@@ -689,9 +676,58 @@ function resizeCanvas(force = false) {
   canvas.height = nextH;
   canvas.style.width = `${cssW}px`;
   canvas.style.height = `${cssH}px`;
+  bgCache = { key: null, quality: null, canvas: null };
+}
+function resetMobileInput() {
+  joystickVec = { x: 0, y: 0 };
+  joyPointer = null;
+  attackTouchDown = false;
+  const stickEl = $('stick');
+  if (stickEl) stickEl.style.transform = 'translate(-50%, -50%)';
+}
+function isFollowCameraMode() {
+  const ratio = Math.max(view.cssW, 1) / Math.max(view.cssH, 1);
+  return currentScreen === 'gameScreen' && !!game && (device.mobile || view.cssH < 520 || ratio > 2.05);
+}
+function getCameraTarget() {
+  const me = myGamePlayer();
+  if (me && !me.dead) return { x: me.x, y: me.y + 20 };
+  const alive = (game?.players || []).filter(p => !p.dead);
+  if (alive.length) return { x: alive.reduce((a,p)=>a+p.x,0)/alive.length, y: alive.reduce((a,p)=>a+p.y,0)/alive.length };
+  return { x: view.w / 2, y: view.h / 2 };
+}
+function updateCameraTransform() {
+  const world = game?.world || { w: 1600, h: 900 };
+  if (!isFollowCameraMode()) {
+    const scale = Math.min(view.cssW / world.w, view.cssH / world.h);
+    view = { ...view, scale, ox: (view.cssW - world.w * scale) / 2, oy: (view.cssH - world.h * scale) / 2, w: world.w, h: world.h };
+    camera.initialized = false;
+    return;
+  }
+  const fit = Math.min(view.cssW / world.w, view.cssH / world.h);
+  const targetScale = Math.max(view.cssW / world.w, view.cssH / 540);
+  const scale = clamp(targetScale, fit, device.mobile ? 0.72 : 0.82);
+  const target = getCameraTarget();
+  if (!camera.initialized) {
+    camera.x = target.x; camera.y = target.y; camera.initialized = true;
+  } else {
+    const follow = device.mobile ? 0.20 : 0.14;
+    camera.x += (target.x - camera.x) * follow;
+    camera.y += (target.y - camera.y) * follow;
+  }
+  const halfW = view.cssW / (2 * scale);
+  const halfH = view.cssH / (2 * scale);
+  camera.x = halfW >= world.w / 2 ? world.w / 2 : clamp(camera.x, halfW, world.w - halfW);
+  camera.y = halfH >= world.h / 2 ? world.h / 2 : clamp(camera.y, halfH, world.h - halfH);
+  view = { ...view, scale, ox: view.cssW / 2 - camera.x * scale, oy: view.cssH / 2 - camera.y * scale, w: world.w, h: world.h };
 }
 window.addEventListener('resize', () => resizeCanvas(true));
-window.addEventListener('orientationchange', () => setTimeout(() => resizeCanvas(true), 250));
+window.addEventListener('orientationchange', () => {
+  resetMobileInput();
+  [80, 250, 600, 1000].forEach(ms => setTimeout(() => resizeCanvas(true), ms));
+});
+if (window.visualViewport) window.visualViewport.addEventListener('resize', () => resizeCanvas(true));
+document.addEventListener('touchmove', (e) => { if (currentScreen === 'gameScreen') e.preventDefault(); }, { passive: false });
 
 function screenToWorld(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
@@ -881,7 +917,7 @@ function drawStageAnimation() {
   if (!game) return;
   const t = performance.now() / 1000;
   const key = game.stageBackground || '';
-  const light = perfLevel >= 2 || quality === 'performance';
+  const light = perfLevel >= 1;
   ctx.save();
   if (key.includes('lama_esgoto')) {
     // Poças de lama/esgoto borbulhando; detalhes leves para não travar.
@@ -890,16 +926,16 @@ function drawStageAnimation() {
       const x = 150 + (i * 137) % 1280;
       const y = 260 + (i * 89) % 360;
       const r = 20 + (i % 4) * 10 + Math.sin(t * 2 + i) * 4;
-      ctx.globalAlpha = light ? .11 : .18;
+      ctx.globalAlpha = light ? .18 : .32;
       ctx.fillStyle = i % 2 ? '#2b3a31' : '#4d3b21';
       ctx.beginPath(); ctx.ellipse(x, y, r * 1.35, r * .42, Math.sin(i) * .3, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = light ? .18 : .30;
+      ctx.globalAlpha = light ? .24 : .42;
       ctx.strokeStyle = '#9ed38b'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(x + Math.sin(t + i) * 12, y - 3, 4 + Math.sin(t * 4 + i) * 2, 0, Math.PI * 2); ctx.stroke();
     }
   } else if (key.includes('ifs_mito')) {
     // Pátio tecnológico: linhas digitais e brilhos rosa/roxo da Testa Astral.
-    ctx.globalAlpha = light ? .10 : .18;
+    ctx.globalAlpha = light ? .16 : .30;
     ctx.strokeStyle = '#80d8ff'; ctx.lineWidth = 2;
     for (let i = 0; i < (light ? 4 : 8); i++) {
       const y = 150 + i * 64 + Math.sin(t * 1.4 + i) * 4;
@@ -908,7 +944,7 @@ function drawStageAnimation() {
     for (let i = 0; i < (light ? 5 : 12); i++) {
       const x = 310 + (i * 83) % 920;
       const y = 145 + (i * 47) % 430;
-      drawSparkShape(x, y, 5 + (i % 3), i % 2 ? '#ff70df' : '#d9f2ff', (light ? .13 : .24) + Math.sin(t * 3 + i) * .05);
+      drawSparkShape(x, y, 5 + (i % 3), i % 2 ? '#ff70df' : '#d9f2ff', (light ? .20 : .38) + Math.sin(t * 3 + i) * .05);
     }
   } else if (key.includes('terreiro_lenda')) {
     // Velas, fumaça e energia mística sem caricaturar religião.
@@ -916,14 +952,14 @@ function drawStageAnimation() {
     for (let i = 0; i < candles; i++) {
       const x = 125 + (i * 121) % 1350;
       const y = 115 + (i * 77) % 630;
-      ctx.globalAlpha = .15 + Math.sin(t * 5 + i) * .05;
+      ctx.globalAlpha = .25 + Math.sin(t * 5 + i) * .08;
       ctx.fillStyle = '#ffd166';
       ctx.beginPath(); ctx.ellipse(x, y, 8, 15, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = light ? .06 : .11;
+      ctx.globalAlpha = light ? .18 : .34;
       ctx.fillStyle = '#d7d2ff';
       ctx.beginPath(); ctx.ellipse(x + Math.sin(t + i) * 12, y - 32 - (Math.sin(t * .8 + i) + 1) * 11, 12, 30, .25, 0, Math.PI * 2); ctx.fill();
     }
-    ctx.globalAlpha = light ? .12 : .22;
+    ctx.globalAlpha = light ? .18 : .34;
     ctx.strokeStyle = '#ffb12c'; ctx.lineWidth = light ? 2 : 4; ctx.setLineDash([12, 10]);
     ctx.beginPath(); ctx.arc(view.w/2, view.h/2 + 40, 120 + Math.sin(t)*7, 0, Math.PI*2); ctx.stroke();
   } else if (key.includes('supermercado_vanjo')) {
@@ -931,11 +967,11 @@ function drawStageAnimation() {
     for (let i = 0; i < (light ? 6 : 14); i++) {
       const x = 140 + (i * 102) % 1320;
       const y = 95 + (i % 4) * 135;
-      ctx.globalAlpha = (light ? .10 : .20) + Math.sin(t * 5 + i) * .05;
+      ctx.globalAlpha = (light ? .16 : .32) + Math.sin(t * 5 + i) * .05;
       ctx.fillStyle = i % 3 ? '#ffffff' : '#ffef9a';
       roundRect(ctx, x, y, 58, 9, 5); ctx.fill();
     }
-    ctx.strokeStyle = '#ff5757'; ctx.lineWidth = 3; ctx.globalAlpha = light ? .12 : .22;
+    ctx.strokeStyle = '#ff5757'; ctx.lineWidth = 3; ctx.globalAlpha = light ? .18 : .34;
     for (let i = 0; i < (light ? 3 : 7); i++) {
       const x = (t * 22 + i * 210) % view.w;
       const y = 690 - (i % 2) * 45;
@@ -949,11 +985,11 @@ function drawStageAnimation() {
       const x = 120 + (i * 91) % 1370;
       const y = 120 + (i * 67) % 610;
       const r = 5 + (i % 5) + Math.sin(t * 2.6 + i) * 2;
-      ctx.globalAlpha = light ? .12 : .22;
+      ctx.globalAlpha = light ? .18 : .34;
       ctx.fillStyle = i % 2 ? '#ff9f1c' : '#ffd166';
       ctx.beginPath(); ctx.arc(x, y + Math.sin(t + i) * 8, Math.max(2, r), 0, Math.PI * 2); ctx.fill();
     }
-    ctx.globalAlpha = light ? .10 : .19;
+    ctx.globalAlpha = light ? .16 : .30;
     ctx.strokeStyle = '#fff1a8'; ctx.lineWidth = light ? 3 : 6;
     for (let i = 0; i < (light ? 2 : 4); i++) {
       ctx.beginPath();
@@ -1280,7 +1316,7 @@ function drawSpriteImage(key, x, footY, height, facing = 1, alpha = 1, glow = nu
   const hitFlash = Number(action.hit || 0);
   const moving = !!motion?.moving || actionName === 'run';
   const phase = motion?.phase || performance.now() / 220;
-  const perf = quality === 'performance' || perfLevel >= 2;
+  const perf = perfLevel >= 1;
   const attackLike = actionName === 'attack' || actionName === 'melee';
   const specialLike = actionName === 'special' || actionName === 'ultimate' || actionName === 'revive';
   const hitLike = actionName === 'hit' || hitFlash > 0;
@@ -1290,10 +1326,10 @@ function drawSpriteImage(key, x, footY, height, facing = 1, alpha = 1, glow = nu
   const frameCol = (actionTimer > 0 && row !== SPRITE_ROWS.idle && actionName !== 'run')
     ? Math.min(sheet.cols - 1, Math.floor(actionProgress * sheet.cols))
     : Math.floor((phase * (moving ? 1.28 : .55)) % sheet.cols);
-  const bob = moving ? Math.abs(Math.sin(phase * 1.65)) * (perf ? 1.8 : 3.0) : Math.sin(phase) * (perf ? .35 : .8);
-  const tilt = (moving ? Math.sin(phase * 1.65) * (perf ? .012 : .025) : 0) * facing;
-  const lunge = attackLike ? facing * (perf ? 6 : 10) * Math.sin(actionProgress * Math.PI) : 0;
-  const pulse = specialLike ? 1 + Math.sin(actionProgress * Math.PI) * (perf ? .018 : .035) : 1;
+  const bob = moving ? Math.abs(Math.sin(phase * 1.9)) * (perf ? 2.6 : 4.6) : Math.sin(phase) * (perf ? .45 : 1.0);
+  const tilt = (moving ? Math.sin(phase * 1.9) * (perf ? .020 : .040) : 0) * facing;
+  const lunge = attackLike ? facing * (perf ? 9 : 16) * Math.sin(actionProgress * Math.PI) : 0;
+  const pulse = specialLike ? 1 + Math.sin(actionProgress * Math.PI) * (perf ? .028 : .055) : 1;
   const imageBottom = footY + pad + bob;
   const centerY = imageBottom - h / 2;
   const visualTop = imageBottom - h + pad;
@@ -1573,7 +1609,7 @@ function drawPlayer(p) {
   const x = motion.x, y = motion.y;
   const alpha = p.dead ? .36 : 1;
   const height = SPRITE_HEIGHT[p.hero] || 210;
-  const footY = y + 48;
+  const footY = y + 30;
   const facing = Math.abs(p.dirX || 0) > .12 ? ((p.dirX || 1) < 0 ? -1 : 1) : motion.facing;
 
   ctx.save();
@@ -1615,7 +1651,7 @@ function drawEnemy(e) {
   const x = motion.x, y = motion.y;
   const grow = e.type === 'napoleao' ? (e.grow || 1) : 1;
   const height = (SPRITE_HEIGHT[e.type] || 230) * grow;
-  const footY = y + e.radius + 34 * grow;
+  const footY = y + e.radius + 18 * grow;
   const facing = Math.abs(e.vx || 0) > 8 ? ((e.vx || 1) < 0 ? -1 : 1) : (x > view.w / 2 ? -1 : 1);
   const glow = e.hitFlash > 0 ? '#ff6b6b' : e.mark > 0 ? '#ff73cc' : (e.type === 'napoleao' ? '#ffd166' : e.color);
 
@@ -1831,9 +1867,10 @@ function drawCooldownOverlay() {
   $('attackTouch').style.filter = attackReady ? 'brightness(1)' : 'grayscale(.25) brightness(.86)';
   $('specialTouch').style.filter = specialReady ? 'brightness(1)' : 'grayscale(.45) brightness(.75)';
   $('ultimateTouch').style.filter = ultimateReady ? 'brightness(1.15)' : 'grayscale(.45) brightness(.75)';
-  setButtonHtml('attackTouch', h.attackName || 'ATACAR', attackReady ? 'clique/espaço' : `${Math.ceil(me.attackCd)}s`);
-  setButtonHtml('specialTouch', h.specialName || 'HABILIDADE', specialReady ? 'Q pronto' : `Q · ${Math.ceil(me.specialCd)}s`);
-  setButtonHtml('ultimateTouch', h.ultimateName || 'ULTIMATE', ultimateReady ? 'E pronto' : `E · ${Math.round(me.ultimate || 0)}%`);
+  const compact = device.mobile || view.cssH < 430;
+  setButtonHtml('attackTouch', compact ? 'ATK' : (h.attackName || 'ATACAR'), attackReady ? (compact ? 'pronto' : 'clique/espaço') : `${Math.ceil(me.attackCd)}s`);
+  setButtonHtml('specialTouch', compact ? 'HAB' : (h.specialName || 'HABILIDADE'), specialReady ? (compact ? 'Q' : 'Q pronto') : `Q · ${Math.ceil(me.specialCd)}s`);
+  setButtonHtml('ultimateTouch', compact ? 'ULT' : (h.ultimateName || 'ULTIMATE'), ultimateReady ? (compact ? 'E' : 'E pronto') : `E · ${Math.round(me.ultimate || 0)}%`);
 }
 
 
@@ -1846,6 +1883,7 @@ function draw(t = 0) {
   const frameDt = t - lastDrawTime;
   lastDrawTime = t;
 
+  updateCameraTransform();
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, view.cssW, view.cssH);
   ctx.fillStyle = '#120914'; ctx.fillRect(0, 0, view.cssW, view.cssH);

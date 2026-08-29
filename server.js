@@ -6,8 +6,8 @@ const { Server } = require('socket.io');
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const WORLD = { w: 1600, h: 900 };
-const PLAYER_BOUNDS = { minX: 92, maxX: WORLD.w - 92, minY: 215, maxY: WORLD.h - 245 };
-const ENEMY_BOUNDS = { minX: 105, maxX: WORLD.w - 105, minY: 285, maxY: WORLD.h - 245 };
+const PLAYER_BOUNDS = { minX: 92, maxX: WORLD.w - 92, minY: 215, maxY: WORLD.h - 300 };
+const ENEMY_BOUNDS = { minX: 105, maxX: WORLD.w - 105, minY: 285, maxY: WORLD.h - 300 };
 const MAX_PLAYERS = 5;
 
 const MIME = {
@@ -357,6 +357,10 @@ function initializePlayers(room) {
     p.damageBoost = 1;
     p.damageBoostTimer = 0;
     p.slowTimer = 0;
+    p.dodgeTimer = 0;
+    p.dodgeChance = 0;
+    p.ego = 0;
+    p.egoTimer = 0;
     p.respawnTimer = 0;
     p.dead = false;
     p.kills = 0;

@@ -2,9 +2,9 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Arena das Sete Chamas Online</title>
-  <link rel="stylesheet" href="styles.css?v=11" />
+  <link rel="stylesheet" href="styles.css?v=12" />
 </head>
 <body>
   <div id="toast" class="toast"></div>
@@ -114,14 +114,7 @@
         <p id="hudSub">Prepare-se.</p>
       </div>
       <div class="hud-buttons">
-        <label class="quality-label">Gráfico
-          <select id="qualitySelect">
-            <option value="auto">Auto</option>
-            <option value="max">Máximo</option>
-            <option value="balanced">Equilibrado</option>
-            <option value="performance">Desempenho</option>
-          </select>
-        </label>
+        <span class="fixed-mode-pill">Modo leve único</span>
         <button id="fullscreenGameBtn" class="small-btn ghost">Tela cheia</button>
         <button id="backLobbyBtn" class="small-btn ghost">Lobby</button>
       </div>
@@ -191,6 +184,6 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="client.js?v=11"></script>
+  <script src="client.js?v=12"></script>
 </body>
 </html>
