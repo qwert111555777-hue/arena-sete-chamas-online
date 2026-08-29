@@ -136,10 +136,12 @@ const server = http.createServer((req, res) => {
         return;
       }
       const ext = path.extname(filePath).toLowerCase();
-      res.writeHead(200, {
+      const headers = {
         'Content-Type': MIME[ext] || 'application/octet-stream',
-        'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=3600'
-      });
+        'Cache-Control': ext === '.html' || ext === '.apk' ? 'no-cache' : 'public, max-age=3600'
+      };
+      if (ext === '.apk') headers['Content-Disposition'] = 'attachment; filename="ArenaSeteChamas.apk"';
+      res.writeHead(200, headers);
       res.end(data);
     });
   } catch (err) {
@@ -206,6 +208,30 @@ function makeRoom(hostId) {
 
 function defaultInput() {
   return { mx: 0, my: 0, aimX: null, aimY: null, attack: false, special: false, ultimate: false };
+}
+
+
+function detachSocketFromCurrentRoom(socket, targetCode = null) {
+  const oldCode = socketRoom.get(socket.id);
+  if (!oldCode || oldCode === targetCode) return;
+  const oldRoom = rooms.get(oldCode);
+  if (oldRoom) {
+    const oldPlayer = oldRoom.players.get(socket.id);
+    if (oldPlayer) {
+      if (!oldRoom.started) oldRoom.players.delete(socket.id);
+      else { oldPlayer.connected = false; oldPlayer.input = defaultInput(); }
+    }
+    socket.leave(oldCode);
+    if (oldRoom.hostId === socket.id) {
+      const newHost = [...oldRoom.players.values()].find(p => p.connected);
+      oldRoom.hostId = newHost ? newHost.id : null;
+    }
+    oldRoom.lastActive = nowMs();
+    if ((oldRoom.players.size === 0 || !oldRoom.hostId) && !oldRoom.started) rooms.delete(oldCode);
+    else emitLobby(oldRoom);
+  }
+  socketRoom.delete(socket.id);
+  emitRoomList();
 }
 
 function addPlayer(room, socket, name) {
@@ -1252,6 +1278,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('createRoom', (payload = {}, cb = () => {}) => {
+    detachSocketFromCurrentRoom(socket);
     const room = makeRoom(socket.id);
     rooms.set(room.code, room);
     addPlayer(room, socket, payload.name);
@@ -1267,6 +1294,7 @@ io.on('connection', (socket) => {
     const connectedCount = [...room.players.values()].filter(p => p.connected).length;
     if (!room.players.has(socket.id) && connectedCount >= MAX_PLAYERS) return cb({ ok: false, error: 'Sala cheia.' });
     if (room.started && !room.players.has(socket.id)) return cb({ ok: false, error: 'A partida já começou. Crie outra sala.' });
+    detachSocketFromCurrentRoom(socket, code);
     if (!room.players.has(socket.id)) addPlayer(room, socket, payload.name);
     room.lastActive = nowMs();
     cb({ ok: true, code: room.code, playerId: socket.id, lobby: lobbySnapshot(room) });

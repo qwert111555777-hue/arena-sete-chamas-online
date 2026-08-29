@@ -10,7 +10,7 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '14';
+const ASSET_VERSION = '15';
 const SHOW_ARENA_TEXT = false;
 const SHOW_STAGE_INTRO = true;
 
@@ -156,6 +156,7 @@ const canvas = $('gameCanvas');
 const ctx = canvas.getContext('2d');
 const device = {
   mobile: /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1,
+  app: /ArenaSeteChamasAPK/i.test(navigator.userAgent),
   memory: navigator.deviceMemory || 4,
   cores: navigator.hardwareConcurrency || 4
 };
@@ -235,6 +236,7 @@ function applyQuality() {
   quality = resolveQuality();
   document.body.classList.toggle('is-mobile', device.mobile);
   document.body.classList.toggle('quality-performance', quality === 'performance');
+  document.body.classList.toggle('is-app', !!device.app);
   const badge = document.getElementById('deviceBadge');
   if (badge) badge.textContent = device.mobile ? '📱 Modo celular detectado' : '💻 Modo PC detectado';
   resizeCanvas(true);
@@ -408,11 +410,6 @@ async function toggleFullscreen() {
 });
 document.addEventListener('fullscreenchange', () => resizeCanvas(true));
 
-const qualitySelect = document.getElementById('qualitySelect');
-if (qualitySelect) {
-  qualitySelect.addEventListener('change', () => applyQuality());
-}
-
 $('leaveBtn').addEventListener('click', () => {
   location.href = location.pathname;
 });
@@ -473,17 +470,14 @@ function renderOpenRooms() {
     box.innerHTML = '<div class="empty-rooms">Nenhuma sala aberta.</div>';
     return;
   }
-  box.innerHTML = openRooms.map(room => {
-    const heroText = room.heroes?.length ? room.heroes.map(heroName).join(', ') : 'ninguém escolheu ainda';
-    return `<div class="open-room">
+  box.innerHTML = openRooms.map(room => `
+    <div class="open-room">
       <div>
         <strong>Sala ${room.code}</strong>
-        <small>Host: ${room.hostName || 'Host'} · ${room.players}/${room.maxPlayers} jogadores · ${diffLabel(room.difficulty)}</small>
-        <div class="room-meta"><span>${room.ready || 0} prontos</span><span>Heróis: ${heroText}</span></div>
+        <small>${room.players}/${room.maxPlayers}</small>
       </div>
       <button class="small-btn primary" data-join-room="${room.code}">Entrar</button>
-    </div>`;
-  }).join('');
+    </div>`).join('');
   box.querySelectorAll('[data-join-room]').forEach(btn => {
     btn.addEventListener('click', () => joinRoomByCode(btn.dataset.joinRoom));
   });
@@ -580,6 +574,8 @@ function updateGameHud() {
   $('hudDiff').textContent = `${diffLabel(game.difficulty)}`;
   $('hudStage').textContent = `${game.stageIndex + 1}/${game.stageCount} · ${game.stageTitle}`;
   $('hudSub').textContent = '';
+  const backBtn = $('backLobbyBtn');
+  if (backBtn) backBtn.style.display = game.gameOver ? 'inline-flex' : 'none';
 
   const team = $('teamHud');
   team.innerHTML = game.players.map(p => {
@@ -600,13 +596,10 @@ function updateGameHud() {
   drawCooldownOverlay();
 
   const boss = $('bossHud');
-  boss.innerHTML = game.enemies.filter(e => e.hp > 0).map(e => {
-    const info = ENEMY_INFO[e.type] || { icon: '👾' };
-    return `<div class="boss-line">
-      <div class="boss-name"><span>${info.icon} ${e.name}</span><span>${Math.round(e.hp)}/${e.maxHp}</span></div>
-      <div class="bar"><span class="hpbar" style="width:${pct(e.hp, e.maxHp)}%; background:linear-gradient(90deg,#ff6262,#ffcc5c)"></span></div>
-    </div>`;
-  }).join('') || '<strong>OK</strong>';
+  boss.innerHTML = game.enemies.filter(e => e.hp > 0).map(e => `
+    <div class="boss-line" title="${e.name}">
+      <div class="bar boss-only-bar"><span class="hpbar" style="width:${pct(e.hp, e.maxHp)}%; background:linear-gradient(90deg,#ff6262,#ffcc5c)"></span></div>
+    </div>`).join('');
 
   const msgHud = $('messagesHud');
   if (msgHud) msgHud.innerHTML = '';

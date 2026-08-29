@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Arena das Sete Chamas Online</title>
-  <link rel="stylesheet" href="styles.css?v=14" />
+  <link rel="stylesheet" href="styles.css?v=15" />
 </head>
 <body>
   <div id="toast" class="toast"></div>
@@ -37,6 +37,7 @@
       </section>
 
       <div class="menu-actions">
+        <a id="apkBtn" class="small-btn ghost apk-btn" href="/ArenaSeteChamas.apk" download>APK</a>
         <button id="fullscreenMenuBtn" class="small-btn ghost" type="button">Tela cheia</button>
       </div>
     </main>
@@ -86,13 +87,13 @@
     <canvas id="gameCanvas"></canvas>
 
     <div class="game-hud top-hud glass">
-      <div>
-        <h2 id="hudStage">Carregando...</h2>
-        <div class="hidden-game-info">Sala <strong id="hudRoom">----</strong> · <span id="hudDiff">Médio</span><span id="hudSub"></span></div>
-      </div>
       <div class="hud-buttons">
         <button id="fullscreenGameBtn" class="small-btn ghost">Tela cheia</button>
         <button id="backLobbyBtn" class="small-btn ghost">Lobby</button>
+      </div>
+      <div class="hidden-game-info">
+        <h2 id="hudStage">Carregando...</h2>
+        Sala <strong id="hudRoom">----</strong> · <span id="hudDiff">Médio</span><span id="hudSub"></span>
       </div>
     </div>
 
@@ -127,6 +128,6 @@
 
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="client.js?v=14"></script>
+  <script src="client.js?v=15"></script>
 </body>
 </html>

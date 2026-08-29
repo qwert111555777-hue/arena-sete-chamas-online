@@ -26,9 +26,9 @@ const assetMatches = [...(html + css + js).matchAll(/assets\/[A-Za-z0-9_\.\-\/]+
 const missingAssets = [...new Set(assetMatches)].filter(a => !exists(path.join('public', a)));
 ok(missingAssets.length === 0, `sem assets faltando${missingAssets.length ? ': ' + missingAssets.join(', ') : ''}`);
 
-ok(/client\.js\?v=14/.test(html), 'HTML usando client.js?v=14 para limpar cache');
-ok(/styles\.css\?v=14/.test(html), 'HTML usando styles.css?v=14 para limpar cache');
-ok(/ASSET_VERSION = '14'/.test(js), 'assets com versao v14');
+ok(/client\.js\?v=15/.test(html), 'HTML usando client.js?v=15 para limpar cache');
+ok(/styles\.css\?v=15/.test(html), 'HTML usando styles.css?v=15 para limpar cache');
+ok(/ASSET_VERSION = '15'/.test(js), 'assets com versao v15');
 ok(!/assets\/sprites_opt\//.test(js), 'cliente nao carrega sprites antigos pesados');
 ok(/assets\/spritesheets\//.test(js), 'cliente usa spritesheets animados');
 ok(/perfLevel/.test(js) && /recordFrameCost/.test(js) && /setPerfLevel/.test(js), 'guarda anti-lag dinamico existe');
@@ -51,7 +51,14 @@ ok(/v12: layout celular primeiro/.test(css) && /max-height: 285px/.test(css) && 
 
 ok(!/Como jogar/.test(html), 'sem botao/modal de informacoes Como jogar');
 ok(!/Instruções rápidas|Objetivo:|Habilidades e tempos|Como começar|gráfico/.test(html), 'tela inicial/lobby sem textos informativos excessivos');
-ok(/hidden-game-info/.test(html) && /ability-hud \{ display: none/.test(css), 'gameplay sem paineis informativos extras');
+ok(/hidden-game-info/.test(html) && /ability-hud \{ display: none/.test(css) && /team-hud \{ display: none/.test(css), 'gameplay sem paineis informativos extras');
+ok(/game-hud h2[\s\S]*display: none/.test(css) && /backLobbyBtn'\);[\s\S]*game\.gameOver/.test(js), 'gameplay sem titulo de fase e lobby escondido durante luta');
+ok(/controls \{ display: none/.test(css) && /body\.is-mobile \.controls \{ display: flex/.test(css), 'botoes de toque escondidos no PC e visiveis no celular');
+ok(/boss-only-bar/.test(js + css) && !/boss-name/.test(js), 'boss HUD sem texto, apenas barras');
+ok(/href="\/ArenaSeteChamas.apk"/.test(html) && /Content-Disposition/.test(server) && /application\/vnd\.android\.package-archive/.test(server), 'APK baixavel no mesmo dominio');
+ok(/ArenaSeteChamasAPK/.test(js) && /body\.classList\.toggle\('is-app'/.test(js), 'APK detectado e botao APK escondido dentro do app');
+ok(/detachSocketFromCurrentRoom/.test(server), 'socket nao fica preso em duas salas');
+ok(!/qualitySelect/.test(js), 'sem codigo morto do seletor de desempenho');
 
 const stageFiles = [
   'public/assets/stages/stage1_lama_esgoto.jpg',
