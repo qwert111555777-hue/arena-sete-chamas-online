@@ -390,7 +390,7 @@ function spawnStage(room) {
       stun: 0, slow: 0, mark: 0, forcedTarget: null, forcedTimer: 0,
       invisible: false, vanishTimer: 0, vanishCd: 3.2,
       foodTimer: 5.5, grow: 1,
-      action: 'idle', actionTimer: 0,
+      action: 'idle', actionTimer: 0, decoyHits: 0,
       hitFlash: 0
     };
     clampEntity(enemy, ENEMY_BOUNDS);
@@ -460,7 +460,8 @@ function addEffect(room, effect) {
 }
 
 function addFloatingText(room, x, y, text, color = '#fff') {
-  addEffect(room, { type: 'text', x, y, text, color, ttl: 0.9, life: 0.9 });
+  // A pedido: sem números/frases flutuando na arena. Mantemos apenas efeitos visuais.
+  return;
 }
 
 function giveUltimate(p, amount) {
@@ -475,6 +476,11 @@ function damageEnemy(room, enemy, amount, fromPlayer, options = {}) {
   if (enemy.mark > 0) final *= 1.28;
   if (options.crit) final *= 1.45;
   final = Math.max(1, Math.round(final));
+  if ((enemy.decoyHits || 0) > 0) {
+    enemy.decoyHits = Math.max(0, enemy.decoyHits - 1);
+    final = Math.max(1, Math.round(final * 0.35));
+    addEffect(room, { type: 'illusionBreak', x: enemy.x + rand(-28, 28), y: enemy.y + rand(-18, 18), r: enemy.radius + 44, color: '#ba7cff', ttl: 0.55, life: 0.55 });
+  }
   enemy.hp = Math.max(0, enemy.hp - final);
   enemy.hitFlash = 0.16;
   if ((enemy.actionTimer || 0) <= 0.12) setAction(enemy, enemy.hp <= 0 ? 'defeat' : 'hit', enemy.hp <= 0 ? 0.8 : 0.18);
@@ -531,6 +537,7 @@ function spawnPlayerProjectile(room, p, cfg) {
     vx: dir.x * cfg.speed, vy: dir.y * cfg.speed,
     radius: cfg.radius || 9, damage: cfg.damage || 10,
     ttl: cfg.ttl || 1.2, color: cfg.color || '#fff', pierce: cfg.pierce || 0,
+    shape: cfg.shape || '',
     slow: cfg.slow || 0, stun: cfg.stun || 0, mark: cfg.mark || 0
   });
 }
@@ -547,6 +554,7 @@ function spawnEnemyProjectile(room, e, target, cfg = {}) {
     vx: dx * (cfg.speed || 430), vy: dy * (cfg.speed || 430),
     radius: cfg.radius || 11, damage: cfg.damage || e.dmg,
     ttl: cfg.ttl || 1.6, color: cfg.color || e.color, pierce: cfg.pierce || 0,
+    shape: cfg.shape || '',
     slow: cfg.slow || 0, label: cfg.label || ''
   });
 }
@@ -576,12 +584,12 @@ function playerNormalAttack(room, p) {
   }
 
   if (p.hero === 'geovanna') {
-    spawnPlayerProjectile(room, p, { dir, speed: 560, radius: 12, damage: 13, color: '#ff77c8', slow: 1.1, ttl: 1.3 });
+    spawnPlayerProjectile(room, p, { dir, speed: 560, radius: 12, damage: 13, color: '#ff77c8', slow: 1.1, ttl: 1.3, shape: 'heart' });
   } else if (p.hero === 'romulo') {
-    spawnPlayerProjectile(room, p, { dir, speed: 620, radius: 10, damage: 16, color: '#c9f2ff', ttl: 1.22 });
+    spawnPlayerProjectile(room, p, { dir, speed: 620, radius: 10, damage: 16, color: '#c9f2ff', ttl: 1.22, shape: 'card' });
   } else if (p.hero === 'arthur') {
     const crit = Math.random() < 0.13;
-    spawnPlayerProjectile(room, p, { dir, speed: 690, radius: 9, damage: crit ? 23 : 15, color: crit ? '#fffb8a' : '#18d4ff', ttl: 1.1 });
+    spawnPlayerProjectile(room, p, { dir, speed: 690, radius: 9, damage: crit ? 23 : 15, color: crit ? '#fffb8a' : '#18d4ff', ttl: 1.1, shape: 'codeSlash' });
     if (crit) {
       p.damageBoost = Math.max(p.damageBoost || 1, 1.12);
       p.damageBoostTimer = Math.max(p.damageBoostTimer || 0, 1.8);
@@ -589,7 +597,7 @@ function playerNormalAttack(room, p) {
     }
   } else if (p.hero === 'guilherme') {
     p.aura = clamp((p.aura || 0) + 4, 0, 100);
-    spawnPlayerProjectile(room, p, { dir, speed: 600, radius: 11, damage: 13 + Math.floor((p.aura || 0) / 20), color: '#8ff6ff', ttl: 1.25 });
+    spawnPlayerProjectile(room, p, { dir, speed: 600, radius: 11, damage: 13 + Math.floor((p.aura || 0) / 20), color: '#8ff6ff', ttl: 1.25, shape: 'auraBlade' });
   }
 }
 
@@ -949,30 +957,50 @@ function updateEnemies(room, dt) {
         addEffect(room, { type: 'ring', x: e.x, y: e.y, r: 80, color: '#83ffae', ttl: 0.45, life: 0.45 });
       }
       if (d < 115) enemyMelee(room, e, target, 92, e.dmg, '#ff9861');
-      else spawnEnemyProjectile(room, e, target, { speed: 440, radius: 14, damage: e.dmg * 0.78, slow: 1.0, color: '#ff9861', label: 'manipulação' });
+      else spawnEnemyProjectile(room, e, target, { speed: 440, radius: 14, damage: e.dmg * 0.78, slow: 1.0, color: '#ff9861', label: 'manipulação', shape: 'lure' });
       e.attackCd = 1.25;
     } else if (e.type === 'anielle') {
-      spawnEnemyProjectile(room, e, target, { speed: 500, radius: 12, damage: e.dmg, slow: 0.9, color: '#ba7cff', label: 'fofoca' });
+      // Língua Grande: golpe visual em cone/onda de fofoca, sem texto na tela.
+      setAction(e, 'attack', 0.48);
+      const tx = target.x, ty = target.y;
+      addEffect(room, { type: 'gossipWave', x: e.x, y: e.y, x2: tx, y2: ty, r: 85, color: '#ba7cff', ttl: 0.42, life: 0.42 });
+      damagePlayer(room, target, e.dmg * 0.88, e.name, { slow: 0.9 });
+      for (const p of room.players.values()) {
+        if (p !== target && !p.dead && Math.hypot(p.x - tx, p.y - ty) < 95) damagePlayer(room, p, e.dmg * 0.35, e.name, { slow: 0.5 });
+      }
       if (e.specialCd <= 0) {
-        setAction(e, 'special', 0.7);
-        for (const p of room.players.values()) if (!p.dead) p.slowTimer = Math.max(p.slowTimer || 0, 1.2);
+        // Falsidade: cria uma cópia ilusória que absorve parte do próximo golpe.
+        setAction(e, 'special', 0.78);
+        e.decoyHits = 1;
+        for (const p of room.players.values()) if (!p.dead) p.slowTimer = Math.max(p.slowTimer || 0, 1.0);
+        addEffect(room, { type: 'illusion', sprite: 'anielle', x: e.x + rand(-70, 70), y: e.y + rand(-35, 35), r: 90, color: '#ba7cff', ttl: 0.75, life: 0.75 });
         addEffect(room, { type: 'ring', x: e.x, y: e.y, r: 190, color: '#ba7cff', ttl: 0.5, life: 0.5 });
         e.specialCd = 5.5;
       }
       e.attackCd = 1.35;
     } else if (e.type === 'mito') {
-      if (d < 145) enemyMelee(room, e, target, 115, e.dmg * 0.9, '#ff70df');
-      else spawnEnemyProjectile(room, e, target, { speed: 585, radius: 15, damage: e.dmg, slow: 1.4, color: '#ff70df', label: 'gloss' });
+      // Mito NÃO arremessa gloss. O ataque é Testa Astral: feixe da testa.
+      setAction(e, 'attack', 0.52);
+      if (d < 150) enemyMelee(room, e, target, 112, e.dmg * 0.72, '#ff70df');
+      else {
+        addEffect(room, { type: 'beam', x: e.x, y: e.y - 34, x2: target.x, y2: target.y - 18, r: 18, color: '#ff70df', ttl: 0.35, life: 0.35 });
+        damagePlayer(room, target, e.dmg * 0.86, e.name, { slow: 0.8 });
+      }
       if (e.specialCd <= 0) {
-        setAction(e, 'special', 0.62);
-        const tx = target.x, ty = target.y;
-        addEffect(room, { type: 'hazard', x: tx, y: ty, r: 120, color: '#ff70df', ttl: 1.0, life: 1.0 });
-        for (const p of room.players.values()) {
-          if (!p.dead && Math.hypot(p.x - tx, p.y - ty) < 135) damagePlayer(room, p, e.dmg * 0.55, e.name, { slow: 1.5 });
+        // Gloss Caótico: o chão fica escorregadio em poças brilhantes, não é projétil.
+        setAction(e, 'special', 0.75);
+        const centers = [...room.players.values()].filter(p => !p.dead).slice(0, 3).map(p => ({ x: p.x + rand(-35, 35), y: p.y + rand(-25, 25) }));
+        if (!centers.length) centers.push({ x: target.x, y: target.y });
+        for (const c of centers) {
+          addEffect(room, { type: 'puddle', x: c.x, y: c.y, r: 115, color: '#ff70df', ttl: 1.35, life: 1.35 });
+          for (const p of room.players.values()) {
+            if (!p.dead && Math.hypot(p.x - c.x, p.y - c.y) < 128) damagePlayer(room, p, e.dmg * 0.35, e.name, { slow: 1.7 });
+          }
         }
+        addEffect(room, { type: 'ring', x: e.x, y: e.y, r: 220, color: '#ff70df', ttl: 0.58, life: 0.58 });
         e.specialCd = 4.8;
       }
-      e.attackCd = 0.95;
+      e.attackCd = 1.05;
     } else if (e.type === 'lenda') {
       if (e.specialCd <= 0 && d > 145) {
         const chargeX = dx / d, chargeY = dy / d;
@@ -997,7 +1025,7 @@ function updateEnemies(room, dt) {
         addMessage(room, 'Vanjo usou Sumiço!', 'bad');
       } else {
         if (d < 140) enemyMelee(room, e, target, 125, e.dmg, '#ff5757');
-        else spawnEnemyProjectile(room, e, target, { speed: 410, radius: 18, damage: e.dmg * 0.82, color: '#ff5757', label: 'caixa' });
+        else spawnEnemyProjectile(room, e, target, { speed: 410, radius: 18, damage: e.dmg * 0.82, color: '#ff5757', label: 'caixa', shape: 'box' });
         e.attackCd = 1.45;
       }
     } else if (e.type === 'napoleao') {
@@ -1006,7 +1034,7 @@ function updateEnemies(room, dt) {
         e.hp = Math.min(e.maxHp, e.hp + Math.round(9 * diff.enemyHp));
         addFloatingText(room, e.x, e.y - e.radius - 18, '+lanche', '#ffd88a');
       } else {
-        spawnEnemyProjectile(room, e, target, { speed: 450, radius: 16, damage: e.dmg * 0.85, slow: 0.8, color: '#ffc86d', label: 'comida' });
+        spawnEnemyProjectile(room, e, target, { speed: 450, radius: 16, damage: e.dmg * 0.85, slow: 0.8, color: '#ffc86d', label: 'comida', shape: 'food' });
       }
       if (e.specialCd <= 0) {
         const tx = target.x, ty = target.y;
@@ -1111,15 +1139,16 @@ function gameSnapshot(room) {
       id: e.id, type: e.type, name: e.name, x: e.x, y: e.y, vx: Math.round(e.vx || 0), vy: Math.round(e.vy || 0),
       action: e.action || 'idle', actionTimer: e.actionTimer || 0,
       hp: Math.round(e.hp), maxHp: e.maxHp, radius: e.radius, color: e.color,
-      stun: e.stun, slow: e.slow, mark: e.mark, invisible: e.invisible, grow: e.grow || 1, hitFlash: e.hitFlash || 0,
+      stun: e.stun, slow: e.slow, mark: e.mark, invisible: e.invisible, grow: e.grow || 1, decoyHits: e.decoyHits || 0, hitFlash: e.hitFlash || 0,
       attackCd: e.attackCd || 0, specialCd: e.specialCd || 0, vanishCd: e.vanishCd || 0, foodTimer: e.foodTimer || 0
     })),
     projectiles: room.projectiles.map(p => ({
       id: p.id, owner: p.owner, hero: p.hero, enemyType: p.enemyType, x: p.x, y: p.y, vx: Math.round(p.vx || 0), vy: Math.round(p.vy || 0),
-      radius: p.radius, color: p.color, label: p.label || ''
+      radius: p.radius, color: p.color, shape: p.shape || '', label: p.label || ''
     })),
     effects: room.effects.map(fx => ({
-      id: fx.id, type: fx.type, x: fx.x, y: fx.y, r: fx.r, color: fx.color, ttl: fx.ttl, life: fx.life, text: fx.text
+      id: fx.id, type: fx.type, x: fx.x, y: fx.y, x2: fx.x2, y2: fx.y2, r: fx.r, color: fx.color, ttl: fx.ttl, life: fx.life,
+      shape: fx.shape, sprite: fx.sprite, angle: fx.angle, width: fx.width
     })),
     messages: room.messages
   };

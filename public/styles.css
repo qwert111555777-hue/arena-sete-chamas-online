@@ -612,3 +612,5 @@ body.quality-performance .hero-bg { filter: none; }
 .quick-rules { margin: 10px 0 0; padding-left: 20px; color: var(--muted); }
 .quick-rules li { margin: 8px 0; }
 .quick-rules strong { color: var(--gold); }
+/* Versão v8: sem mensagens flutuantes/texto extra durante a luta; ficam só HUD e barras essenciais. */
+.messages-hud { display: none !important; }
