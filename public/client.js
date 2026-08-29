@@ -10,7 +10,7 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '18';
+const ASSET_VERSION = '19';
 const SHOW_ARENA_TEXT = false;
 const SHOW_STAGE_INTRO = true;
 
@@ -671,28 +671,11 @@ function getCameraTarget() {
 }
 function updateCameraTransform() {
   const world = game?.world || { w: 1600, h: 900 };
-  if (!isFollowCameraMode()) {
-    const scale = Math.min(view.cssW / world.w, view.cssH / world.h);
-    view = { ...view, scale, ox: (view.cssW - world.w * scale) / 2, oy: (view.cssH - world.h * scale) / 2, w: world.w, h: world.h };
-    camera.initialized = false;
-    return;
-  }
-  const fit = Math.min(view.cssW / world.w, view.cssH / world.h);
-  const targetScale = Math.max(view.cssW / world.w, view.cssH / 540);
-  const scale = clamp(targetScale, fit, device.mobile ? 0.72 : 0.82);
-  const target = getCameraTarget();
-  if (!camera.initialized) {
-    camera.x = target.x; camera.y = target.y; camera.initialized = true;
-  } else {
-    const follow = device.mobile ? 0.20 : 0.14;
-    camera.x += (target.x - camera.x) * follow;
-    camera.y += (target.y - camera.y) * follow;
-  }
-  const halfW = view.cssW / (2 * scale);
-  const halfH = view.cssH / (2 * scale);
-  camera.x = halfW >= world.w / 2 ? world.w / 2 : clamp(camera.x, halfW, world.w - halfW);
-  camera.y = halfH >= world.h / 2 ? world.h / 2 : clamp(camera.y, halfH, world.h - halfH);
-  view = { ...view, scale, ox: view.cssW / 2 - camera.x * scale, oy: view.cssH / 2 - camera.y * scale, w: world.w, h: world.h };
+  // SEMPRE encaixa a arena inteira na tela (fit), centralizada. Não corta nada,
+  // em qualquer tamanho/forma: PC, ultrawide, janela estreita, celular deitado, APK.
+  const scale = Math.min(view.cssW / world.w, view.cssH / world.h);
+  view = { ...view, scale, ox: (view.cssW - world.w * scale) / 2, oy: (view.cssH - world.h * scale) / 2, w: world.w, h: world.h };
+  camera.initialized = false;
 }
 window.addEventListener('resize', () => resizeCanvas(true));
 window.addEventListener('orientationchange', () => {
@@ -856,6 +839,36 @@ function buildStageCache(img, bgKey) {
 
   bgCache = { key, quality, canvas: c };
   return c;
+}
+
+// Fundo em ESPAÇO DE TELA: cobre 100% da viewport (preenche faixas letterbox).
+let screenBgCache = { key: null, canvas: null };
+function buildScreenBg(img, bgKey) {
+  if (!assetReady(img)) return null;
+  const key = `screen-${bgKey}-${view.cssW}x${view.cssH}-${img.naturalWidth}x${img.naturalHeight}`;
+  if (screenBgCache.key === key && screenBgCache.canvas) return screenBgCache.canvas;
+  const c = document.createElement('canvas');
+  c.width = Math.max(2, Math.round(view.cssW * dpr));
+  c.height = Math.max(2, Math.round(view.cssH * dpr));
+  const g = c.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawImageCoverOn(g, img, 0, 0, view.cssW, view.cssH);
+  g.fillStyle = 'rgba(12, 6, 18, .55)';
+  g.fillRect(0, 0, view.cssW, view.cssH);
+  screenBgCache = { key, canvas: c };
+  return c;
+}
+function drawScreenBackground() {
+  const bgKey = game?.stageBackground || 'stage1_lama_esgoto';
+  const bg = getStageAsset(bgKey);
+  const fallback = getStageAsset('stage1_lama_esgoto');
+  const img = assetReady(bg) ? bg : fallback;
+  const cached = buildScreenBg(img, bgKey);
+  if (cached) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(cached, 0, 0, view.cssW * dpr, view.cssH * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
 }
 
 function drawArena() {
@@ -1863,6 +1876,8 @@ function draw(t = 0) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, view.cssW, view.cssH);
   ctx.fillStyle = '#120914'; ctx.fillRect(0, 0, view.cssW, view.cssH);
+  // fundo cobre a tela inteira (sem faixas pretas) em qualquer formato
+  if (game) drawScreenBackground();
 
   ctx.save();
   ctx.translate(view.ox, view.oy);
