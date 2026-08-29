@@ -10,8 +10,9 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '9';
+const ASSET_VERSION = '10';
 const SHOW_ARENA_TEXT = false;
+const SHOW_STAGE_INTRO = true;
 
 const HERO_INFO = {
   albert: {
@@ -168,6 +169,9 @@ let lastDrawTime = 0;
 let lastHudUpdate = 0;
 const spriteMotion = new Map();
 let bgCache = { key: null, quality: null, canvas: null };
+let stageIntroUntil = 0;
+let stageIntroData = null;
+let lastStageKey = '';
 let perfLevel = 0;
 const perfStats = { samples: [], lastCheck: 0, badChecks: 0, goodChecks: 0 };
 
@@ -308,7 +312,13 @@ socket.on('state', (data) => {
   prewarmCurrentAssets();
   if (currentScreen !== 'gameScreen') showScreen('gameScreen');
   const stageChanged = oldStage !== game.stageIndex;
-  if (stageChanged) resizeCanvas(true);
+  const stageKey = `${game.stageIndex}-${game.stageBackground}`;
+  if (stageChanged || stageKey !== lastStageKey) {
+    lastStageKey = stageKey;
+    stageIntroData = { title: game.stageTitle, venue: game.stageVenue, subtitle: game.stageSubtitle, idx: game.stageIndex, count: game.stageCount };
+    stageIntroUntil = performance.now() + Math.max(1800, (game.stageStartTimer || 2.6) * 1000);
+    resizeCanvas(true);
+  }
   const t = performance.now();
   if (stageChanged || game.gameOver || t - lastHudUpdate > 220) {
     lastHudUpdate = t;
@@ -624,10 +634,10 @@ function updateGameHud() {
   const overlay = $('endOverlay');
   if (game.gameOver) {
     overlay.classList.remove('hidden');
-    $('endTitle').textContent = game.victory ? 'Vitória!' : 'Derrota...';
+    $('endTitle').textContent = game.victory ? 'Vitória final!' : 'Ainda não acabou...';
     $('endText').textContent = game.victory
-      ? 'Vocês derrotaram Napoleão e salvaram a arena.'
-      : 'Todos os heróis caíram. Tentem de novo com outra estratégia.';
+      ? 'Agora que vocês venceram seus piores medos, respirem fundo, sigam leves e apenas sejam felizes.'
+      : 'Vocês caíram nesta tentativa, mas coragem também é levantar de novo e proteger quem está do lado.';
     $('playAgainBtn').textContent = isHost() ? 'Voltar ao lobby' : 'Aguardando host';
   } else {
     overlay.classList.add('hidden');
@@ -861,6 +871,101 @@ function drawArena() {
     ctx.beginPath(); ctx.arc(view.w / 2, view.h / 2, 132, 0, Math.PI * 2); ctx.stroke();
     ctx.restore();
   }
+}
+
+function drawStageAnimation() {
+  if (!game) return;
+  const t = performance.now() / 1000;
+  const key = game.stageBackground || '';
+  const light = perfLevel >= 2;
+  ctx.save();
+  if (key.includes('lagoa_porta')) {
+    ctx.globalAlpha = light ? .10 : .18;
+    ctx.strokeStyle = '#bcecff'; ctx.lineWidth = light ? 2 : 3;
+    for (let i = 0; i < (light ? 3 : 6); i++) {
+      const y = 155 + i * 25 + Math.sin(t * 1.5 + i) * 5;
+      ctx.beginPath();
+      ctx.moveTo(95, y);
+      ctx.bezierCurveTo(230, y + Math.sin(t + i) * 18, 340, y - 12, 455, y + 8);
+      ctx.stroke();
+    }
+    // folhas perto das árvores
+    ctx.fillStyle = '#7cc36a'; ctx.globalAlpha = light ? .10 : .16;
+    for (let i = 0; i < (light ? 8 : 16); i++) {
+      const a = t * .7 + i * .9;
+      ctx.beginPath(); ctx.ellipse(115 + (i * 63 % 370) + Math.sin(a) * 6, 90 + (i * 41 % 250) + Math.cos(a) * 4, 4, 2, a, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (key.includes('feira_coruja')) {
+    for (let i = 0; i < (light ? 8 : 18); i++) {
+      const x = 405 + (i % 3) * 250 + Math.sin(t + i) * 2;
+      const y = 95 + Math.floor(i / 3) * 78;
+      ctx.globalAlpha = (light ? .16 : .26) + Math.sin(t * 3 + i) * .07;
+      ctx.fillStyle = i % 2 ? '#ffd166' : '#75e6ff';
+      ctx.beginPath(); ctx.arc(x, y, light ? 4 : 6, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (key.includes('tanque_missionarios')) {
+    ctx.strokeStyle = '#bcecff'; ctx.lineWidth = light ? 2 : 3;
+    for (let i = 0; i < (light ? 3 : 6); i++) {
+      ctx.globalAlpha = (light ? .12 : .20) * (1 - i * .08);
+      ctx.beginPath(); ctx.ellipse(805, 250, 62 + i * 18 + Math.sin(t + i) * 3, 28 + i * 9, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+  } else if (key.includes('recanto_serra')) {
+    ctx.fillStyle = '#d9a35b';
+    for (let i = 0; i < (light ? 5 : 12); i++) {
+      const x = (t * 18 + i * 137) % view.w;
+      const y = 260 + (i * 53 % 360);
+      ctx.globalAlpha = light ? .10 : .18;
+      ctx.beginPath(); ctx.ellipse(x, y + Math.sin(t+i)*5, 5, 2.2, .5, 0, Math.PI*2); ctx.fill();
+    }
+  } else if (key.includes('riacho_curva')) {
+    ctx.strokeStyle = '#9fe8ff'; ctx.lineWidth = light ? 2 : 4;
+    for (let i = 0; i < (light ? 4 : 9); i++) {
+      ctx.globalAlpha = light ? .13 : .22;
+      const off = (t * 55 + i * 70) % 760;
+      ctx.beginPath();
+      ctx.moveTo(210 + off * .42, 180 + off * .18);
+      ctx.quadraticCurveTo(265 + off * .42, 198 + off * .18 + Math.sin(t+i)*10, 330 + off * .42, 182 + off * .18);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function drawStageIntro() {
+  if (!SHOW_STAGE_INTRO || !game) return;
+  const now = performance.now();
+  const serverHold = Math.max(0, game.stageStartTimer || 0);
+  if (now > stageIntroUntil && serverHold <= 0) return;
+  const data = stageIntroData || { title: game.stageTitle, venue: game.stageVenue, subtitle: game.stageSubtitle, idx: game.stageIndex, count: game.stageCount };
+  const remain = Math.max(serverHold, (stageIntroUntil - now) / 1000);
+  const pulse = .5 + Math.sin(now / 160) * .08;
+  ctx.save();
+  ctx.fillStyle = `rgba(5, 5, 10, ${serverHold > 0 ? .44 : .25})`;
+  ctx.fillRect(0, 0, view.w, view.h);
+  const w = Math.min(820, view.w - 130);
+  const h = 190;
+  const x = (view.w - w) / 2;
+  const y = 72;
+  const grd = ctx.createLinearGradient(x, y, x + w, y + h);
+  grd.addColorStop(0, 'rgba(255, 209, 102, .24)');
+  grd.addColorStop(0.45, 'rgba(20, 17, 28, .84)');
+  grd.addColorStop(1, 'rgba(112, 199, 255, .22)');
+  ctx.fillStyle = grd;
+  roundRect(ctx, x, y, w, h, 26); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = 2; roundRect(ctx, x, y, w, h, 26); ctx.stroke();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd166'; ctx.font = '900 22px system-ui, sans-serif';
+  ctx.fillText(`Fase ${Number(data.idx || 0) + 1}/${data.count || game.stageCount}`, view.w / 2, y + 40);
+  ctx.fillStyle = '#fff6dd'; ctx.font = '900 38px system-ui, sans-serif';
+  ctx.fillText(data.title || 'Arena', view.w / 2, y + 86);
+  ctx.fillStyle = '#d9f2ff'; ctx.font = '800 21px system-ui, sans-serif';
+  ctx.fillText(data.venue || '', view.w / 2, y + 120);
+  ctx.fillStyle = '#dac9ae'; ctx.font = '700 18px system-ui, sans-serif';
+  ctx.fillText(serverHold > 0 ? `Preparem-se... ${Math.ceil(remain)}` : (data.subtitle || ''), view.w / 2, y + 152);
+  ctx.globalAlpha = pulse;
+  ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.arc(view.w/2, y + h + 54, 35, -Math.PI/2, -Math.PI/2 + Math.PI*2*clamp(remain/2.8,0,1)); ctx.stroke();
+  ctx.restore();
 }
 
 function drawBar(x, y, w, h, value, max, color, back = '#0008') {
@@ -1114,6 +1219,85 @@ function drawSpriteImage(key, x, footY, height, facing = 1, alpha = 1, glow = nu
 }
 
 
+function drawBananaWand(x, y, size, facing, phase, alpha = .85) {
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, y); ctx.scale(facing, 1); ctx.rotate(Math.sin(phase) * .08);
+  ctx.strokeStyle = '#ffe36e'; ctx.lineWidth = Math.max(3, size * .18); ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(0, 0, size, -1.05, .9); ctx.stroke();
+  ctx.fillStyle = '#ff8ad6'; ctx.beginPath(); ctx.arc(size * .55, -size * .20, size * .22, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawController(x, y, size, facing, phase, alpha = .80) {
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, y); ctx.scale(facing, 1); ctx.rotate(Math.sin(phase) * .06);
+  ctx.fillStyle = '#20242b'; ctx.strokeStyle = '#bff3ff'; ctx.lineWidth = 2;
+  roundRect(ctx, -size * 1.1, -size * .55, size * 2.2, size * 1.1, size * .35); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-size*.63, 0); ctx.lineTo(-size*.32,0); ctx.moveTo(-size*.47,-size*.16); ctx.lineTo(-size*.47,size*.16); ctx.stroke();
+  ctx.fillStyle = '#7deda3'; ctx.beginPath(); ctx.arc(size*.45, -size*.1, size*.11, 0, Math.PI*2); ctx.arc(size*.70, size*.10, size*.11, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawStaff(x, y, length, color, facing, phase, alpha = .85) {
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, y); ctx.scale(facing, 1); ctx.rotate(-0.72 + Math.sin(phase) * .08);
+  ctx.strokeStyle = color; ctx.lineWidth = 5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(0, length * .45); ctx.lineTo(0, -length * .55); ctx.stroke();
+  ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 10;
+  ctx.beginPath(); ctx.arc(0, -length * .58, 9, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawDigitalBlade(x, y, length, facing, phase, alpha = .88) {
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, y); ctx.scale(facing, 1); ctx.rotate(-0.72 + Math.sin(phase * 1.5) * .08);
+  ctx.strokeStyle = '#18d4ff'; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.shadowColor = '#18d4ff'; ctx.shadowBlur = 12;
+  ctx.beginPath(); ctx.moveTo(0, length * .35); ctx.lineTo(0, -length * .55); ctx.stroke();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(5, length * .05); ctx.lineTo(5, -length * .45); ctx.stroke();
+  ctx.restore();
+}
+
+function drawHeroWeapon(p, x, y, footY, drawn, facing, motion) {
+  const phase = motion.phase;
+  const handY = drawn.top + drawn.visibleH * .48;
+  const active = ['attack', 'special', 'ultimate'].includes(p.action);
+  const power = active ? 1 : .72;
+  if (p.hero === 'albert') {
+    ctx.save(); ctx.globalAlpha = .82 * power; ctx.fillStyle = '#ffd84a'; ctx.strokeStyle = '#5c2a00'; ctx.lineWidth = 2;
+    const swing = p.action === 'attack' ? 18 : Math.sin(phase * 1.7) * 5;
+    ctx.beginPath(); ctx.arc(x + facing * (drawn.w * .24 + swing), handY - 2, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x - facing * drawn.w * .18, handY + 6, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  } else if (p.hero === 'geovanna') {
+    drawBananaWand(x + facing * drawn.w * .24, handY - 4, 20, facing, phase, .90 * power);
+  } else if (p.hero === 'romulo') {
+    drawController(x + facing * drawn.w * .23, handY, 17, facing, phase, .88 * power);
+  } else if (p.hero === 'arthur') {
+    drawDigitalBlade(x + facing * drawn.w * .25, handY, 62, facing, phase, .92 * power);
+  } else if (p.hero === 'guilherme') {
+    drawStaff(x + facing * drawn.w * .25, handY + 6, 82, '#8ff7ff', facing, phase, .90 * power);
+  }
+}
+
+function drawEnemyWeapon(e, x, y, footY, drawn, facing, motion) {
+  const phase = motion.phase;
+  const handY = drawn.top + drawn.visibleH * .50;
+  if (e.type === 'otavio') {
+    drawFoodShape(x + facing * drawn.w * .26, handY - 4, 13, '#ffcf72', phase, .86);
+  } else if (e.type === 'anielle') {
+    ctx.save(); ctx.globalAlpha = .55; ctx.strokeStyle = '#ba7cff'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x + facing * 18, handY - 8); ctx.quadraticCurveTo(x + facing * 45, handY - 20 + Math.sin(phase)*6, x + facing * 70, handY - 3); ctx.stroke();
+    ctx.restore();
+  } else if (e.type === 'mito') {
+    drawSparkShape(x + facing * drawn.w * .20, drawn.top + drawn.visibleH * .14, 16, '#ff70df', .85);
+  } else if (e.type === 'lenda') {
+    ctx.save(); ctx.globalAlpha = .62; ctx.strokeStyle = '#ffb12c'; ctx.lineWidth = 6; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(x - facing * 50, footY - 32); ctx.lineTo(x + facing * 56, footY - 34); ctx.stroke();
+    ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x - facing * 44, footY - 26, 15, 0, Math.PI*2); ctx.arc(x + facing * 42, footY - 26, 15, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+  } else if (e.type === 'vanjo') {
+    drawBoxShape(x + facing * drawn.w * .25, handY + 8, 17, '#ff5757', phase * .5, .86);
+  } else if (e.type === 'napoleao') {
+    drawFoodShape(x + facing * drawn.w * .18, drawn.top + drawn.visibleH * .45, 16, '#ffd88a', phase, .82);
+  }
+}
+
 function drawHeroPersonality(p, x, y, footY, drawn, facing, motion) {
   const meta = CHARACTER_ANIM[p.hero] || { color: '#fff', aura: '#fff' };
   const phase = motion.phase;
@@ -1125,6 +1309,7 @@ function drawHeroPersonality(p, x, y, footY, drawn, facing, motion) {
   ctx.save();
 
   drawExpressionMark(x + facing * drawn.w * .02, headY, Math.max(14, drawn.visibleH * .09), facing, mood, meta.color);
+  drawHeroWeapon(p, x, y, footY, drawn, facing, motion);
 
   if (p.shield > 0) {
     ctx.globalAlpha = .20 + .06 * Math.sin(phase * 2);
@@ -1192,6 +1377,7 @@ function drawEnemyPersonality(e, x, y, footY, drawn, facing, motion) {
   const handY = drawn.top + drawn.visibleH * .50;
   ctx.save();
   drawExpressionMark(x + facing * drawn.w * .02, headY, Math.max(15, drawn.visibleH * .10), facing, e.hitFlash > 0 ? 'hit' : 'evil', meta.color);
+  drawEnemyWeapon(e, x, y, footY, drawn, facing, motion);
 
   if (e.type === 'anielle') {
     // Reforço visual do cabelo cacheado e da fofoca: aparece por cima sem cortar o sprite.
@@ -1525,6 +1711,7 @@ function draw(t = 0) {
   ctx.translate(view.ox, view.oy);
   ctx.scale(view.scale, view.scale);
   drawArena();
+  drawStageAnimation();
 
   if (game) {
     const effects = game.effects || [];
@@ -1537,6 +1724,7 @@ function draw(t = 0) {
     for (const item of entities) item.kind === 'player' ? drawPlayer(item.data) : drawEnemy(item.data);
     drawAimLine();
     for (const fx of effects) if (fx.type === 'text') drawEffect(fx);
+    drawStageIntro();
   } else {
     ctx.fillStyle = '#fff6dd'; ctx.font = 'bold 42px system-ui'; ctx.textAlign = 'center';
     ctx.fillText('Arena das Sete Chamas', view.w/2, view.h/2);

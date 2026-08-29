@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "verify": "node --check server.js && node --check public/client.js && node tools/verify_game.js"
+    "verify": "node --check server.js && node --check public/client.js && node tools/verify_game.js && python3 tools/verify_visual.py"
   },
   "dependencies": {
     "socket.io": "^4.7.5"

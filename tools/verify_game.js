@@ -26,9 +26,9 @@ const assetMatches = [...(html + css + js).matchAll(/assets\/[A-Za-z0-9_\.\-\/]+
 const missingAssets = [...new Set(assetMatches)].filter(a => !exists(path.join('public', a)));
 ok(missingAssets.length === 0, `sem assets faltando${missingAssets.length ? ': ' + missingAssets.join(', ') : ''}`);
 
-ok(/client\.js\?v=9/.test(html), 'HTML usando client.js?v=9 para limpar cache');
-ok(/styles\.css\?v=9/.test(html), 'HTML usando styles.css?v=9 para limpar cache');
-ok(/ASSET_VERSION = '9'/.test(js), 'assets com versao v9');
+ok(/client\.js\?v=10/.test(html), 'HTML usando client.js?v=10 para limpar cache');
+ok(/styles\.css\?v=10/.test(html), 'HTML usando styles.css?v=10 para limpar cache');
+ok(/ASSET_VERSION = '10'/.test(js), 'assets com versao v10');
 ok(!/assets\/sprites_opt\//.test(js), 'cliente nao carrega sprites antigos pesados');
 ok(/assets\/spritesheets\//.test(js), 'cliente usa spritesheets animados');
 ok(/perfLevel/.test(js) && /recordFrameCost/.test(js) && /setPerfLevel/.test(js), 'guarda anti-lag dinamico existe');
@@ -37,6 +37,11 @@ ok(!/label: 'gloss'/.test(server), 'Mito nao tem projetil de gloss');
 ok(/type: 'beam'/.test(server) && /type: 'puddle'/.test(server), 'Mito usa Testa Astral + poça de Gloss Caotico');
 ok(/function addFloatingText[\s\S]*return;/.test(server), 'texto flutuante da arena desligado');
 ok(/messages-hud \{ display: none !important; \}/.test(css), 'mensagens da luta escondidas');
+ok(/SHOW_STAGE_INTRO/.test(js) && /drawStageIntro/.test(js) && /stageStartTimer/.test(server), 'inicio de fase com tela de preparo/countdown');
+ok(/drawStageAnimation/.test(js), 'cenario animado existe');
+ok(/drawHeroWeapon/.test(js) && /drawEnemyWeapon/.test(js), 'armas/itens visuais desenhados para personagens');
+ok(/venceram seus piores medos/.test(js) && !/miss[aã]o conclu/i.test(js + server + html), 'frase final motivadora e sem missao concluida');
+ok(/WORLD\.h - 245/.test(server), 'limite inferior seguro para nao esconder pes na UI');
 
 const stageFiles = [
   'public/assets/stages/stage1_lagoa_porta.jpg',

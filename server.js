@@ -6,8 +6,8 @@ const { Server } = require('socket.io');
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const WORLD = { w: 1600, h: 900 };
-const PLAYER_BOUNDS = { minX: 78, maxX: WORLD.w - 78, minY: 185, maxY: WORLD.h - 110 };
-const ENEMY_BOUNDS = { minX: 90, maxX: WORLD.w - 90, minY: 280, maxY: WORLD.h - 200 };
+const PLAYER_BOUNDS = { minX: 92, maxX: WORLD.w - 92, minY: 215, maxY: WORLD.h - 245 };
+const ENEMY_BOUNDS = { minX: 105, maxX: WORLD.w - 105, minY: 285, maxY: WORLD.h - 245 };
 const MAX_PLAYERS = 5;
 
 const MIME = {
@@ -188,6 +188,7 @@ function makeRoom(hostId) {
     victory: false,
     stageIndex: 0,
     stageTimer: 0,
+    stageStartTimer: 0,
     stageCleared: false,
     enemies: [],
     projectiles: [],
@@ -366,6 +367,7 @@ function spawnStage(room) {
   room.effects = [];
   room.stageCleared = false;
   room.stageTimer = 0;
+  room.stageStartTimer = 2.8;
 
   const spawnPositions = [
     [{ x: 1260, y: 370 }, { x: 1260, y: 530 }],
@@ -1078,7 +1080,7 @@ function handleStageAndGameOver(room, dt) {
       if (room.stageIndex >= STAGES.length - 1) {
         room.gameOver = true;
         room.victory = true;
-        addMessage(room, 'Vitória! Napoleão foi derrotado!', 'ultimate');
+        addMessage(room, 'Agora que vocês venceram seus piores medos, respirem fundo e sejam felizes.', 'ultimate');
       } else {
         room.stageIndex++;
         const healFactor = DIFFICULTY[room.difficulty].healBetween;
@@ -1100,6 +1102,11 @@ function handleStageAndGameOver(room, dt) {
 
 function updateRoom(room, dt) {
   if (!room.started || room.gameOver) return;
+  if (room.stageStartTimer > 0) {
+    room.stageStartTimer = Math.max(0, room.stageStartTimer - dt);
+    updateEffects(room, dt);
+    return;
+  }
   updatePlayers(room, dt);
   updateEnemies(room, dt);
   updateProjectiles(room, dt);
@@ -1123,6 +1130,7 @@ function gameSnapshot(room) {
     stageVenue: stage.venue,
     stageSubtitle: stage.subtitle,
     stageBackground: stage.background,
+    stageStartTimer: room.stageStartTimer || 0,
     stageCleared: room.stageCleared,
     stageTimer: room.stageTimer,
     players: [...room.players.values()].filter(p => p.hero).map(p => ({
