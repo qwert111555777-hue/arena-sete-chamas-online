@@ -812,3 +812,24 @@ body.is-mobile .game-hud { display: none !important; }
 .team-hud { display: none !important; }
 .controls { display: none; }
 body.is-mobile .controls { display: flex; }
+
+/* ===== APK (WebView): folga extra de entalhe/barra p/ nunca cortar ===== */
+body.is-app .controls {
+  left: max(26px, env(safe-area-inset-left, 0px)) !important;
+  right: max(26px, env(safe-area-inset-right, 0px)) !important;
+  bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 12px)) !important;
+}
+body.is-app .game-hud { left: max(16px, env(safe-area-inset-left, 0px)) !important; }
+body.is-app .boss-hud { right: max(16px, env(safe-area-inset-right, 0px)) !important; }
+body.is-app .joystick {
+  width: clamp(132px, 34vmin, 185px) !important;
+  height: clamp(132px, 34vmin, 185px) !important;
+}
+body.is-app .action {
+  width: clamp(104px, 26vmin, 150px) !important;
+  height: clamp(66px, 18vmin, 100px) !important;
+}
+body.is-app .action.attack {
+  width: clamp(120px, 30vmin, 178px) !important;
+  height: clamp(74px, 20vmin, 112px) !important;
+}
