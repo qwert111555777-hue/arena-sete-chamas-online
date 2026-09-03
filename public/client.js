@@ -10,7 +10,7 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '19';
+const ASSET_VERSION = '20';
 const SHOW_ARENA_TEXT = false;
 const SHOW_STAGE_INTRO = true;
 
@@ -309,6 +309,8 @@ socket.on('lobby', (data) => {
 socket.on('state', (data) => {
   const oldStage = game?.stageIndex;
   game = data;
+  window.game = data; window.meId = meId;
+  window.dispatchEvent(new Event('state:applied'));
   updateStageIntroClass();
   prewarmCurrentAssets();
   if (currentScreen !== 'gameScreen') showScreen('gameScreen');
@@ -1702,6 +1704,41 @@ function drawSmoke(x, y, r) {
 }
 
 
+function drawPickup(pk) {
+  const age = (performance.now() / 1000) - (pk.born || 0);
+  const bob = Math.sin(age * 4) * 4;
+  const isHp = pk.kind === 'hp';
+  const col = isHp ? '#56e08a' : '#c07dff';
+  const colDark = isHp ? '#1f8f4d' : '#6d3fb0';
+  const r = 15;
+  ctx.save();
+  ctx.translate(pk.x, pk.y + bob);
+  // pisca quando está prestes a sumir
+  if (pk.ttl < 3 && Math.floor(age * 6) % 2 === 0) ctx.globalAlpha = 0.35;
+  // brilho
+  ctx.shadowColor = col; ctx.shadowBlur = 22;
+  // frasco
+  ctx.fillStyle = colDark;
+  ctx.beginPath(); ctx.roundRect(-9, -6, 18, 20, 7); ctx.fill();
+  // líquido
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = col;
+  ctx.beginPath(); ctx.roundRect(-6, 0, 12, 11, 5); ctx.fill();
+  // rolha
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#caa46a';
+  ctx.fillRect(-4, -11, 8, 6);
+  // símbolo
+  ctx.fillStyle = 'rgba(255,255,255,.92)';
+  ctx.font = 'bold 13px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(isHp ? '✚' : '★', 0, 7);
+  // aro no chão
+  ctx.globalAlpha *= 0.5;
+  ctx.strokeStyle = col; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(0, 18 - bob, 14, 5, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+}
+
 function drawProjectile(pr) {
   ctx.save();
   const color = pr.color || '#fff';
@@ -1889,6 +1926,7 @@ function draw(t = 0) {
     const effects = game.effects || [];
     for (const fx of effects) if (fx.type !== 'text') drawEffect(fx);
     for (const pr of (game.projectiles || [])) drawProjectile(pr);
+    for (const pk of (game.pickups || [])) drawPickup(pk);
     const entities = [
       ...(game.players || []).map(p => ({ kind: 'player', y: p.y, data: p })),
       ...(game.enemies || []).map(e => ({ kind: 'enemy', y: e.y, data: e }))
@@ -1929,3 +1967,149 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {}
   });
 });
+
+// ============================================================
+// SOM (procedural via WebAudio, sem baixar arquivo) + VIBRAÇÃO
+// ============================================================
+(function () {
+  const SND_KEY = 'asc_snd_on', VIB_KEY = 'asc_vib_on';
+  let soundOn = localStorage.getItem(SND_KEY) !== '0';
+  let vibOn = localStorage.getItem(VIB_KEY) !== '0';
+  let actx = null, master = null;
+
+  function ensureCtx() {
+    if (!soundOn) return null;
+    if (!actx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      actx = new AC();
+      master = actx.createGain();
+      master.gain.value = 0.5;
+      master.connect(actx.destination);
+    }
+    if (actx.state === 'suspended') actx.resume().catch(() => {});
+    return actx;
+  }
+  // Tom básico com envelope
+  function tone(freq, dur, type = 'sine', vol = 0.25, when = 0, glideTo = null) {
+    const ac = ensureCtx(); if (!ac) return;
+    const t0 = ac.currentTime + when;
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t0);
+    if (glideTo) o.frequency.exponentialRampToValueAtTime(Math.max(30, glideTo), t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(master);
+    o.start(t0); o.stop(t0 + dur + 0.03);
+  }
+  function noise(dur, vol = 0.25, when = 0, freq = 1200, q = 0.8) {
+    const ac = ensureCtx(); if (!ac) return;
+    const t0 = ac.currentTime + when;
+    const len = Math.max(1, Math.floor(ac.sampleRate * dur));
+    const buf = ac.createBuffer(1, len, ac.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const src = ac.createBufferSource(); src.buffer = buf;
+    const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
+    const g = ac.createGain(); g.gain.value = vol;
+    src.connect(f); f.connect(g); g.connect(master);
+    src.start(t0);
+  }
+  const sfx = {
+    attack()  { noise(0.10, 0.14, 0, 900, 0.7); tone(180, 0.08, 'square', 0.07, 0, 120); },
+    hit()     { noise(0.08, 0.18, 0, 500, 0.6); tone(120, 0.10, 'triangle', 0.14, 0, 70); },
+    hurt()    { tone(220, 0.18, 'sawtooth', 0.20, 0, 90); noise(0.12, 0.12, 0, 350, 0.6); },
+    ultimate(){ tone(160, 0.5, 'sawtooth', 0.22, 0, 720); tone(320, 0.5, 'square', 0.10, 0.05, 900); noise(0.4, 0.16, 0.05, 1500, 0.5); },
+    special() { tone(420, 0.28, 'sine', 0.16, 0, 840); tone(630, 0.22, 'triangle', 0.10, 0.04); },
+    pickupHp(){ tone(523, 0.10, 'sine', 0.20, 0); tone(784, 0.14, 'sine', 0.20, 0.09); },
+    pickupUl(){ tone(440, 0.10, 'triangle', 0.20, 0); tone(660, 0.10, 'triangle', 0.20, 0.08); tone(880, 0.16, 'triangle', 0.18, 0.16); },
+    bossDie() { tone(300, 0.5, 'sawtooth', 0.22, 0, 60); noise(0.45, 0.20, 0.05, 400, 0.5); },
+    level()   { [523,659,784,1046].forEach((f,i)=>tone(f, 0.16, 'triangle', 0.18, i*0.09)); },
+    victory() { [523,659,784,1046,784,1046].forEach((f,i)=>tone(f, 0.22, 'triangle', 0.18, i*0.13)); },
+    defeat()  { [392,330,262,196].forEach((f,i)=>tone(f, 0.3, 'sawtooth', 0.16, i*0.16, f*0.85)); },
+    ui()      { tone(660, 0.06, 'sine', 0.12); }
+  };
+  function vibrate(pattern) {
+    if (!vibOn) return;
+    try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
+  }
+  // Destrava o áudio no primeiro toque/clique (política dos navegadores)
+  function unlock() { ensureCtx(); }
+  window.addEventListener('pointerdown', unlock, { once: false });
+  window.addEventListener('keydown', unlock, { once: false });
+
+  // Botões de ligar/desligar (ícones) no canto superior
+  function makeToggle(id, label, on, onToggle) {
+    const b = document.createElement('button');
+    b.id = id; b.type = 'button';
+    b.style.cssText = 'position:fixed;top:52px;z-index:99999;width:40px;height:40px;border-radius:50%;border:2px solid rgba(255,215,120,.6);background:rgba(20,10,28,.72);color:#ffd87a;font-size:18px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);';
+    b.setAttribute('aria-label', label);
+    const render = () => { b.textContent = on() ? b.dataset.onIcon : b.dataset.offIcon; b.style.opacity = on() ? '1' : '.45'; };
+    b.addEventListener('click', (e) => { e.stopPropagation(); onToggle(); render(); sfx.ui && unlock(); });
+    return { b, render };
+  }
+  window.addEventListener('DOMContentLoaded', () => {
+    const sBtn = makeToggle('sndToggle', 'Som', () => soundOn, () => {
+      soundOn = !soundOn; localStorage.setItem(SND_KEY, soundOn ? '1' : '0');
+      if (soundOn) ensureCtx();
+    });
+    sBtn.b.dataset.onIcon = '🔊'; sBtn.b.dataset.offIcon = '🔇'; sBtn.b.style.right = '58px';
+    const vBtn = makeToggle('vibToggle', 'Vibração', () => vibOn, () => {
+      vibOn = !vibOn; localStorage.setItem(VIB_KEY, vibOn ? '1' : '0');
+      if (vibOn) vibrate([30]);
+    });
+    vBtn.b.dataset.onIcon = '📳'; vBtn.b.dataset.offIcon = '📴'; vBtn.b.style.right = '10px';
+    document.body.appendChild(sBtn.b); document.body.appendChild(vBtn.b);
+    sBtn.render(); vBtn.render();
+  });
+
+  // ---- Gatilhos de som/vibração a partir do estado do jogo ----
+  const seenFx = new Set();
+  let prevMe = null, prevEnemies = null, prevStage = null, prevOver = null, prevVictory = null, prevStageClear = null;
+  function me() { return (window.game && (window.game.players || []).find(p => p.id === (window.meId || null))) || null; }
+
+  window.__sfx = sfx; // para testes
+  window.addEventListener('state:applied', () => {
+    const g = window.game; if (!g) return;
+    // Efeitos novos do servidor (poção coletada)
+    for (const fx of (g.effects || [])) {
+      if (fx.type === 'pickup' && !seenFx.has(fx.id)) {
+        seenFx.add(fx.id);
+        const m = me();
+        if (m && Math.hypot((fx.x || m.x) - m.x, (fx.y || m.y) - m.y) < 160) {
+          if (fx.kind === 'hp') { sfx.pickupHp(); vibrate([25]); }
+          else { sfx.pickupUl(); vibrate([18, 30, 18]); }
+        }
+      }
+    }
+    if (seenFx.size > 400) seenFx.clear();
+
+    const m = me();
+    if (m && prevMe) {
+      // levei dano
+      if (m.hp < prevMe.hp && !m.dead) { sfx.hurt(); vibrate([45, 40, 45]); }
+      // morri
+      if (m.dead && !prevMe.dead) { sfx.defeat(); vibrate([80, 60, 80, 60, 120]); }
+      // ultimate usada (carga zerou de repente)
+      if (prevMe.ultimate > 70 && (m.ultimate || 0) <= 12 && (m.action === 'ultimate' || m.actionTimer > 0.3)) { sfx.ultimate(); vibrate([30, 20, 30, 20, 60]); }
+      else if (m.action === 'special' && prevMe.action !== 'special') { sfx.special(); }
+      else if ((m.action === 'attack' || m.action === 'melee') && prevMe.action !== 'attack' && prevMe.action !== 'melee') { sfx.attack(); }
+    }
+    // chefe morrendo
+    if (prevEnemies) {
+      for (const e of (g.enemies || [])) {
+        const pe = prevEnemies.find(x => x.id === e.id);
+        if (pe && pe.hp > 0 && e.hp <= 0) { sfx.bossDie(); vibrate([20, 30, 20]); }
+      }
+    }
+    // fase nova
+    if (prevStage !== null && g.stageIndex > prevStage) { sfx.level(); vibrate([25, 50, 25]); }
+    // vitória / derrota
+    if (g.gameOver && !prevOver) { g.victory ? sfx.victory() : sfx.defeat(); vibrate(g.victory ? [60, 60, 60] : [120, 80, 160]); }
+
+    prevMe = m ? { hp: m.hp, dead: m.dead, ultimate: m.ultimate || 0, action: m.action } : null;
+    prevEnemies = (g.enemies || []).map(e => ({ id: e.id, hp: e.hp }));
+    prevStage = g.stageIndex; prevOver = g.gameOver;
+  });
+})();

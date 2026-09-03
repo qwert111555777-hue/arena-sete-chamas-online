@@ -199,6 +199,7 @@ function makeRoom(hostId) {
     stageCleared: false,
     enemies: [],
     projectiles: [],
+    pickups: [],
     effects: [],
     messages: [],
     tickCount: 0,
@@ -405,6 +406,7 @@ function spawnStage(room) {
   const hpScale = diff.enemyHp * stageLevelScale * (1.18 + playerCount * 0.52);
   room.enemies = [];
   room.projectiles = [];
+  room.pickups = [];
   room.effects = [];
   room.stageCleared = false;
   room.stageTimer = 0;
@@ -547,9 +549,63 @@ function damageEnemy(room, enemy, amount, fromPlayer, options = {}) {
   if (attacker) {
     giveUltimate(attacker, final * 0.18);
     if (attacker.hero === 'guilherme') attacker.aura = clamp((attacker.aura || 0) + final * 0.07, 0, 100);
-    if (enemy.hp <= 0) attacker.kills++;
+    if (enemy.hp <= 0) { attacker.kills++; dropBossLoot(room, enemy); }
   }
   return final;
+}
+
+// Poções que caem dos chefes: vida (hp) e energia de ultimate (ult)
+function spawnPickup(room, x, y, kind) {
+  room.pickups.push({
+    id: makeId('pk'), kind, x: clamp(x, 90, WORLD.w - 90), y: clamp(y, 150, WORLD.h - 90),
+    vx: rand(-60, 60), vy: rand(-60, 60), born: nowMs() / 1000, ttl: 14
+  });
+}
+function dropBossLoot(room, enemy) {
+  // Vida cai sempre (ajuda no coop); energia de ultimate cai de vez em quando
+  spawnPickup(room, enemy.x + rand(-24, 24), enemy.y + rand(-10, 26), 'hp');
+  if (Math.random() < 0.6) spawnPickup(room, enemy.x + rand(-40, 40), enemy.y + rand(-20, 30), 'ult');
+}
+function updatePickups(room, dt) {
+  const t = nowMs() / 1000;
+  for (const pk of room.pickups) {
+    pk.ttl -= dt;
+    // velocidade inicial some rápido (poção para de escorregar)
+    pk.x += pk.vx * dt; pk.y += pk.vy * dt;
+    pk.vx *= 0.86; pk.vy *= 0.86;
+    pk.x = clamp(pk.x, 70, WORLD.w - 70);
+    pk.y = clamp(pk.y, 130, WORLD.h - 80);
+    // jogador vivo mais próximo: se chegar perto, coleta (ou atrai a poção)
+    let best = null, bestD = 1e9;
+    for (const p of room.players.values()) {
+      if (!p.hero || p.dead || p.hp <= 0) continue;
+      const d = Math.hypot(p.x - pk.x, p.y - pk.y);
+      if (d < bestD) { bestD = d; best = p; }
+    }
+    if (best) {
+      if (bestD < 150) { // atrai a poção até o jogador
+        pk.x += (best.x - pk.x) * Math.min(1, dt * 6);
+        pk.y += (best.y - pk.y) * Math.min(1, dt * 6);
+      }
+      if (bestD < 34) {
+        let did = false;
+        if (pk.kind === 'hp' && best.hp < best.maxHp) {
+          best.hp = Math.min(best.maxHp, best.hp + Math.round(best.maxHp * 0.34) + 55);
+          did = true;
+        } else if (pk.kind === 'ult') {
+          const before = best.ultimate || 0;
+          giveUltimate(best, 34);
+          if ((best.ultimate || 0) > before) did = true;
+        }
+        if (did) {
+          addEffect(room, { type: 'pickup', kind: pk.kind, x: best.x, y: best.y - best.radius - 6, r: 40,
+            color: pk.kind === 'hp' ? '#7df4a8' : '#c07dff', ttl: 0.55, life: 0.55 });
+          pk.ttl = -1; // consumida
+        }
+      }
+    }
+  }
+  room.pickups = room.pickups.filter(pk => pk.ttl > 0).slice(-24);
 }
 
 function shieldAbsorb(p, amount) {
@@ -1214,6 +1270,7 @@ function updateRoom(room, dt) {
   updatePlayers(room, dt);
   updateEnemies(room, dt);
   updateProjectiles(room, dt);
+  updatePickups(room, dt);
   updateEffects(room, dt);
   handleStageAndGameOver(room, dt);
 }
@@ -1259,6 +1316,9 @@ function gameSnapshot(room) {
     projectiles: room.projectiles.map(p => ({
       id: p.id, owner: p.owner, hero: p.hero, enemyType: p.enemyType, x: p.x, y: p.y, vx: Math.round(p.vx || 0), vy: Math.round(p.vy || 0),
       radius: p.radius, color: p.color, shape: p.shape || '', label: p.label || ''
+    })),
+    pickups: (room.pickups || []).map(k => ({
+      id: k.id, kind: k.kind, x: Math.round(k.x), y: Math.round(k.y), born: k.born, ttl: Math.round(k.ttl * 10) / 10
     })),
     effects: room.effects.map(fx => ({
       id: fx.id, type: fx.type, x: fx.x, y: fx.y, x2: fx.x2, y2: fx.y2, r: fx.r, color: fx.color, ttl: fx.ttl, life: fx.life,
@@ -1363,6 +1423,7 @@ io.on('connection', (socket) => {
     room.victory = false;
     room.enemies = [];
     room.projectiles = [];
+    room.pickups = [];
     room.effects = [];
     room.messages = [];
     for (const p of room.players.values()) {
