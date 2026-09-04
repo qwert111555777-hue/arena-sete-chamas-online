@@ -10,7 +10,7 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '20';
+const ASSET_VERSION = '22';
 const SHOW_ARENA_TEXT = false;
 const SHOW_STAGE_INTRO = true;
 
@@ -50,7 +50,7 @@ const ENEMY_INFO = {
   anielle: { icon: '🗣️', attack: 'Língua Grande', special: 'Falsidade', passive: 'primeiro golpe reduzido e ilusão absorve dano', specialMax: 5.5 },
   mito: { icon: '🌟', attack: 'Testa Astral', special: 'Gloss Caótico', passive: 'feixe da testa, esquiva leve e chão escorregadio', specialMax: 4.8 },
   lenda: { icon: '🏍️', attack: 'Barrigada Lendária', special: 'Bros/Capacete Rosa', passive: 'investida de moto, defesa e reflexão de dano', specialMax: 5.8 },
-  vanjo: { icon: '📦', attack: 'Reposição Furiosa', special: 'Sumiço Rabugento', passive: 'raiva aumenta com o tempo de luta', specialMax: 7.8 },
+  silvanna: { icon: '💢', attack: 'Tapas da Mamãe', special: 'Massagem Final', passive: 'Mamãe Má: some nas sombras e volta furiosa, fúria cresce com a luta', specialMax: 7.8 },
   napoleao: { icon: '🐶', attack: 'Mordida de Lanche', special: 'Cara de Coitado/Forma Garfield', passive: 'Fome extrema: cresce, cura e entra em fases', specialMax: 6.3 }
 };
 
@@ -74,26 +74,27 @@ const SPRITE_FILES = {
   napoleao: 'assets/spritesheets/napoleao.webp',
   otavio: 'assets/spritesheets/otavio.webp',
   romulo: 'assets/spritesheets/romulo.webp',
-  vanjo: 'assets/spritesheets/vanjo.webp'
+  vanjo: 'assets/spritesheets/vanjo.webp',
+  silvanna: 'assets/spritesheets/vanjo.webp'
 };
 
 
 const PORTRAIT_FILES = {
-  albert: 'assets/portraits/albert.webp',
-  geovanna: 'assets/portraits/geovanna.webp',
-  romulo: 'assets/portraits/romulo.webp',
-  arthur: 'assets/portraits/arthur.webp',
-  guilherme: 'assets/portraits/guilherme.webp'
+  albert: 'assets/faces/albert.png',
+  geovanna: 'assets/faces/geovanna.png',
+  romulo: 'assets/faces/romulo.png',
+  arthur: 'assets/faces/arthur.png',
+  guilherme: 'assets/faces/guilherme.png'
 };
 function versionedAsset(src) { return `${src}${src.includes('?') ? '&' : '?'}v=${ASSET_VERSION}`; }
 
 const SPRITE_HEIGHT = {
   // Altura do arquivo completo já com margem transparente. A parte visível fica do tamanho correto.
   albert: 222, geovanna: 204, romulo: 212, arthur: 207, guilherme: 207,
-  otavio: 229, anielle: 217, mito: 279, lenda: 283, vanjo: 276, napoleao: 274
+  otavio: 229, anielle: 217, mito: 279, lenda: 283, vanjo: 276, silvanna: 276, napoleao: 274
 };
 
-const SPRITE_SHEETS = {"albert":{"frameW":128,"frameH":224,"cols":4,"rows":4,"pad":29},"anielle":{"frameW":125,"frameH":219,"cols":4,"rows":4,"pad":28},"arthur":{"frameW":109,"frameH":210,"cols":4,"rows":4,"pad":28},"geovanna":{"frameW":110,"frameH":208,"cols":4,"rows":4,"pad":28},"guilherme":{"frameW":109,"frameH":210,"cols":4,"rows":4,"pad":28},"lenda":{"frameW":162,"frameH":279,"cols":4,"rows":4,"pad":34},"mito":{"frameW":148,"frameH":275,"cols":4,"rows":4,"pad":34},"napoleao":{"frameW":255,"frameH":271,"cols":4,"rows":4,"pad":34},"otavio":{"frameW":128,"frameH":230,"cols":4,"rows":4,"pad":29},"romulo":{"frameW":115,"frameH":215,"cols":4,"rows":4,"pad":28},"vanjo":{"frameW":155,"frameH":272,"cols":4,"rows":4,"pad":34}};
+const SPRITE_SHEETS = {"albert":{"frameW":128,"frameH":224,"cols":4,"rows":4,"pad":29},"anielle":{"frameW":125,"frameH":219,"cols":4,"rows":4,"pad":28},"arthur":{"frameW":109,"frameH":210,"cols":4,"rows":4,"pad":28},"geovanna":{"frameW":110,"frameH":208,"cols":4,"rows":4,"pad":28},"guilherme":{"frameW":109,"frameH":210,"cols":4,"rows":4,"pad":28},"lenda":{"frameW":162,"frameH":279,"cols":4,"rows":4,"pad":34},"mito":{"frameW":148,"frameH":275,"cols":4,"rows":4,"pad":34},"napoleao":{"frameW":255,"frameH":271,"cols":4,"rows":4,"pad":34},"otavio":{"frameW":128,"frameH":230,"cols":4,"rows":4,"pad":29},"romulo":{"frameW":115,"frameH":215,"cols":4,"rows":4,"pad":28},"vanjo":{"frameW":155,"frameH":272,"cols":4,"rows":4,"pad":34},"silvanna":{"frameW":155,"frameH":272,"cols":4,"rows":4,"pad":34}};
 
 const CHARACTER_ANIM = {
   albert: { color: '#ffd84a', aura: '#ffd84a', fx: 'fists' },
@@ -106,6 +107,7 @@ const CHARACTER_ANIM = {
   mito: { color: '#ff70df', aura: '#ff70df', fx: 'sparkle' },
   lenda: { color: '#ffb12c', aura: '#ffb12c', fx: 'motor' },
   vanjo: { color: '#ff5757', aura: '#ff5757', fx: 'anger' },
+  silvanna: { color: '#e83e8c', aura: '#ff6fae', fx: 'anger' },
   napoleao: { color: '#ffcf72', aura: '#ffcf72', fx: 'royal' }
 };
 
@@ -135,10 +137,74 @@ function getStageAsset(key) {
   if (!assets.stages[key]) assets.stages[key] = loadAsset(src);
   return assets.stages[key];
 }
+
+// Rostos REAIS dos personagens (fotos) aplicados sobre a cabeça na arena
+const FACE_FILES = {
+  albert: 'assets/faces/albert.png',
+  geovanna: 'assets/faces/geovanna.png',
+  romulo: 'assets/faces/romulo.png',
+  arthur: 'assets/faces/arthur.png',
+  guilherme: 'assets/faces/guilherme.png',
+  otavio: 'assets/faces/otavio.png',
+  anielle: 'assets/faces/anielle.png',
+  mito: 'assets/faces/mito.png',
+  lenda: 'assets/faces/lenda.png',
+  silvanna: 'assets/faces/silvanna.png',
+  napoleao: 'assets/faces/napoleao.png'
+};
+const FACE_SCALE = {
+  // diâmetro do rosto em relação à altura visível do personagem (cobre a cabeça do sprite)
+  albert: .255, geovanna: .25, romulo: .255, arthur: .25, guilherme: .255,
+  otavio: .27, anielle: .27, mito: .235, lenda: .235, silvanna: .26
+};
+function getFaceAsset(key) {
+  const src = FACE_FILES[key];
+  if (!src) return null;
+  if (!assets.faces || !assets.faces[key]) {
+    assets.faces = assets.faces || {};
+    assets.faces[key] = loadAsset(src);
+  }
+  return assets.faces[key];
+}
+// desenha o rosto real (recortado em círculo) sobre a cabeça do personagem
+function drawFaceHead(key, x, topY, visibleH, facing = 1, alpha = 1, opts = {}) {
+  const img = getFaceAsset(key);
+  if (!assetReady(img)) return;
+  const isDog = key === 'napoleao';
+  const diam = (isDog ? .30 : (FACE_SCALE[key] || .17)) * visibleH * (opts.grow || 1);
+  const cx = x;
+  const cy = topY + visibleH * (isDog ? .24 : .15);
+  const r = diam / 2;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.beginPath();
+  if (isDog) {
+    // cachorro: retângulo/círculo maior no "focinho"
+    ctx.ellipse(cx, cy, r * 1.05, r * .95, 0, 0, Math.PI * 2);
+  } else {
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  }
+  ctx.clip();
+  // cover do rosto no círculo
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  const s = Math.max((r * 2) / iw, (r * 2) / ih);
+  const dw = iw * s, dh = ih * s;
+  ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
+  ctx.restore();
+  // aro dourado em volta do rosto
+  if (!isDog) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = 'rgba(255,216,120,.85)';
+    ctx.lineWidth = Math.max(1.5, r * .09);
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+}
 function prewarmCurrentAssets() {
   if (game?.stageBackground) getStageAsset(game.stageBackground);
-  for (const p of game?.players || []) getSpriteAsset(p.hero);
-  for (const e of game?.enemies || []) getSpriteAsset(e.type);
+  for (const p of game?.players || []) { getSpriteAsset(p.hero); getFaceAsset(p.hero); }
+  for (const e of game?.enemies || []) { getSpriteAsset(e.type); getFaceAsset(e.type); }
 }
 
 const keys = {};
@@ -1427,7 +1493,7 @@ function drawEnemyWeapon(e, x, y, footY, drawn, facing, motion) {
     ctx.beginPath(); ctx.moveTo(x - facing * 50, footY - 32); ctx.lineTo(x + facing * 56, footY - 34); ctx.stroke();
     ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x - facing * 44, footY - 26, 15, 0, Math.PI*2); ctx.arc(x + facing * 42, footY - 26, 15, 0, Math.PI*2); ctx.stroke();
     ctx.restore();
-  } else if (e.type === 'vanjo') {
+  } else if (e.type === 'silvanna' || e.type === 'vanjo') {
     drawBoxShape(x + facing * drawn.w * .25, handY + 8, 17, '#ff5757', phase * .5, .86);
   } else if (e.type === 'napoleao') {
     drawFoodShape(x + facing * drawn.w * .18, drawn.top + drawn.visibleH * .45, 16, '#ffd88a', phase, .82);
@@ -1526,8 +1592,8 @@ function drawEnemyPersonality(e, x, y, footY, drawn, facing, motion) {
     ctx.globalAlpha = .30; ctx.strokeStyle = '#ffb12c'; ctx.lineWidth = 7;
     ctx.beginPath(); ctx.ellipse(x, y + 8, drawn.w * .48, drawn.visibleH * .34, 0, 0, Math.PI * 2); ctx.stroke();
   }
-  if (e.type === 'vanjo' && (e.rage || 0) > 6) {
-    ctx.globalAlpha = Math.min(.30, .08 + e.rage * .008); ctx.strokeStyle = '#ff5757'; ctx.lineWidth = 4;
+  if ((e.type === 'silvanna' || e.type === 'vanjo') && (e.rage || 0) > 6) {
+    ctx.globalAlpha = Math.min(.30, .08 + e.rage * .008); ctx.strokeStyle = (e.type === 'silvanna' ? '#e83e8c' : '#ff5757'); ctx.lineWidth = 4;
     ctx.beginPath(); ctx.arc(x, y + 4, 62 + Math.sin(phase*2)*4, 0, Math.PI * 2); ctx.stroke();
   }
   if (e.type === 'napoleao' && (e.phase || 1) > 1) {
@@ -1570,7 +1636,7 @@ function drawEnemyPersonality(e, x, y, footY, drawn, facing, motion) {
     ctx.beginPath(); ctx.arc(x - facing * 36, footY - 16, 12 + wheel * 2, 0, Math.PI * 2); ctx.stroke();
     ctx.beginPath(); ctx.arc(x + facing * 25, footY - 14, 10 - wheel * 1.5, 0, Math.PI * 2); ctx.stroke();
     if (motion.moving || action === 'special') drawActionArc(x + facing * 38, handY + 20, 60, facing, '#ffb12c', .65);
-  } else if (e.type === 'vanjo') {
+  } else if (e.type === 'silvanna' || e.type === 'vanjo') {
     ctx.globalAlpha = .48;
     ctx.strokeStyle = '#ff5757'; ctx.lineWidth = 4;
     for (let i = 0; i < 3; i++) {
@@ -1618,6 +1684,7 @@ function drawPlayer(p) {
 
   const glow = p.hitFlash > 0 ? '#ff6b6b' : p.ultimate >= 100 ? '#ffd166' : (p.hero === 'guilherme' ? '#7bd3ff' : null);
   const drawn = drawSpriteImage(p.hero, x, footY, height, facing, 1, glow, motion, { name: p.action, timer: p.actionTimer, hit: p.hitFlash });
+  if (!p.dead) drawFaceHead(p.hero, x, drawn.top, drawn.visibleH, facing, alpha, {});
   drawHeroPersonality(p, x, y, footY, drawn, facing, motion);
 
   if (p.dead) {
@@ -1674,6 +1741,7 @@ function drawEnemy(e) {
   }
 
   const drawn = drawSpriteImage(e.type, x, footY, height, facing, 1, glow, motion, { name: e.action, timer: e.actionTimer, hit: e.hitFlash });
+  drawFaceHead(e.type, x, drawn.top, drawn.visibleH, facing, 1, { grow });
   drawEnemyPersonality(e, x, y, footY, drawn, facing, motion);
 
   if (e.stun > 0) drawStatusText(x, Math.max(24, drawn.top - 44), 'stun', '#7bd3ff');

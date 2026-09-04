@@ -63,7 +63,7 @@ const ENEMIES = {
   anielle: { type: 'anielle', name: 'Anielle', hp: 155, dmg: 17, speed: 115, radius: 25, color: '#2f8a5a', boss: true },
   mito: { type: 'mito', name: 'Mito', hp: 310, dmg: 22, speed: 150, radius: 30, color: '#c96cff', boss: true },
   lenda: { type: 'lenda', name: 'Lenda', hp: 455, dmg: 30, speed: 82, radius: 42, color: '#ff9e2c', boss: true },
-  vanjo: { type: 'vanjo', name: 'Vanjo', hp: 520, dmg: 32, speed: 78, radius: 45, color: '#ef3f3f', boss: true },
+  silvanna: { type: 'silvanna', name: 'Silvanna', hp: 520, dmg: 32, speed: 82, radius: 42, color: '#e83e8c', boss: true },
   napoleao: { type: 'napoleao', name: 'Napoleão', hp: 680, dmg: 28, speed: 92, radius: 42, color: '#c58146', boss: true }
 };
 
@@ -94,11 +94,11 @@ const STAGES = [
   },
   {
     level: 4,
-    title: 'Supermercado: O Sumiço do Vanjo',
-    venue: 'Supermercado de bairro',
-    subtitle: 'Vanjo some entre caixas, carrinhos e prateleiras antes de voltar furioso.',
+    title: 'Quarto da Silvanna: Mamãe Má',
+    venue: 'O quarto particular da Silvanna',
+    subtitle: 'Silvanna, a mãe da Mito, some nas sombras e volta com a Massagem Final.',
     background: 'stage4_supermercado_vanjo',
-    enemies: ['vanjo']
+    enemies: ['silvanna']
   },
   {
     level: 5,
@@ -621,7 +621,7 @@ function shieldAbsorb(p, amount) {
 function enemyDamage(e, amount) {
   let out = amount;
   if (e.mark > 0) out *= 0.82; // Geovanna: alvo marcado causa menos dano.
-  if (e.type === 'vanjo') out *= Math.min(1.32, 1 + (e.rage || 0) * 0.012);
+  if (e.type === 'silvanna') out *= Math.min(1.32, 1 + (e.rage || 0) * 0.012); // Mamãe Má: fúria crescente
   if (e.type === 'napoleao' && (e.phase || 1) >= 3) out *= 1.08;
   return out;
 }
@@ -1018,8 +1018,8 @@ function updateEnemies(room, dt) {
     e.attackCd = Math.max(0, (e.attackCd || 0) - dt);
     e.specialCd = Math.max(0, (e.specialCd || 0) - dt);
 
-    if (e.type === 'vanjo') {
-      e.rage = Math.min(26, (e.rage || 0) + dt);
+    if (e.type === 'silvanna') {
+      e.rage = Math.min(26, (e.rage || 0) + dt); // Mamãe Má
       e.vanishCd = Math.max(0, (e.vanishCd || 0) - dt);
       if (e.invisible) {
         e.vanishTimer = Math.max(0, (e.vanishTimer || 0) - dt);
@@ -1033,8 +1033,8 @@ function updateEnemies(room, dt) {
           e.invisible = false;
           setAction(e, 'special', 0.7);
           e.attackCd = 0.2;
-          enemyMelee(room, e, target, 125, enemyDamage(e, e.dmg * 0.8), '#ff5b5b');
-          addMessage(room, 'Vanjo voltou do sumiço rabugento!', 'bad');
+          enemyMelee(room, e, target, 125, enemyDamage(e, e.dmg * 0.8), '#e83e8c');
+          addMessage(room, 'Silvanna aplicou a MASSAGEM FINAL!', 'bad');
         }
         continue;
       }
@@ -1169,17 +1169,17 @@ function updateEnemies(room, dt) {
         enemyMelee(room, e, target, 118, enemyDamage(e, e.dmg), '#ffb12c');
       }
       e.attackCd = 1.35;
-    } else if (e.type === 'vanjo') {
+    } else if (e.type === 'silvanna') {
       if (e.vanishCd <= 0) {
         e.invisible = true;
         setAction(e, 'special', 0.72);
         e.vanishTimer = 1.1;
         e.vanishCd = 7.8;
         addEffect(room, { type: 'ring', x: e.x, y: e.y, r: 120, color: '#c7c7c7', ttl: 0.45, life: 0.45 });
-        addMessage(room, 'Vanjo usou Sumiço!', 'bad');
+        addMessage(room, 'Silvanna sumiu nas sombras... (Mamãe Má)', 'bad');
       } else {
-        if (d < 140) enemyMelee(room, e, target, 125, enemyDamage(e, e.dmg), '#ff5757');
-        else spawnEnemyProjectile(room, e, target, { speed: 410, radius: 18, damage: enemyDamage(e, e.dmg * 0.82), color: '#ff5757', label: 'caixa', shape: 'box' });
+        if (d < 140) enemyMelee(room, e, target, 125, enemyDamage(e, e.dmg), '#e83e8c');
+        else spawnEnemyProjectile(room, e, target, { speed: 410, radius: 18, damage: enemyDamage(e, e.dmg * 0.82), color: '#e83e8c', label: 'maldade', shape: 'box' });
         e.attackCd = 1.45;
       }
     } else if (e.type === 'napoleao') {
