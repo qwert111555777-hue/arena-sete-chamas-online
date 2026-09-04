@@ -10,7 +10,7 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '24';
+const ASSET_VERSION = '25';
 const SHOW_ARENA_TEXT = false;
 const SHOW_STAGE_INTRO = true;
 
@@ -75,26 +75,26 @@ const SPRITE_FILES = {
   otavio: 'assets/spritesheets/otavio.webp',
   romulo: 'assets/spritesheets/romulo.webp',
   vanjo: 'assets/spritesheets/vanjo.webp',
-  silvanna: 'assets/spritesheets/vanjo.webp'
+  silvanna: 'assets/spritesheets/silvanna.webp'
 };
 
 
 const PORTRAIT_FILES = {
-  albert: 'assets/faces/albert.png',
-  geovanna: 'assets/faces/geovanna.png',
-  romulo: 'assets/faces/romulo.png',
-  arthur: 'assets/faces/arthur.png',
-  guilherme: 'assets/faces/guilherme.png'
+  albert: 'assets/portraits/albert.webp',
+  geovanna: 'assets/portraits/geovanna.webp',
+  romulo: 'assets/portraits/romulo.webp',
+  arthur: 'assets/portraits/arthur.webp',
+  guilherme: 'assets/portraits/guilherme.webp'
 };
 function versionedAsset(src) { return `${src}${src.includes('?') ? '&' : '?'}v=${ASSET_VERSION}`; }
 
 const SPRITE_HEIGHT = {
   // Altura do arquivo completo já com margem transparente. A parte visível fica do tamanho correto.
-  albert: 222, geovanna: 204, romulo: 212, arthur: 207, guilherme: 207,
-  otavio: 229, anielle: 217, mito: 279, lenda: 283, vanjo: 276, silvanna: 276, napoleao: 274
+  albert: 191, geovanna: 173, romulo: 182, arthur: 177, guilherme: 177,
+  otavio: 199, anielle: 188, mito: 244, lenda: 249, vanjo: 276, silvanna: 241, napoleao: 239
 };
 
-const SPRITE_SHEETS = {"albert":{"frameW":128,"frameH":224,"cols":4,"rows":4,"pad":29},"anielle":{"frameW":125,"frameH":219,"cols":4,"rows":4,"pad":28},"arthur":{"frameW":109,"frameH":210,"cols":4,"rows":4,"pad":28},"geovanna":{"frameW":110,"frameH":208,"cols":4,"rows":4,"pad":28},"guilherme":{"frameW":109,"frameH":210,"cols":4,"rows":4,"pad":28},"lenda":{"frameW":162,"frameH":279,"cols":4,"rows":4,"pad":34},"mito":{"frameW":148,"frameH":275,"cols":4,"rows":4,"pad":34},"napoleao":{"frameW":255,"frameH":271,"cols":4,"rows":4,"pad":34},"otavio":{"frameW":128,"frameH":230,"cols":4,"rows":4,"pad":29},"romulo":{"frameW":115,"frameH":215,"cols":4,"rows":4,"pad":28},"vanjo":{"frameW":155,"frameH":272,"cols":4,"rows":4,"pad":34},"silvanna":{"frameW":155,"frameH":272,"cols":4,"rows":4,"pad":34}};
+const SPRITE_SHEETS = {"albert":{"frameW":128,"frameH":256,"cols":4,"rows":4,"pad":18},"anielle":{"frameW":130,"frameH":256,"cols":4,"rows":4,"pad":18},"arthur":{"frameW":107,"frameH":256,"cols":4,"rows":4,"pad":18},"geovanna":{"frameW":121,"frameH":256,"cols":4,"rows":4,"pad":18},"guilherme":{"frameW":140,"frameH":256,"cols":4,"rows":4,"pad":18},"lenda":{"frameW":199,"frameH":256,"cols":4,"rows":4,"pad":18},"mito":{"frameW":163,"frameH":256,"cols":4,"rows":4,"pad":18},"napoleao":{"frameW":231,"frameH":256,"cols":4,"rows":4,"pad":18},"otavio":{"frameW":125,"frameH":256,"cols":4,"rows":4,"pad":18},"romulo":{"frameW":150,"frameH":256,"cols":4,"rows":4,"pad":18},"vanjo":{"frameW":155,"frameH":272,"cols":4,"rows":4,"pad":34},"silvanna":{"frameW":119,"frameH":256,"cols":4,"rows":4,"pad":18}};
 
 const CHARACTER_ANIM = {
   albert: { color: '#ffd84a', aura: '#ffd84a', fx: 'fists' },
@@ -138,73 +138,10 @@ function getStageAsset(key) {
   return assets.stages[key];
 }
 
-// Rostos REAIS dos personagens (fotos) aplicados sobre a cabeça na arena
-const FACE_FILES = {
-  albert: 'assets/faces/albert.png',
-  geovanna: 'assets/faces/geovanna.png',
-  romulo: 'assets/faces/romulo.png',
-  arthur: 'assets/faces/arthur.png',
-  guilherme: 'assets/faces/guilherme.png',
-  otavio: 'assets/faces/otavio.png',
-  anielle: 'assets/faces/anielle.png',
-  mito: 'assets/faces/mito.png',
-  lenda: 'assets/faces/lenda.png',
-  silvanna: 'assets/faces/silvanna.png',
-  napoleao: 'assets/faces/napoleao.png'
-};
-const FACE_SCALE = {
-  // diâmetro do rosto em relação à altura visível do personagem (cobre a cabeça do sprite)
-  albert: .255, geovanna: .25, romulo: .255, arthur: .25, guilherme: .255,
-  otavio: .27, anielle: .27, mito: .235, lenda: .235, silvanna: .26
-};
-function getFaceAsset(key) {
-  const src = FACE_FILES[key];
-  if (!src) return null;
-  if (!assets.faces || !assets.faces[key]) {
-    assets.faces = assets.faces || {};
-    assets.faces[key] = loadAsset(src);
-  }
-  return assets.faces[key];
-}
-// desenha o rosto real (recortado em círculo) sobre a cabeça do personagem
-function drawFaceHead(key, x, topY, visibleH, facing = 1, alpha = 1, opts = {}) {
-  const img = getFaceAsset(key);
-  if (!assetReady(img)) return;
-  const isDog = key === 'napoleao';
-  const diam = (isDog ? .30 : (FACE_SCALE[key] || .17)) * visibleH * (opts.grow || 1);
-  const cx = x;
-  const cy = topY + visibleH * (isDog ? .24 : .15);
-  const r = diam / 2;
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.beginPath();
-  if (isDog) {
-    // cachorro: retângulo/círculo maior no "focinho"
-    ctx.ellipse(cx, cy, r * 1.05, r * .95, 0, 0, Math.PI * 2);
-  } else {
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  }
-  ctx.clip();
-  // cover do rosto no círculo
-  const iw = img.naturalWidth, ih = img.naturalHeight;
-  const s = Math.max((r * 2) / iw, (r * 2) / ih);
-  const dw = iw * s, dh = ih * s;
-  ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
-  ctx.restore();
-  // aro dourado em volta do rosto
-  if (!isDog) {
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.strokeStyle = 'rgba(255,216,120,.85)';
-    ctx.lineWidth = Math.max(1.5, r * .09);
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
-    ctx.restore();
-  }
-}
 function prewarmCurrentAssets() {
   if (game?.stageBackground) getStageAsset(game.stageBackground);
-  for (const p of game?.players || []) { getSpriteAsset(p.hero); getFaceAsset(p.hero); }
-  for (const e of game?.enemies || []) { getSpriteAsset(e.type); getFaceAsset(e.type); }
+  for (const p of game?.players || []) getSpriteAsset(p.hero);
+  for (const e of game?.enemies || []) getSpriteAsset(e.type);
 }
 
 const keys = {};
@@ -1051,6 +988,51 @@ function drawStageAnimation() {
       ctx.stroke();
     }
   }
+  drawStageAmbient(t, light, key);
+  ctx.restore();
+}
+
+// partículas ambientes que atravessam a fase (folhas, brasas, faíscas, poeira, migalhas)
+function drawStageAmbient(t, light, key) {
+  const count = light ? 6 : 14;
+  const W = view.w, H = view.h;
+  let color = '#ffd166', color2 = '#ffffff', drift = 18, size = 4, mode = 'float';
+  if (key.includes('lama_esgoto')) { color = '#9ed38b'; color2 = '#c9e6b4'; drift = 10; size = 3; mode = 'float'; }
+  else if (key.includes('ifs_mito')) { color = '#80d8ff'; color2 = '#ff70df'; drift = 26; size = 3; mode = 'spark'; }
+  else if (key.includes('terreiro_lenda')) { color = '#ffb032'; color2 = '#ff6b3d'; drift = 14; size = 3.5; mode = 'ember'; }
+  else if (key.includes('supermercado_vanjo')) { color = '#ffffff'; color2 = '#cfe8ff'; drift = 22; size = 3; mode = 'leaf'; }
+  else if (key.includes('reino_comidas')) { color = '#ffd166'; color2 = '#ff9f1c'; drift = 12; size = 4; mode = 'food'; }
+  ctx.save();
+  for (let i = 0; i < count; i++) {
+    const seed = i * 97.13;
+    const ph = t * (0.14 + (i % 5) * 0.028) + seed;
+    let x, y;
+    if (mode === 'ember' || mode === 'spark') {
+      x = (seed * 13.7) % W;
+      y = H - ((ph * 46) % (H + 60)) + 30;
+      x += Math.sin(t * 1.6 + seed) * drift;
+    } else {
+      x = W - ((ph * 52) % (W + 80)) + 40;
+      y = (seed * 7.9) % (H * .85) + Math.sin(t * 1.1 + seed) * drift;
+    }
+    const s2 = size * (0.7 + ((i * 37) % 10) / 14);
+    const tw = 0.5 + Math.sin(t * 2.6 + seed) * 0.28;
+    ctx.globalAlpha = (light ? .16 : .30) * tw;
+    ctx.fillStyle = i % 2 ? color : color2;
+    if (mode === 'leaf') {
+      ctx.beginPath(); ctx.ellipse(x, y, s2 * 1.7, s2 * .62, t + seed, 0, Math.PI * 2); ctx.fill();
+    } else if (mode === 'food') {
+      ctx.beginPath(); ctx.arc(x, y, s2, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha *= .8; ctx.fillStyle = '#fff3c4';
+      ctx.beginPath(); ctx.arc(x - s2 * .3, y - s2 * .3, s2 * .38, 0, Math.PI * 2); ctx.fill();
+    } else if (mode === 'ember') {
+      ctx.beginPath(); ctx.arc(x, y, s2, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha *= .5; ctx.fillStyle = '#ffe9a8';
+      ctx.beginPath(); ctx.arc(x, y - s2 * 1.5, s2 * .5, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.arc(x, y, s2, 0, Math.PI * 2); ctx.fill();
+    }
+  }
   ctx.restore();
 }
 
@@ -1240,6 +1222,17 @@ function getMotion(id, targetX, targetY, vx = 0, vy = 0) {
   return m;
 }
 
+// cor da poeira levantada ao pisar, combinando com o chão de cada fase
+function stageDustColor() {
+  const k = game?.stageBackground || '';
+  if (k.includes('lama_esgoto')) return '#8a6f42';      // lama
+  if (k.includes('ifs_mito')) return '#7fd8ff';         // pátio tecnológico
+  if (k.includes('terreiro_lenda')) return '#ffb032';   // terra/brasas
+  if (k.includes('supermercado_vanjo')) return '#e8ecf2'; // piso limpo
+  if (k.includes('reino_comidas')) return '#ffd166';    // migalhas douradas
+  return '#f2d7a7';
+}
+
 function drawStepDust(x, y, phase, color = '#f2d7a7') {
   const a = Math.abs(Math.sin(phase * 1.7));
   if (a < .58) return;
@@ -1248,6 +1241,15 @@ function drawStepDust(x, y, phase, color = '#f2d7a7') {
   ctx.fillStyle = color;
   ctx.beginPath(); ctx.ellipse(x - 18, y + 2, 13 * a, 4, 0, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(x + 18, y + 2, 13 * a, 4, 0, 0, Math.PI * 2); ctx.fill();
+  // partículas subindo (dão vida ao passo)
+  if (quality !== 'performance' && perfLevel < 1) {
+    ctx.globalAlpha = .28 * a;
+    const t = performance.now() / 260;
+    for (let i = 0; i < 2; i++) {
+      const px = x + Math.sin(t + i * 2.4) * 14, py = y - ((t * .5 + i * .5) % 1) * 22;
+      ctx.beginPath(); ctx.arc(px, py, 2.4 + (i ? 1.4 : 0), 0, Math.PI * 2); ctx.fill();
+    }
+  }
   ctx.restore();
 }
 
@@ -1680,11 +1682,10 @@ function drawPlayer(p) {
 
   ctx.fillStyle = 'rgba(0,0,0,.36)';
   ctx.beginPath(); ctx.ellipse(x, footY + 3, motion.moving ? 52 : 44, motion.moving ? 17 : 14, 0, 0, Math.PI * 2); ctx.fill();
-  if (motion.moving) drawStepDust(x, footY + 2, motion.phase, '#f0d0a0');
+  if (motion.moving) drawStepDust(x, footY + 2, motion.phase, stageDustColor());
 
   const glow = p.hitFlash > 0 ? '#ff6b6b' : p.ultimate >= 100 ? '#ffd166' : (p.hero === 'guilherme' ? '#7bd3ff' : null);
   const drawn = drawSpriteImage(p.hero, x, footY, height, facing, 1, glow, motion, { name: p.action, timer: p.actionTimer, hit: p.hitFlash });
-  if (!p.dead) drawFaceHead(p.hero, x, drawn.top, drawn.visibleH, facing, alpha, {});
   drawHeroPersonality(p, x, y, footY, drawn, facing, motion);
 
   if (p.dead) {
@@ -1717,7 +1718,7 @@ function drawEnemy(e) {
 
   ctx.fillStyle = 'rgba(0,0,0,.40)';
   ctx.beginPath(); ctx.ellipse(x, footY + 4, Math.max(45, e.radius * 1.45) * grow, Math.max(14, e.radius * .40) * grow, 0, 0, Math.PI*2); ctx.fill();
-  if (motion.moving) drawStepDust(x, footY + 4, motion.phase, e.type === 'lenda' ? '#ffb032' : '#d7c7b0');
+  if (motion.moving) drawStepDust(x, footY + 4, motion.phase, e.type === 'lenda' ? '#ffb032' : stageDustColor());
 
   if (e.stun > 0) {
     ctx.save();
@@ -1741,7 +1742,6 @@ function drawEnemy(e) {
   }
 
   const drawn = drawSpriteImage(e.type, x, footY, height, facing, 1, glow, motion, { name: e.action, timer: e.actionTimer, hit: e.hitFlash });
-  drawFaceHead(e.type, x, drawn.top, drawn.visibleH, facing, 1, { grow });
   drawEnemyPersonality(e, x, y, footY, drawn, facing, motion);
 
   if (e.stun > 0) drawStatusText(x, Math.max(24, drawn.top - 44), 'stun', '#7bd3ff');
