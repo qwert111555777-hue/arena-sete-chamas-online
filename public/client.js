@@ -10,7 +10,7 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '23';
+const ASSET_VERSION = '24';
 const SHOW_ARENA_TEXT = false;
 const SHOW_STAGE_INTRO = true;
 
@@ -883,7 +883,7 @@ function drawImageCover(img, x, y, w, h) {
 
 function buildStageCache(img, bgKey) {
   if (!assetReady(img)) return null;
-  const key = `${bgKey || 'fallback'}-${quality}-p${perfLevel}-${view.w}x${view.h}-${img.naturalWidth}x${img.naturalHeight}`;
+  const key = `${bgKey || 'fallback'}-${img.src}-${quality}-p${perfLevel}-${view.w}x${view.h}-${img.naturalWidth}x${img.naturalHeight}`;
   if (bgCache.key === key && bgCache.canvas) return bgCache.canvas;
   const c = document.createElement('canvas');
   c.width = view.w;
@@ -913,7 +913,7 @@ function buildStageCache(img, bgKey) {
 let screenBgCache = { key: null, canvas: null };
 function buildScreenBg(img, bgKey) {
   if (!assetReady(img)) return null;
-  const key = `screen-${bgKey}-${view.cssW}x${view.cssH}-${img.naturalWidth}x${img.naturalHeight}`;
+  const key = `screen-${bgKey}-${img.src}-${view.cssW}x${view.cssH}-${img.naturalWidth}x${img.naturalHeight}`;
   if (screenBgCache.key === key && screenBgCache.canvas) return screenBgCache.canvas;
   const c = document.createElement('canvas');
   c.width = Math.max(2, Math.round(view.cssW * dpr));
