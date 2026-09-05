@@ -10,7 +10,7 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '30';
+const ASSET_VERSION = '31';
 const SHOW_ARENA_TEXT = false;
 const SHOW_STAGE_INTRO = true;
 
