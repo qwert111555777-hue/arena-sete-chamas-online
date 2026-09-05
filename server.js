@@ -58,53 +58,54 @@ const DIFFICULTY = {
   dificil: { key: 'dificil', label: 'Difícil', enemyHp: 1.66, enemyDmg: 0.66, enemySpeed: 0.98, respawn: 4.6, healBetween: 0.76, levelHp: 0.115, levelDmg: 0.045 }
 };
 
+// smart: mira à frente do jogador (0=sem previsão, 0.6=muito boa). atk: cadência base de ataque.
 const ENEMIES = {
-  otavio: { type: 'otavio', name: 'Otávio', hp: 185, dmg: 20, speed: 92, radius: 31, color: '#8f3149', boss: true },
-  anielle: { type: 'anielle', name: 'Anielle', hp: 155, dmg: 17, speed: 115, radius: 25, color: '#2f8a5a', boss: true },
-  mito: { type: 'mito', name: 'Mito', hp: 310, dmg: 22, speed: 150, radius: 30, color: '#c96cff', boss: true },
-  lenda: { type: 'lenda', name: 'Lenda', hp: 455, dmg: 30, speed: 82, radius: 42, color: '#ff9e2c', boss: true },
-  silvanna: { type: 'silvanna', name: 'Silvanna', hp: 520, dmg: 32, speed: 82, radius: 42, color: '#e83e8c', boss: true },
-  napoleao: { type: 'napoleao', name: 'Napoleão', hp: 680, dmg: 28, speed: 92, radius: 42, color: '#c58146', boss: true }
+  otavio: { type: 'otavio', name: 'Otávio', hp: 200, dmg: 22, speed: 98, radius: 31, color: '#8f3149', boss: true, smart: 0.30 },
+  anielle: { type: 'anielle', name: 'Anielle', hp: 175, dmg: 19, speed: 122, radius: 25, color: '#2f8a5a', boss: true, smart: 0.42 },
+  mito: { type: 'mito', name: 'Mito', hp: 340, dmg: 24, speed: 158, radius: 30, color: '#c96cff', boss: true, smart: 0.48 },
+  lenda: { type: 'lenda', name: 'Lenda', hp: 500, dmg: 33, speed: 90, radius: 42, color: '#ff9e2c', boss: true, smart: 0.40 },
+  silvanna: { type: 'silvanna', name: 'Silvanna', hp: 570, dmg: 35, speed: 92, radius: 42, color: '#e83e8c', boss: true, smart: 0.52 },
+  napoleao: { type: 'napoleao', name: 'Napoleão', hp: 760, dmg: 31, speed: 100, radius: 42, color: '#c58146', boss: true, smart: 0.45 }
 };
 
 const STAGES = [
   {
     level: 1,
-    title: 'Lama e Esgoto: Otávio + Anielle',
-    venue: 'Lugar sujo de lama e esgoto',
-    subtitle: 'Otávio manipula com promessa de lanche enquanto Anielle espalha fofoca venenosa.',
+    title: 'Beco da Fofoca Molhada',
+    venue: 'Vila da Lama — o beco onde a fofoca corre solta',
+    subtitle: 'Otávio tenta te comprar com lanche enquanto Anielle espalha fofoca venenosa.',
     background: 'stage1_lama_esgoto',
     enemies: ['otavio', 'anielle']
   },
   {
     level: 2,
-    title: 'IFS: Brilho do Mito',
-    venue: 'Campus inspirado no IFS',
-    subtitle: 'Mito usa Testa Astral e transforma o pátio em chão de Gloss Caótico.',
+    title: 'Pátio da Testa Brilhante',
+    venue: 'Instituto Federal — o campus da Testa Astral',
+    subtitle: 'Mito carrega a Testa Astral e deixa o pátio escorregadio de Gloss Caótico.',
     background: 'stage2_ifs_mito',
     enemies: ['mito']
   },
   {
     level: 3,
-    title: 'Casa Mística: A Lenda',
-    venue: 'Terreiro/casa mística da Lenda',
-    subtitle: 'Velas, fumaça e a Bros 2009 amarela anunciam a investida da Lenda.',
+    title: 'Terreiro da Bros Lendária',
+    venue: 'Casa de Velas — o covil da Lenda sedentária',
+    subtitle: 'Velas, fumaça e a Bros 2009 amarela anunciam a Barrigada Lendária.',
     background: 'stage3_terreiro_lenda',
     enemies: ['lenda']
   },
   {
     level: 4,
-    title: 'Quarto da Silvanna: Mamãe Má',
-    venue: 'O quarto particular da Silvanna',
-    subtitle: 'Silvanna, a mãe da Mito, some nas sombras e volta com a Massagem Final.',
+    title: 'Quarto da Mamãe Má',
+    venue: 'Quarto de Neon Rosa — o trono da Silvanna',
+    subtitle: 'Silvanna, a mãe da Mito, some nas sombras e volta furiosa com a Massagem Final.',
     background: 'stage4_supermercado_vanjo',
     enemies: ['silvanna']
   },
   {
     level: 5,
-    title: 'Reino de Comidas: Napoleão',
-    venue: 'Reino final de comidas',
-    subtitle: 'Napoleão domina mesas, lanches e molhos antes da batalha final.',
+    title: 'Reino do Molho Sem Fim',
+    venue: 'Banquete Dourado — o trono do Napoleão',
+    subtitle: 'Napoleão, o Basset rei, devora mesas e cresce de fome antes da batalha final.',
     background: 'stage5_reino_comidas',
     enemies: ['napoleao']
   }
@@ -447,7 +448,7 @@ function spawnStage(room) {
       vx: 0, vy: 0,
       maxHp: Math.round(base.hp * hpScale), hp: Math.round(base.hp * hpScale),
       dmg: base.dmg * diff.enemyDmg * damageLevelScale, speed: base.speed * diff.enemySpeed, radius: base.radius,
-      color: base.color, boss: true,
+      color: base.color, boss: true, smart: base.smart ?? 0.35,
       attackCd: rand(0.6, 1.2), specialCd: rand(4, 7),
       stun: 0, slow: 0, mark: 0, forcedTarget: null, forcedTimer: 0,
       invisible: false, vanishTimer: 0, vanishCd: 3.2,
@@ -696,22 +697,34 @@ function spawnPlayerProjectile(room, p, cfg) {
   });
 }
 
+// Mira INTELIGENTE do chefe: prevê onde o jogador vai estar (lead/prediction).
+function bossAim(e, target, speed) {
+  let dx = target.x - e.x, dy = target.y - e.y;
+  const dist = Math.hypot(dx, dy) || 1;
+  // fator de previsão: chefes mais fortes miram mais à frente
+  const lead = Math.min(0.55, (e.smart ?? 0.35) * (dist / speed));
+  const px = target.x + (target.vx || 0) * lead;
+  const py = target.y + (target.vy || 0) * lead;
+  let ax = px - e.x, ay = py - e.y;
+  const al = Math.hypot(ax, ay) || 1;
+  return { x: ax / al, y: ay / al };
+}
+
 function spawnEnemyProjectile(room, e, target, cfg = {}) {
   if (!target) return;
-  setAction(e, 'attack', 0.42);
-  let dx = target.x - e.x, dy = target.y - e.y;
-  let len = Math.hypot(dx, dy) || 1;
-  dx /= len; dy /= len;
-  // Aviso de mira (telegraph): linha do disparo para o jogador poder DESVIAR.
-  addEffect(room, { type: 'hazard', x: e.x, y: e.y, x2: target.x, y2: target.y, r: e.radius + 14, color: cfg.color || e.color, ttl: 0.5, life: 0.5 });
+  setAction(e, 'attack', 0.4);
+  const speed = cfg.speed || 380;
+  const aim = bossAim(e, target, speed);
+  const dx = aim.x, dy = aim.y;
+  const sx = e.x + dx * (e.radius + 10), sy = e.y + dy * (e.radius + 10);
   room.projectiles.push({
     id: makeId('ep'), owner: 'enemy', from: e.id, enemyType: e.type,
-    x: e.x + dx * (e.radius + 10), y: e.y + dy * (e.radius + 10),
-    vx: dx * (cfg.speed || 350), vy: dy * (cfg.speed || 350),
+    x: sx, y: sy,
+    vx: dx * speed, vy: dy * speed,
     radius: cfg.radius || 11, damage: cfg.damage || e.dmg,
-    ttl: cfg.ttl || 1.7, color: cfg.color || e.color, pierce: cfg.pierce || 0,
+    ttl: cfg.ttl || 1.8, color: cfg.color || e.color, pierce: cfg.pierce || 0,
     shape: cfg.shape || '',
-    slow: cfg.slow || 0, label: cfg.label || '', delay: 0.28, sx: e.x + dx * (e.radius + 10), sy: e.y + dy * (e.radius + 10)
+    slow: cfg.slow || 0, label: cfg.label || '', delay: 0.22, sx, sy
   });
 }
 
@@ -1109,6 +1122,10 @@ function updateEnemies(room, dt) {
     e.attackCd = Math.max(0, (e.attackCd || 0) - dt);
     e.specialCd = Math.max(0, (e.specialCd || 0) - dt);
 
+    // FÚRIA: quando a vida cai, o chefe fica mais rápido e ataca mais (2 limiares).
+    const hpRatio = e.hp / Math.max(1, e.maxHp);
+    e.enrage = hpRatio < 0.33 ? 2 : hpRatio < 0.66 ? 1 : 0;
+
     // knockback aplicado (empurrão dos golpes)
     if ((e.knockTimer || 0) > 0) {
       e.knockTimer -= dt;
@@ -1177,7 +1194,8 @@ function updateEnemies(room, dt) {
     const dx = target.x - e.x;
     const dy = target.y - e.y;
     const d = Math.hypot(dx, dy) || 1;
-    const slowFactor = e.slow > 0 ? 0.55 : 1;
+    const enrageSpeed = 1 + e.enrage * 0.18;
+    const slowFactor = (e.slow > 0 ? 0.55 : 1) * enrageSpeed;
 
     let desiredRange = 95;
     if (['anielle', 'mito'].includes(e.type)) desiredRange = 310;
@@ -1552,7 +1570,8 @@ io.on('connection', (socket) => {
       aimY: Number.isFinite(Number(input.aimY)) ? clamp(Number(input.aimY), 0, WORLD.h) : null,
       attack: !!input.attack,
       special: !!input.special,
-      ultimate: !!input.ultimate
+      ultimate: !!input.ultimate,
+      dash: !!input.dash
     };
     room.lastActive = nowMs();
   });
