@@ -26,27 +26,27 @@ const MIME = {
 const HEROES = {
   albert: {
     key: 'albert', name: 'Albert', title: 'Brigão Competitivo', color: '#1e57d6', alt: '#a0162c',
-    hp: 360, speed: 235, radius: 23, attackCd: 0.48, specialCd: 7.5,
+    hp: 480, speed: 250, radius: 23, attackCd: 0.40, specialCd: 6.5,
     attackName: 'Soco de Discussão', specialName: 'Briga Sem Fim', ultimateName: 'Eu Não Perco'
   },
   geovanna: {
     key: 'geovanna', name: 'Geovanna', title: 'Psicóloga Ciumenta', color: '#ffd447', alt: '#ff69b4',
-    hp: 275, speed: 245, radius: 21, attackCd: 0.55, specialCd: 7,
+    hp: 370, speed: 258, radius: 21, attackCd: 0.46, specialCd: 6.2,
     attackName: 'Olhar de Ciúmes', specialName: 'Sessão de Psicóloga', ultimateName: 'Ciúmes Estratégico'
   },
   romulo: {
     key: 'romulo', name: 'Rômulo', title: 'Jogador Nato', color: '#858b95', alt: '#3ea86d',
-    hp: 300, speed: 238, radius: 22, attackCd: 0.5, specialCd: 8,
+    hp: 400, speed: 252, radius: 22, attackCd: 0.42, specialCd: 7,
     attackName: 'Jogada Segura', specialName: 'Prever Movimento', ultimateName: 'Xeque-Mate Gamer'
   },
   arthur: {
     key: 'arthur', name: 'Arthur', title: 'Hacker do Ego', color: '#111111', alt: '#18d4ff',
-    hp: 285, speed: 252, radius: 21, attackCd: 0.44, specialCd: 7.5,
+    hp: 380, speed: 266, radius: 21, attackCd: 0.36, specialCd: 6.6,
     attackName: 'Código Cortante', specialName: 'Hack de Sistema', ultimateName: 'Admin Supremo'
   },
   guilherme: {
     key: 'guilherme', name: 'Guilherme', title: 'General da Aura', color: '#16a9ff', alt: '#9df4ff',
-    hp: 295, speed: 240, radius: 21, attackCd: 0.52, specialCd: 8.5,
+    hp: 395, speed: 254, radius: 21, attackCd: 0.44, specialCd: 7.4,
     attackName: 'Corte Social', specialName: 'Estratégia de Guerra', ultimateName: 'Operação Aura Máxima'
   }
 };
@@ -1567,7 +1567,8 @@ setInterval(() => {
     room.lastTick = now;
     updateRoom(room, dt);
     room.tickCount++;
-    if (room.started) io.to(code).emit('state', gameSnapshot(room));
+    // 15 snapshots/s: o cliente interpola entre eles (fluido) e o servidor não engasga.
+    if (room.started && room.tickCount % 2 === 0) io.to(code).emit('state', gameSnapshot(room));
 
     // cleanup salas antigas sem jogadores conectados
     const connected = [...room.players.values()].some(p => p.connected);

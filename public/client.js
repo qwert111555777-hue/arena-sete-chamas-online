@@ -10,7 +10,7 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '29';
+const ASSET_VERSION = '30';
 const SHOW_ARENA_TEXT = false;
 const SHOW_STAGE_INTRO = true;
 
@@ -94,7 +94,7 @@ const SPRITE_HEIGHT = {
   otavio: 199, anielle: 188, mito: 244, lenda: 249, vanjo: 276, silvanna: 241, napoleao: 239
 };
 
-const SPRITE_SHEETS = {"albert":{"frameW":148,"frameH":256,"cols":4,"rows":4,"pad":18},"anielle":{"frameW":130,"frameH":256,"cols":4,"rows":4,"pad":18},"arthur":{"frameW":107,"frameH":256,"cols":4,"rows":4,"pad":18},"geovanna":{"frameW":121,"frameH":256,"cols":4,"rows":4,"pad":18},"guilherme":{"frameW":140,"frameH":256,"cols":4,"rows":4,"pad":18},"lenda":{"frameW":199,"frameH":256,"cols":4,"rows":4,"pad":18},"mito":{"frameW":163,"frameH":256,"cols":4,"rows":4,"pad":18},"napoleao":{"frameW":231,"frameH":256,"cols":4,"rows":4,"pad":18},"otavio":{"frameW":125,"frameH":256,"cols":4,"rows":4,"pad":18},"romulo":{"frameW":150,"frameH":256,"cols":4,"rows":4,"pad":18},"vanjo":{"frameW":155,"frameH":272,"cols":4,"rows":4,"pad":34},"silvanna":{"frameW":119,"frameH":256,"cols":4,"rows":4,"pad":18}};
+const SPRITE_SHEETS = {"albert":{"frameW":148,"frameH":256,"cols":4,"rows":4,"pad":18},"anielle":{"frameW":130,"frameH":256,"cols":4,"rows":4,"pad":18},"arthur":{"frameW":107,"frameH":256,"cols":4,"rows":4,"pad":18},"geovanna":{"frameW":121,"frameH":256,"cols":4,"rows":4,"pad":18},"guilherme":{"frameW":140,"frameH":256,"cols":4,"rows":4,"pad":18},"lenda":{"frameW":212,"frameH":256,"cols":4,"rows":4,"pad":18},"mito":{"frameW":163,"frameH":256,"cols":4,"rows":4,"pad":18},"napoleao":{"frameW":231,"frameH":256,"cols":4,"rows":4,"pad":18},"otavio":{"frameW":125,"frameH":256,"cols":4,"rows":4,"pad":18},"romulo":{"frameW":150,"frameH":256,"cols":4,"rows":4,"pad":18},"vanjo":{"frameW":155,"frameH":272,"cols":4,"rows":4,"pad":34},"silvanna":{"frameW":119,"frameH":256,"cols":4,"rows":4,"pad":18}};
 
 const CHARACTER_ANIM = {
   albert: { color: '#ffd84a', aura: '#ffd84a', fx: 'fists' },
@@ -1469,10 +1469,12 @@ function drawSpriteImage(key, x, footY, height, facing = 1, alpha = 1, glow = nu
     drawSpriteFrame(img, sheet, frameCol, row, w, h);
 
     if (hitLike) {
+      // Flash barato: tinge só os pixels do personagem (source-atop), sem o custo do ctx.filter.
       ctx.save();
-      ctx.globalAlpha = .16 + Math.min(.24, hitFlash * 1.2);
-      ctx.filter = 'brightness(1.55) sepia(.25) saturate(1.6)';
-      drawSpriteFrame(img, sheet, frameCol, row, w, h);
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.globalAlpha = .22 + Math.min(.4, hitFlash * 1.5);
+      ctx.fillStyle = '#fff0b0';
+      ctx.fillRect(-w / 2, -h / 2, w, h);
       ctx.restore();
     }
   } else {
