@@ -10,7 +10,7 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '30';
+const ASSET_VERSION = '35';
 const SHOW_ARENA_TEXT = false;
 const SHOW_STAGE_INTRO = true;
 
@@ -118,22 +118,23 @@ function actionDuration(actionName) {
 }
 
 // Rostos REAIS (fotos tratadas) aplicados sobre a cabeça dos personagens na arena
+// Rostos REAIS das pessoas reais (heróis + Otávio/Anielle/Silvanna + o cachorro Napoleão).
+// Mito e Lenda NÃO usam foto: são caricaturas cômicas (a foto antiga era o demônio assustador).
 const FACE_FILES = {
   albert: 'assets/faces/albert.png', geovanna: 'assets/faces/geovanna.png',
   romulo: 'assets/faces/romulo.png', arthur: 'assets/faces/arthur.png',
   guilherme: 'assets/faces/guilherme.png',
   otavio: 'assets/faces/otavio.png', anielle: 'assets/faces/anielle.png',
   silvanna: 'assets/faces/silvanna.png', napoleao: 'assets/faces/napoleao.png'
-  // mito e lenda usam o corpo cartoon novo (rosto embutido), sem círculo de foto
 };
-// diâmetro do rosto em fração da altura visível; e posição vertical do centro da cabeça
+// cx/cy = centro da cabeça em fração da altura visível; rx/ry = raios da elipse da cabeça.
+// A elipse cobre a cabeça INTEIRA (cabelo da foto incluído) para manter o estereótipo real.
 const FACE_CONF = {
-  albert:     { s: .20, y: .13 }, geovanna: { s: .19, y: .13 },
-  romulo:     { s: .20, y: .13 }, arthur:   { s: .19, y: .13 },
-  guilherme:  { s: .20, y: .13 },
-  otavio:     { s: .21, y: .12 }, anielle:  { s: .21, y: .12 },
-  mito:       { s: .19, y: .11 }, lenda:    { s: .22, y: .12 },
-  silvanna:   { s: .20, y: .12 }, napoleao: { s: .30, y: .22 }
+  albert:     { cy: .150, rx: .105, ry: .140 }, geovanna: { cy: .150, rx: .105, ry: .145 },
+  romulo:     { cy: .150, rx: .105, ry: .140 }, arthur:   { cy: .150, rx: .105, ry: .140 },
+  guilherme:  { cy: .150, rx: .105, ry: .140 },
+  otavio:     { cy: .150, rx: .110, ry: .145 }, anielle:  { cy: .150, rx: .110, ry: .150 },
+  silvanna:   { cy: .150, rx: .110, ry: .150 }, napoleao: { cy: .235, rx: .190, ry: .175 }
 };
 const assets = { arena: null, sprites: {}, stages: {}, faces: {} };
 function getFaceAsset(key) {
@@ -145,31 +146,21 @@ function getFaceAsset(key) {
 function drawFaceHead(key, x, topY, visibleH, alpha = 1) {
   const img = getFaceAsset(key);
   if (!assetReady(img)) return;
-  const cfg = FACE_CONF[key] || { s: .20, y: .13 };
-  const isDog = key === 'napoleao';
-  const diam = cfg.s * visibleH;
-  const r = diam / 2;
+  const cfg = FACE_CONF[key] || { cy: .15, rx: .105, ry: .14 };
   const cx = x;
-  const cy = topY + visibleH * cfg.y + r;
+  const cy = topY + visibleH * cfg.cy;
+  const rx = cfg.rx * visibleH;
+  const ry = cfg.ry * visibleH;
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.beginPath();
-  if (isDog) ctx.ellipse(cx, cy, r * 1.08, r * .92, 0, 0, Math.PI * 2);
-  else ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
   ctx.clip();
   const iw = img.naturalWidth, ih = img.naturalHeight;
-  const sc = Math.max((r * 2) / iw, (r * 2) / ih);
+  const sc = Math.max((rx * 2) / iw, (ry * 2) / ih);
   const dw = iw * sc, dh = ih * sc;
   ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
   ctx.restore();
-  if (!isDog) {
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.strokeStyle = 'rgba(255,216,120,.8)';
-    ctx.lineWidth = Math.max(1.5, r * .08);
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
-    ctx.restore();
-  }
 }
 function loadAsset(src) {
   const img = new Image();
@@ -2105,7 +2096,6 @@ function draw(t = 0) {
       ...(game.enemies || []).map(e => ({ kind: 'enemy', y: e.y, data: e }))
     ].sort((a, b) => a.y - b.y);
     for (const item of entities) item.kind === 'player' ? drawPlayer(item.data) : drawEnemy(item.data);
-    drawAimLine();
     for (const fx of effects) if (fx.type === 'text') drawEffect(fx);
     drawStageIntro();
   } else {
