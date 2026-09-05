@@ -503,18 +503,22 @@ function lowestAlivePlayer(room) {
 }
 
 function getAimDirection(room, p) {
-  const input = p.input || defaultInput();
-  let dx = Number(input.aimX) - p.x;
-  let dy = Number(input.aimY) - p.y;
-  let len = Math.hypot(dx, dy);
-  if (!Number.isFinite(len) || len < 18) {
-    const e = nearestEnemy(room, p);
-    if (e) { dx = e.x - p.x; dy = e.y - p.y; len = Math.hypot(dx, dy); }
+  // MIRA AUTOMÁTICA: sempre no inimigo vivo mais próximo (estilo Vampire Survivors).
+  const e = nearestEnemy(room, p);
+  if (e) {
+    const dx = e.x - p.x, dy = e.y - p.y;
+    const len = Math.hypot(dx, dy) || 1;
+    return { x: dx / len, y: dy / len, target: e };
   }
-  if (!Number.isFinite(len) || len < 0.001) {
-    dx = p.dirX || 1; dy = p.dirY || 0; len = Math.hypot(dx, dy) || 1;
-  }
-  return { x: dx / len, y: dy / len };
+  const dx = p.dirX || 1, dy = p.dirY || 0;
+  const len = Math.hypot(dx, dy) || 1;
+  return { x: dx / len, y: dy / len, target: null };
+}
+
+// Alcance em que cada herói engaja / atira sozinho (tiro automático).
+function heroAutoRange(p) {
+  if (p.hero === 'albert') return 175; // corpo-a-corpo: só perto
+  return 640; // os demais atiram de longe
 }
 
 function addEffect(room, effect) {
@@ -698,14 +702,16 @@ function spawnEnemyProjectile(room, e, target, cfg = {}) {
   let dx = target.x - e.x, dy = target.y - e.y;
   let len = Math.hypot(dx, dy) || 1;
   dx /= len; dy /= len;
+  // Aviso de mira (telegraph): linha do disparo para o jogador poder DESVIAR.
+  addEffect(room, { type: 'hazard', x: e.x, y: e.y, x2: target.x, y2: target.y, r: e.radius + 14, color: cfg.color || e.color, ttl: 0.5, life: 0.5 });
   room.projectiles.push({
     id: makeId('ep'), owner: 'enemy', from: e.id, enemyType: e.type,
     x: e.x + dx * (e.radius + 10), y: e.y + dy * (e.radius + 10),
-    vx: dx * (cfg.speed || 430), vy: dy * (cfg.speed || 430),
+    vx: dx * (cfg.speed || 350), vy: dy * (cfg.speed || 350),
     radius: cfg.radius || 11, damage: cfg.damage || e.dmg,
-    ttl: cfg.ttl || 1.6, color: cfg.color || e.color, pierce: cfg.pierce || 0,
+    ttl: cfg.ttl || 1.7, color: cfg.color || e.color, pierce: cfg.pierce || 0,
     shape: cfg.shape || '',
-    slow: cfg.slow || 0, label: cfg.label || ''
+    slow: cfg.slow || 0, label: cfg.label || '', delay: 0.28, sx: e.x + dx * (e.radius + 10), sy: e.y + dy * (e.radius + 10)
   });
 }
 
@@ -1022,20 +1028,32 @@ function updatePlayers(room, dt) {
     p.vy = (p.y - prevY) / Math.max(dt, 0.001);
     if (p.actionTimer <= 0) p.action = (p.dashTimer > 0 || len > 0.05) ? 'run' : 'idle';
 
-    if (input.attack && p.attackCd <= 0) playerNormalAttack(room, p);
+    // TIRO AUTOMÁTICO: atira no inimigo mais próximo quando está no alcance (sem precisar mirar).
+    const aim = getAimDirection(room, p);
+    const autoTgt = aim.target;
+    const distTgt = autoTgt ? Math.hypot(autoTgt.x - p.x, autoTgt.y - p.y) : Infinity;
+    const wantAttack = input.attack || (autoTgt && distTgt <= heroAutoRange(p));
+    if (wantAttack && p.attackCd <= 0) playerNormalAttack(room, p);
     if (input.special && p.specialCd <= 0) playerSpecial(room, p);
-    if (input.ultimate && p.ultimate >= 100) playerUltimate(room, p);
+    if ((input.ultimate || (p.ultimate || 0) >= 100) && p.ultimate >= 100) playerUltimate(room, p);
   }
 }
 
 function updateProjectiles(room, dt) {
   for (const pr of room.projectiles) {
     pr.ttl -= dt;
-    pr.x += pr.vx * dt;
-    pr.y += pr.vy * dt;
+    // Projétil inimigo "carrega" parado por um instante (aviso) antes de disparar — dá tempo de DESVIAR.
+    if (pr.owner === 'enemy' && (pr.delay || 0) > 0) {
+      pr.delay -= dt;
+      if (pr.sx != null) { pr.x = pr.sx; pr.y = pr.sy; }
+    } else {
+      pr.x += pr.vx * dt;
+      pr.y += pr.vy * dt;
+    }
     if (pr.x < -80 || pr.x > WORLD.w + 80 || pr.y < -80 || pr.y > WORLD.h + 80) pr.ttl = 0;
 
     if (pr.ttl <= 0) continue;
+    if (pr.owner === 'enemy' && (pr.delay || 0) > 0) continue; // não causa dano durante o aviso
 
     if (pr.owner === 'player') {
       for (const e of room.enemies) {
@@ -1549,7 +1567,7 @@ setInterval(() => {
     room.lastTick = now;
     updateRoom(room, dt);
     room.tickCount++;
-    if (room.started && room.tickCount % 3 === 0) io.to(code).emit('state', gameSnapshot(room));
+    if (room.started) io.to(code).emit('state', gameSnapshot(room));
 
     // cleanup salas antigas sem jogadores conectados
     const connected = [...room.players.values()].some(p => p.connected);

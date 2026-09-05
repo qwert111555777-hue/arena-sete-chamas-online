@@ -10,7 +10,7 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '28';
+const ASSET_VERSION = '29';
 const SHOW_ARENA_TEXT = false;
 const SHOW_STAGE_INTRO = true;
 
@@ -94,7 +94,7 @@ const SPRITE_HEIGHT = {
   otavio: 199, anielle: 188, mito: 244, lenda: 249, vanjo: 276, silvanna: 241, napoleao: 239
 };
 
-const SPRITE_SHEETS = {"albert":{"frameW":128,"frameH":256,"cols":4,"rows":4,"pad":18},"anielle":{"frameW":130,"frameH":256,"cols":4,"rows":4,"pad":18},"arthur":{"frameW":107,"frameH":256,"cols":4,"rows":4,"pad":18},"geovanna":{"frameW":121,"frameH":256,"cols":4,"rows":4,"pad":18},"guilherme":{"frameW":140,"frameH":256,"cols":4,"rows":4,"pad":18},"lenda":{"frameW":199,"frameH":256,"cols":4,"rows":4,"pad":18},"mito":{"frameW":163,"frameH":256,"cols":4,"rows":4,"pad":18},"napoleao":{"frameW":231,"frameH":256,"cols":4,"rows":4,"pad":18},"otavio":{"frameW":125,"frameH":256,"cols":4,"rows":4,"pad":18},"romulo":{"frameW":150,"frameH":256,"cols":4,"rows":4,"pad":18},"vanjo":{"frameW":155,"frameH":272,"cols":4,"rows":4,"pad":34},"silvanna":{"frameW":119,"frameH":256,"cols":4,"rows":4,"pad":18}};
+const SPRITE_SHEETS = {"albert":{"frameW":148,"frameH":256,"cols":4,"rows":4,"pad":18},"anielle":{"frameW":130,"frameH":256,"cols":4,"rows":4,"pad":18},"arthur":{"frameW":107,"frameH":256,"cols":4,"rows":4,"pad":18},"geovanna":{"frameW":121,"frameH":256,"cols":4,"rows":4,"pad":18},"guilherme":{"frameW":140,"frameH":256,"cols":4,"rows":4,"pad":18},"lenda":{"frameW":199,"frameH":256,"cols":4,"rows":4,"pad":18},"mito":{"frameW":163,"frameH":256,"cols":4,"rows":4,"pad":18},"napoleao":{"frameW":231,"frameH":256,"cols":4,"rows":4,"pad":18},"otavio":{"frameW":125,"frameH":256,"cols":4,"rows":4,"pad":18},"romulo":{"frameW":150,"frameH":256,"cols":4,"rows":4,"pad":18},"vanjo":{"frameW":155,"frameH":272,"cols":4,"rows":4,"pad":34},"silvanna":{"frameW":119,"frameH":256,"cols":4,"rows":4,"pad":18}};
 
 const CHARACTER_ANIM = {
   albert: { color: '#ffd84a', aura: '#ffd84a', fx: 'fists' },
@@ -1442,11 +1442,18 @@ function drawSpriteImage(key, x, footY, height, facing = 1, alpha = 1, glow = nu
   const frameCol = (actionTimer > 0 && row !== SPRITE_ROWS.idle && actionName !== 'run')
     ? Math.min(sheet.cols - 1, Math.floor(actionProgress * sheet.cols))
     : Math.floor((phase * (moving ? 1.28 : .55)) % sheet.cols);
-  const bob = moving ? Math.abs(Math.sin(phase * 1.9)) * (perf ? 2.6 : 4.6) : Math.sin(phase) * (perf ? .45 : 1.0);
-  const tilt = (moving ? Math.sin(phase * 1.9) * (perf ? .020 : .040) : 0) * facing;
-  const lunge = attackLike ? facing * (perf ? 9 : 16) * Math.sin(actionProgress * Math.PI) : 0;
-  const pulse = specialLike ? 1 + Math.sin(actionProgress * Math.PI) * (perf ? .028 : .055) : 1;
-  const imageBottom = footY + pad + bob;
+  const speed = Math.hypot(motion?.speed || 0) || 0;
+  const dashing = speed > 560; // esquiva: corpo esticado e inclinado pra frente
+  const runEnergy = Math.min(1, speed / 320);
+  const bob = moving ? Math.abs(Math.sin(phase * 1.9)) * (perf ? 2.6 : 4.6) * (0.6 + runEnergy * 0.7) : Math.sin(phase) * (perf ? .45 : 1.0);
+  const tilt = ((moving ? Math.sin(phase * 1.9) * (0.030 + runEnergy * 0.05) : 0) + (dashing ? 0.22 * facing : 0)) * facing;
+  const lunge = attackLike ? facing * (perf ? 16 : 26) * Math.sin(actionProgress * Math.PI) : 0;
+  const hitShake = hitLike ? (Math.random() - .5) * 6 : 0;
+  const specialPulse = specialLike ? Math.sin(actionProgress * Math.PI) : 0;
+  const sx = facing * (dashing ? 1.16 : (1 + specialPulse * (perf ? .03 : .06))); // estica no dash / expande na habilidade
+  const sy = (dashing ? 0.9 : (1 - specialPulse * (perf ? .02 : .045)));
+  const pulse = 1;
+  const imageBottom = footY + pad + bob - (attackLike ? Math.sin(actionProgress * Math.PI) * 6 : 0);
   const centerY = imageBottom - h / 2;
   const visualTop = imageBottom - h + pad;
   const visualBottom = imageBottom - pad;
@@ -1456,9 +1463,9 @@ function drawSpriteImage(key, x, footY, height, facing = 1, alpha = 1, glow = nu
   if (glow && quality !== 'performance' && perfLevel < 1) { ctx.shadowColor = glow; ctx.shadowBlur = quality === 'max' ? 16 : 9; }
 
   if (assetReady(img)) {
-    ctx.translate(x + lunge, centerY);
+    ctx.translate(x + lunge + hitShake, centerY);
     ctx.rotate(tilt);
-    ctx.scale(facing * pulse, pulse);
+    ctx.scale(sx, sy);
     drawSpriteFrame(img, sheet, frameCol, row, w, h);
 
     if (hitLike) {
@@ -1989,11 +1996,23 @@ function drawEffect(fx) {
     ctx.globalAlpha = remain * .85;
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.ellipse(fx.x, fx.y, (fx.r || 34) * (0.6 + progress), (fx.r || 34) * .42, 0, 0, Math.PI * 2); ctx.stroke();
+  } else if (fx.type === 'hazard' && fx.x2 != null) {
+    // Aviso de tiro do chefe: linha de mira + alvo no jogador, piscando para dar tempo de desviar.
+    const blink = .35 + .35 * Math.sin(progress * Math.PI * 6);
+    ctx.globalAlpha = Math.max(0, remain * (0.35 + blink));
+    ctx.strokeStyle = color; ctx.lineWidth = 6; ctx.setLineDash([18, 12]);
+    ctx.beginPath(); ctx.moveTo(fx.x, fx.y); ctx.lineTo(fx.x2, fx.y2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = remain * (0.5 + blink * 0.5);
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(fx.x2, fx.y2, 30 * (0.7 + progress * 0.5), 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(fx.x2, fx.y2, 10, 0, Math.PI*2); ctx.fill();
   } else if (fx.type === 'ring' || fx.type === 'hit' || fx.type === 'hazard' || fx.type === 'slash') {
     ctx.globalAlpha = remain;
     ctx.strokeStyle = color; ctx.lineWidth = fx.type === 'hazard' ? 10 : 6;
     if (fx.type === 'hazard') ctx.setLineDash([15, 10]);
     ctx.beginPath(); ctx.arc(fx.x, fx.y, (fx.r || 50) * (.45 + progress*.65), 0, Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]);
     if (fx.type === 'hazard') {
       ctx.globalAlpha = .13 * remain;
       ctx.fillStyle = color; ctx.beginPath(); ctx.arc(fx.x, fx.y, fx.r || 50, 0, Math.PI*2); ctx.fill();
@@ -2003,13 +2022,29 @@ function drawEffect(fx) {
 }
 
 function drawAimLine() {
+  // Mira AUTOMÁTICA: mostra um cadeado no inimigo vivo mais próximo do meu jogador.
   const me = myGamePlayer();
-  if (!me || me.dead || !aimManual) return;
+  if (!me || me.dead || !game) return;
+  let best = null, bd = Infinity;
+  for (const e of game.enemies || []) {
+    if (e.hp <= 0 || e.invisible) continue;
+    const d = Math.hypot(e.x - me.x, e.y - me.y);
+    if (d < bd) { bd = d; best = e; }
+  }
+  if (!best) return;
+  const autoRange = me.hero === 'albert' ? 230 : 700;
+  if (bd > autoRange) return;
+  const t = performance.now() / 300;
+  const r = (best.radius || 34) + 14 + Math.sin(t) * 2;
   ctx.save();
-  ctx.globalAlpha = .42;
-  ctx.strokeStyle = '#fff6'; ctx.lineWidth = 3; ctx.setLineDash([10, 10]);
-  ctx.beginPath(); ctx.moveTo(me.x, me.y); ctx.lineTo(pointerAim.x, pointerAim.y); ctx.stroke();
-  ctx.fillStyle = '#fff8'; ctx.beginPath(); ctx.arc(pointerAim.x, pointerAim.y, 10, 0, Math.PI*2); ctx.fill();
+  ctx.globalAlpha = .8;
+  ctx.strokeStyle = '#ffe27a'; ctx.lineWidth = 3;
+  for (let k = 0; k < 4; k++) {
+    const a = k * Math.PI / 2 + t * 0.4;
+    ctx.beginPath();
+    ctx.arc(best.x, best.y, r, a + 0.18, a + Math.PI / 2 - 0.18);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
