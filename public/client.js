@@ -10,7 +10,7 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '26';
+const ASSET_VERSION = '27';
 const SHOW_ARENA_TEXT = false;
 const SHOW_STAGE_INTRO = true;
 
@@ -80,11 +80,11 @@ const SPRITE_FILES = {
 
 
 const PORTRAIT_FILES = {
-  albert: 'assets/faces/albert.png',
-  geovanna: 'assets/faces/geovanna.png',
-  romulo: 'assets/faces/romulo.png',
-  arthur: 'assets/faces/arthur.png',
-  guilherme: 'assets/faces/guilherme.png'
+  albert: 'assets/portraits/albert.webp',
+  geovanna: 'assets/portraits/geovanna.webp',
+  romulo: 'assets/portraits/romulo.webp',
+  arthur: 'assets/portraits/arthur.webp',
+  guilherme: 'assets/portraits/guilherme.webp'
 };
 function versionedAsset(src) { return `${src}${src.includes('?') ? '&' : '?'}v=${ASSET_VERSION}`; }
 
@@ -193,8 +193,8 @@ function getStageAsset(key) {
 
 function prewarmCurrentAssets() {
   if (game?.stageBackground) getStageAsset(game.stageBackground);
-  for (const p of game?.players || []) { getSpriteAsset(p.hero); getFaceAsset(p.hero); }
-  for (const e of game?.enemies || []) { getSpriteAsset(e.type); getFaceAsset(e.type); }
+  for (const p of game?.players || []) getSpriteAsset(p.hero);
+  for (const e of game?.enemies || []) getSpriteAsset(e.type);
 }
 
 const keys = {};
@@ -1739,7 +1739,6 @@ function drawPlayer(p) {
 
   const glow = p.hitFlash > 0 ? '#ff6b6b' : p.ultimate >= 100 ? '#ffd166' : (p.hero === 'guilherme' ? '#7bd3ff' : null);
   const drawn = drawSpriteImage(p.hero, x, footY, height, facing, 1, glow, motion, { name: p.action, timer: p.actionTimer, hit: p.hitFlash });
-  if (!p.dead) drawFaceHead(p.hero, x, drawn.top, drawn.visibleH, alpha);
   drawHeroPersonality(p, x, y, footY, drawn, facing, motion);
 
   if (p.dead) {
@@ -1796,7 +1795,6 @@ function drawEnemy(e) {
   }
 
   const drawn = drawSpriteImage(e.type, x, footY, height, facing, 1, glow, motion, { name: e.action, timer: e.actionTimer, hit: e.hitFlash });
-  drawFaceHead(e.type, x, drawn.top, drawn.visibleH, 1);
   drawEnemyPersonality(e, x, y, footY, drawn, facing, motion);
 
   if (e.stun > 0) drawStatusText(x, Math.max(24, drawn.top - 44), 'stun', '#7bd3ff');
