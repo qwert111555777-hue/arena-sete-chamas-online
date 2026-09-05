@@ -80,11 +80,11 @@ const SPRITE_FILES = {
 
 
 const PORTRAIT_FILES = {
-  albert: 'assets/faces/albert.png',
-  geovanna: 'assets/faces/geovanna.png',
-  romulo: 'assets/faces/romulo.png',
-  arthur: 'assets/faces/arthur.png',
-  guilherme: 'assets/faces/guilherme.png'
+  albert: 'assets/portraits/albert.webp',
+  geovanna: 'assets/portraits/geovanna.webp',
+  romulo: 'assets/portraits/romulo.webp',
+  arthur: 'assets/portraits/arthur.webp',
+  guilherme: 'assets/portraits/guilherme.webp'
 };
 function versionedAsset(src) { return `${src}${src.includes('?') ? '&' : '?'}v=${ASSET_VERSION}`; }
 
@@ -184,8 +184,8 @@ function getStageAsset(key) {
 
 function prewarmCurrentAssets() {
   if (game?.stageBackground) getStageAsset(game.stageBackground);
-  for (const p of game?.players || []) { getSpriteAsset(p.hero); getFaceAsset(p.hero); }
-  for (const e of game?.enemies || []) { getSpriteAsset(e.type); getFaceAsset(e.type); }
+  for (const p of game?.players || []) getSpriteAsset(p.hero);
+  for (const e of game?.enemies || []) getSpriteAsset(e.type);
 }
 
 const keys = {};
