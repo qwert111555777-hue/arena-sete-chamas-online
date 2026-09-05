@@ -339,6 +339,7 @@ button:disabled { opacity: .55; cursor: not-allowed; transform: none !important;
 .action.attack { background: linear-gradient(180deg, #ff7f6d, #d5233d); }
 .action.special { background: linear-gradient(180deg, #58d7ff, #136ee4); }
 .action.ultimate { background: linear-gradient(180deg, #ffe25d, #ff8a00); color: #351c00; text-shadow: none; }
+.action.dash { background: linear-gradient(180deg, #7dffce, #14b87a); color: #04301f; text-shadow: none; min-width: 96px; height: 60px; }
 .end-overlay {
   position: fixed;
   z-index: 20;

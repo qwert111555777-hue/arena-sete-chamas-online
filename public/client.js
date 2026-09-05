@@ -10,7 +10,7 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '27';
+const ASSET_VERSION = '28';
 const SHOW_ARENA_TEXT = false;
 const SHOW_STAGE_INTRO = true;
 
@@ -55,11 +55,11 @@ const ENEMY_INFO = {
 };
 
 const STAGE_BACKGROUNDS = {
-  stage1_lama_esgoto: 'assets/stages/stage1_lama_esgoto.jpg',
-  stage2_ifs_mito: 'assets/stages/stage2_ifs_mito.jpg',
-  stage3_terreiro_lenda: 'assets/stages/stage3_terreiro_lenda.jpg',
-  stage4_supermercado_vanjo: 'assets/stages/stage4_supermercado_vanjo.jpg',
-  stage5_reino_comidas: 'assets/stages/stage5_reino_comidas.jpg'
+  stage1_lama_esgoto: 'assets/stages/stage1_beco_2d.jpg',
+  stage2_ifs_mito: 'assets/stages/stage2_ifs_2d.jpg',
+  stage3_terreiro_lenda: 'assets/stages/stage3_terreiro_2d.jpg',
+  stage4_supermercado_vanjo: 'assets/stages/stage4_quarto_2d.jpg',
+  stage5_reino_comidas: 'assets/stages/stage5_reino_2d.jpg'
 };
 
 
@@ -198,14 +198,16 @@ function prewarmCurrentAssets() {
 }
 
 const keys = {};
-const inputState = { mx: 0, my: 0, aimX: null, aimY: null, attack: false, special: false, ultimate: false };
+const inputState = { mx: 0, my: 0, aimX: null, aimY: null, attack: false, special: false, ultimate: false, dash: false };
 let mouseDownAttack = false;
 let pointerAim = { x: 1000, y: 450 };
 let aimManual = false;
 let joystickVec = { x: 0, y: 0 };
 let specialPulseUntil = 0;
 let ultimatePulseUntil = 0;
+let dashPulseUntil = 0;
 let attackTouchDown = false;
+let keyEdgeDash = false;
 let lastSocketInput = 0;
 
 const canvas = $('gameCanvas');
@@ -760,8 +762,10 @@ window.addEventListener('mouseup', () => { mouseDownAttack = false; });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 
 window.addEventListener('keydown', (e) => {
-  keys[e.key.toLowerCase()] = true;
-  if (currentScreen === 'gameScreen' && [' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key.toLowerCase())) e.preventDefault();
+  const k = e.key.toLowerCase();
+  keys[k] = true;
+  if (currentScreen === 'gameScreen' && [' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault();
+  if (currentScreen === 'gameScreen' && (k === 'shift' || k === 'f') && !e.repeat) dashPulseUntil = performance.now() + 160;
 });
 window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
@@ -772,6 +776,7 @@ function setupActionButton(id, action) {
     if (action === 'attack') attackTouchDown = true;
     if (action === 'special') specialPulseUntil = performance.now() + 180;
     if (action === 'ultimate') ultimatePulseUntil = performance.now() + 180;
+    if (action === 'dash') dashPulseUntil = performance.now() + 160;
   };
   const up = (e) => {
     e.preventDefault();
@@ -785,6 +790,7 @@ function setupActionButton(id, action) {
 setupActionButton('attackTouch', 'attack');
 setupActionButton('specialTouch', 'special');
 setupActionButton('ultimateTouch', 'ultimate');
+setupActionButton('dashTouch', 'dash');
 
 const joy = $('joystick');
 const stick = $('stick');
@@ -837,6 +843,7 @@ function composeInput() {
   const t = performance.now();
   inputState.special = keys.q || t < specialPulseUntil;
   inputState.ultimate = keys.e || t < ultimatePulseUntil;
+  inputState.dash = keys.shift || t < dashPulseUntil;
 }
 
 setInterval(() => {
@@ -1974,6 +1981,14 @@ function drawEffect(fx) {
       const a = i * Math.PI * 2 / 7 + progress * 2;
       drawSparkShape(fx.x + Math.cos(a) * (fx.r || 38) * progress, fx.y + Math.sin(a) * (fx.r || 38) * .5 * progress, 7, color, .76 * remain);
     }
+  } else if (fx.type === 'dash') {
+    // Rastro de esquiva: elipse alongada que desfaz, dando sensação de velocidade.
+    ctx.globalAlpha = remain * .5;
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.ellipse(fx.x, fx.y, (fx.r || 34) * (0.6 + progress), (fx.r || 34) * .42, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = remain * .85;
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(fx.x, fx.y, (fx.r || 34) * (0.6 + progress), (fx.r || 34) * .42, 0, 0, Math.PI * 2); ctx.stroke();
   } else if (fx.type === 'ring' || fx.type === 'hit' || fx.type === 'hazard' || fx.type === 'slash') {
     ctx.globalAlpha = remain;
     ctx.strokeStyle = color; ctx.lineWidth = fx.type === 'hazard' ? 10 : 6;

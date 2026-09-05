@@ -208,7 +208,20 @@ function makeRoom(hostId) {
 }
 
 function defaultInput() {
-  return { mx: 0, my: 0, aimX: null, aimY: null, attack: false, special: false, ultimate: false };
+  return { mx: 0, my: 0, aimX: null, aimY: null, attack: false, special: false, ultimate: false, dash: false };
+}
+
+// Joga um inimigo para trás (knockback) — deixa as trocas de golpe mais fundamentadas.
+function applyEnemyKnockback(room, e, fromX, fromY, force = 260) {
+  if (!e || e.hp <= 0) return;
+  let dx = e.x - fromX, dy = e.y - fromY;
+  let len = Math.hypot(dx, dy);
+  if (len < 1) { dx = (e.dirX || 1); dy = 0; len = 1; }
+  const resist = e.knockResist || (e.type === 'napoleao' ? 0.45 : e.type === 'lenda' ? 0.7 : 1);
+  const f = force * resist;
+  e.kbx = (e.kbx || 0) + (dx / len) * f;
+  e.kby = (e.kby || 0) + (dy / len) * f;
+  e.knockTimer = Math.max(e.knockTimer || 0, 0.18);
 }
 
 
@@ -269,6 +282,10 @@ function addPlayer(room, socket, name) {
     actionTimer: 0,
     dead: false,
     kills: 0,
+    combo: 0,
+    comboTimer: 0,
+    dashCd: 0,
+    dashTimer: 0,
     input: defaultInput()
   };
   room.players.set(socket.id, player);
@@ -629,6 +646,10 @@ function enemyDamage(e, amount) {
 function damagePlayer(room, p, amount, sourceName = 'Inimigo', options = {}) {
   if (!p || p.dead || p.hp <= 0) return 0;
   let final = Math.max(1, Math.round(amount));
+  if ((p.dashTimer || 0) > 0) { // esquiva: invulnerável durante o impulso
+    addEffect(room, { type: 'sparkDodge', x: p.x, y: p.y, r: 40, color: '#bfe9ff', ttl: 0.22, life: 0.22 });
+    return 0;
+  }
   if ((p.dodgeTimer || 0) > 0 && Math.random() < (p.dodgeChance || 0)) {
     addEffect(room, { type: 'ring', x: p.x, y: p.y, r: 58, color: '#bff3ff', ttl: 0.28, life: 0.28 });
     return 0;
@@ -666,7 +687,7 @@ function spawnPlayerProjectile(room, p, cfg) {
     vx: dir.x * cfg.speed, vy: dir.y * cfg.speed,
     radius: cfg.radius || 9, damage: cfg.damage || 10,
     ttl: cfg.ttl || 1.2, color: cfg.color || '#fff', pierce: cfg.pierce || 0,
-    shape: cfg.shape || '',
+    shape: cfg.shape || '', knock: cfg.knock || 0,
     slow: cfg.slow || 0, stun: cfg.stun || 0, mark: cfg.mark || 0
   });
 }
@@ -692,33 +713,54 @@ function playerNormalAttack(room, p) {
   const h = HEROES[p.hero];
   const dir = getAimDirection(room, p);
   p.dirX = dir.x; p.dirY = dir.y;
-  p.attackCd = h.attackCd;
-  setAction(p, 'attack', 0.34);
+
+  // ===== COMBO: sequência de 3 golpes, o 3º é o FINALIZADOR (mais forte + knockback). =====
+  p.combo = ((p.combo || 0) % 3) + 1;
+  p.comboTimer = 1.6;
+  const step = p.combo;                 // 1, 2 ou 3
+  const finisher = step === 3;          // golpe final da sequência
+  const cm = [1, 1.12, 1.55][step - 1]; // multiplicador de dano do combo
+  const cdScale = [1, 0.82, 1.12][step - 1];
+  p.attackCd = h.attackCd * cdScale;
+  setAction(p, 'attack', finisher ? 0.42 : 0.3);
+  if (step === 2) addFloatingText(room, p.x, p.y - 64, 'Combo x2', '#9fe6ff');
+  if (finisher) addFloatingText(room, p.x, p.y - 78, 'COMBO x3!', '#ffe27a');
 
   if (p.hero === 'albert') {
-    const cx = p.x + dir.x * 54, cy = p.y + dir.y * 54;
-    const dmg = 18 + (p.rivalry || 0) * 2;
+    const reach = finisher ? 78 : 54;
+    const cx = p.x + dir.x * reach, cy = p.y + dir.y * reach;
+    const dmg = Math.round((18 + (p.rivalry || 0) * 2) * cm);
     let hits = 0;
     for (const e of room.enemies) {
       if (e.hp <= 0 || e.invisible) continue;
-      if (Math.hypot(e.x - cx, e.y - cy) <= e.radius + 70) {
-        damageEnemy(room, e, dmg, p.id, { color: '#ffdf58' });
+      if (Math.hypot(e.x - cx, e.y - cy) <= e.radius + (finisher ? 92 : 70)) {
+        damageEnemy(room, e, dmg, p.id, { color: finisher ? '#fff07a' : '#ffdf58' });
+        if (finisher) applyEnemyKnockback(room, e, p.x, p.y, 430);
         e.forcedTarget = p.id; e.forcedTimer = Math.max(e.forcedTimer || 0, 1.6);
         hits++;
       }
     }
-    addEffect(room, { type: 'slash', x: cx, y: cy, r: 74, color: '#ffdf58', ttl: 0.2, life: 0.2 });
-    if (hits) giveUltimate(p, 4 + hits * 2);
+    addEffect(room, { type: finisher ? 'ring' : 'slash', x: cx, y: cy, r: finisher ? 104 : 74, color: finisher ? '#fff07a' : '#ffdf58', ttl: finisher ? 0.3 : 0.2, life: finisher ? 0.3 : 0.2 });
+    if (finisher && hits) addFloatingText(room, p.x, p.y - 60, 'FINALIZOU!', '#ffe27a');
+    if (hits) giveUltimate(p, 4 + hits * 2 + (finisher ? 5 : 0));
     return;
   }
 
+  const knock = finisher ? 300 : 0;
+  const bonus = finisher ? 0 : 0;
   if (p.hero === 'geovanna') {
-    spawnPlayerProjectile(room, p, { dir, speed: 560, radius: 12, damage: 13, color: '#ff77c8', slow: 1.1, ttl: 1.3, shape: 'heart' });
+    const dmg = Math.round(13 * cm);
+    spawnPlayerProjectile(room, p, { dir, speed: 560, radius: 12, damage: dmg, color: finisher ? '#ffd23f' : '#ff77c8', slow: finisher ? 1.8 : 1.1, ttl: 1.3, shape: finisher ? 'heart' : 'heart', knock });
+    if (finisher) { spawnPlayerProjectile(room, p, { dir: { x: dir.x * 0.7 - dir.y * 0.7, y: dir.x * 0.7 + dir.y * 0.7 }, speed: 500, radius: 11, damage: Math.round(10 * cm), color: '#ff9ad0', ttl: 1.1, shape: 'heart', knock: 200 }); spawnPlayerProjectile(room, p, { dir: { x: dir.x * 0.7 + dir.y * 0.7, y: dir.y * 0.7 - dir.x * 0.7 }, speed: 500, radius: 11, damage: Math.round(10 * cm), color: '#ff9ad0', ttl: 1.1, shape: 'heart', knock: 200 }); addEffect(room, { type: 'ring', x: p.x + dir.x * 40, y: p.y + dir.y * 40, r: 90, color: '#ffd23f', ttl: 0.3, life: 0.3 }); }
   } else if (p.hero === 'romulo') {
-    spawnPlayerProjectile(room, p, { dir, speed: 620, radius: 10, damage: 16, color: '#c9f2ff', ttl: 1.22, shape: 'card' });
+    const dmg = Math.round(16 * cm);
+    spawnPlayerProjectile(room, p, { dir, speed: 620, radius: finisher ? 13 : 10, damage: dmg, color: finisher ? '#eaf7ff' : '#c9f2ff', ttl: 1.25, shape: 'card', knock, pierce: finisher ? 2 : 0 });
+    if (finisher) addEffect(room, { type: 'ring', x: p.x + dir.x * 44, y: p.y + dir.y * 44, r: 96, color: '#cfeeff', ttl: 0.3, life: 0.3 });
   } else if (p.hero === 'arthur') {
     const crit = Math.random() < 0.13;
-    spawnPlayerProjectile(room, p, { dir, speed: 690, radius: 9, damage: crit ? 23 : 15, color: crit ? '#fffb8a' : '#18d4ff', ttl: 1.1, shape: 'codeSlash' });
+    const dmg = Math.round((crit ? 23 : 15) * cm);
+    spawnPlayerProjectile(room, p, { dir, speed: 690, radius: finisher ? 12 : 9, damage: dmg, color: crit ? '#fffb8a' : (finisher ? '#7ff3ff' : '#18d4ff'), ttl: 1.1, shape: 'codeSlash', knock, pierce: finisher ? 2 : 0 });
+    if (finisher) { for (const a of [-0.35, 0.35]) spawnPlayerProjectile(room, p, { dir: { x: dir.x - dir.y * a, y: dir.y + dir.x * a }, speed: 720, radius: 9, damage: Math.round(13 * cm), color: '#18d4ff', ttl: 1.0, shape: 'codeSlash', knock: 220 }); addEffect(room, { type: 'ring', x: p.x + dir.x * 44, y: p.y + dir.y * 44, r: 92, color: '#18d4ff', ttl: 0.3, life: 0.3 }); }
     if (crit) {
       p.ego = clamp((p.ego || 0) + 1, 0, 6);
       p.egoTimer = Math.max(p.egoTimer || 0, 4.0);
@@ -727,9 +769,12 @@ function playerNormalAttack(room, p) {
       giveUltimate(p, 3);
     }
   } else if (p.hero === 'guilherme') {
-    p.aura = clamp((p.aura || 0) + 4, 0, 100);
-    spawnPlayerProjectile(room, p, { dir, speed: 600, radius: 11, damage: 13 + Math.floor((p.aura || 0) / 20), color: '#8ff6ff', ttl: 1.25, shape: 'auraBlade' });
+    p.aura = clamp((p.aura || 0) + (finisher ? 8 : 4), 0, 100);
+    const dmg = Math.round((13 + Math.floor((p.aura || 0) / 20)) * cm);
+    spawnPlayerProjectile(room, p, { dir, speed: 600, radius: finisher ? 14 : 11, damage: dmg, color: finisher ? '#d6ffff' : '#8ff6ff', ttl: 1.25, shape: 'auraBlade', knock, pierce: finisher ? 1 : 0 });
+    if (finisher) addEffect(room, { type: 'ring', x: p.x + dir.x * 44, y: p.y + dir.y * 44, r: 96, color: '#8ff6ff', ttl: 0.32, life: 0.32 });
   }
+  if (finisher) giveUltimate(p, 4);
 }
 
 function playerSpecial(room, p) {
@@ -911,6 +956,10 @@ function updatePlayers(room, dt) {
     p.egoTimer = Math.max(0, (p.egoTimer || 0) - dt);
     if (p.egoTimer <= 0) p.ego = 0;
     p.shield = Math.max(0, p.shield || 0);
+    p.comboTimer = Math.max(0, (p.comboTimer || 0) - dt);
+    if (p.comboTimer <= 0) p.combo = 0;
+    p.dashCd = Math.max(0, (p.dashCd || 0) - dt);
+    p.dashTimer = Math.max(0, (p.dashTimer || 0) - dt);
 
     if (p.dead) {
       p.action = 'dead';
@@ -941,14 +990,37 @@ function updatePlayers(room, dt) {
     const len = Math.hypot(mx, my);
     if (len > 1) { mx /= len; my /= len; }
     if (len > 0.05) { p.dirX = mx; p.dirY = my; }
-    const speed = h.speed * (p.slowTimer > 0 ? 0.62 : 1);
+
+    // ESQUIVA (dash): pulo rápido na direção do movimento/mira; enquanto desvia fica invulnerável.
+    if (input.dash && p.dashCd <= 0 && !p.dead) {
+      let ddx = mx, ddy = my;
+      if (Math.hypot(ddx, ddy) < 0.1) {
+        const aim = getAimDirection(room, p);
+        ddx = aim.x; ddy = aim.y;
+      }
+      const dl = Math.hypot(ddx, ddy) || 1;
+      p.dashDirX = ddx / dl; p.dashDirY = ddy / dl;
+      p.dirX = p.dashDirX; p.dirY = p.dashDirY;
+      p.dashTimer = 0.16;
+      p.dashCd = 1.6;
+      setAction(p, 'run', 0.22);
+      addEffect(room, { type: 'dash', x: p.x, y: p.y, r: 34, color: '#bfe9ff', ttl: 0.32, life: 0.32 });
+    }
+
+    let speed = h.speed * (p.slowTimer > 0 ? 0.62 : 1);
+    if (p.dashTimer > 0) speed = h.speed * 3.3; // impulsão da esquiva
     const prevX = p.x, prevY = p.y;
-    p.x += mx * speed * dt;
-    p.y += my * speed * dt;
+    if (p.dashTimer > 0) {
+      p.x += (p.dashDirX || p.dirX || 1) * speed * dt;
+      p.y += (p.dashDirY || p.dirY || 0) * speed * dt;
+    } else {
+      p.x += mx * speed * dt;
+      p.y += my * speed * dt;
+    }
     clampEntity(p, PLAYER_BOUNDS);
     p.vx = (p.x - prevX) / Math.max(dt, 0.001);
     p.vy = (p.y - prevY) / Math.max(dt, 0.001);
-    if (p.actionTimer <= 0) p.action = len > 0.05 ? 'run' : 'idle';
+    if (p.actionTimer <= 0) p.action = (p.dashTimer > 0 || len > 0.05) ? 'run' : 'idle';
 
     if (input.attack && p.attackCd <= 0) playerNormalAttack(room, p);
     if (input.special && p.specialCd <= 0) playerSpecial(room, p);
@@ -973,6 +1045,7 @@ function updateProjectiles(room, dt) {
           if (pr.slow) e.slow = Math.max(e.slow || 0, pr.slow);
           if (pr.stun) e.stun = Math.max(e.stun || 0, pr.stun);
           if (pr.mark) e.mark = Math.max(e.mark || 0, pr.mark);
+          if (pr.knock) applyEnemyKnockback(room, e, pr.x - pr.vx * 0.03, pr.y - pr.vy * 0.03, pr.knock);
           if (pr.pierce > 0) pr.pierce--; else { pr.ttl = 0; break; }
         }
       }
@@ -1017,6 +1090,19 @@ function updateEnemies(room, dt) {
     if (e.forcedTimer <= 0) e.forcedTarget = null;
     e.attackCd = Math.max(0, (e.attackCd || 0) - dt);
     e.specialCd = Math.max(0, (e.specialCd || 0) - dt);
+
+    // knockback aplicado (empurrão dos golpes)
+    if ((e.knockTimer || 0) > 0) {
+      e.knockTimer -= dt;
+      const kx = e.kbx || 0, ky = e.kby || 0;
+      const pbx = e.x, pby = e.y;
+      e.x += kx * dt; e.y += ky * dt;
+      clampEntity(e, ENEMY_BOUNDS);
+      e.kbx = kx * Math.pow(0.0009, dt);
+      e.kby = ky * Math.pow(0.0009, dt);
+      if (e.knockTimer <= 0) { e.kbx = 0; e.kby = 0; }
+      else { e.vx = (e.x - pbx) / Math.max(dt, 0.001); e.vy = (e.y - pby) / Math.max(dt, 0.001); }
+    }
 
     if (e.type === 'silvanna') {
       e.rage = Math.min(26, (e.rage || 0) + dt); // Mamãe Má
