@@ -1739,6 +1739,11 @@ function drawPlayer(p) {
   if ((p.hitFlash || 0) > 0.08 && (!prevP || prevP <= 0.08)) spawnSparks(x, y, '#ff7d7d', 8, 0.9);
   prevHitFlash.set('p-' + p.id, p.hitFlash || 0);
 
+  // Faíscas quando o herói apanha.
+  const prevP = prevHitFlash.get('p-' + p.id);
+  if ((p.hitFlash || 0) > 0.08 && (!prevP || prevP <= 0.08)) spawnSparks(x, y, '#ff7d7d', 8, 0.9);
+  prevHitFlash.set('p-' + p.id, p.hitFlash || 0);
+
   const glow = p.hitFlash > 0 ? '#ff6b6b' : p.ultimate >= 100 ? '#ffd166' : (p.hero === 'guilherme' ? '#7bd3ff' : null);
   const bodyFootY = footY - hopY;
   const drawn = drawSpriteImage(p.hero, x, bodyFootY, height, facing, 1, glow, motion, { name: p.action, timer: p.actionTimer, hit: p.hitFlash });
