@@ -10,7 +10,7 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '30';
+const ASSET_VERSION = '42';
 const SHOW_ARENA_TEXT = false;
 const SHOW_STAGE_INTRO = true;
 
@@ -117,60 +117,10 @@ function actionDuration(actionName) {
   return actionName === 'ultimate' ? .95 : actionName === 'special' ? .72 : actionName === 'melee' ? .45 : actionName === 'attack' ? .34 : actionName === 'hit' ? .22 : .8;
 }
 
-// Rostos REAIS (fotos tratadas) aplicados sobre a cabeça dos personagens na arena
-const FACE_FILES = {
-  albert: 'assets/faces/albert.png', geovanna: 'assets/faces/geovanna.png',
-  romulo: 'assets/faces/romulo.png', arthur: 'assets/faces/arthur.png',
-  guilherme: 'assets/faces/guilherme.png',
-  otavio: 'assets/faces/otavio.png', anielle: 'assets/faces/anielle.png',
-  silvanna: 'assets/faces/silvanna.png', napoleao: 'assets/faces/napoleao.png'
-  // mito e lenda usam o corpo cartoon novo (rosto embutido), sem círculo de foto
-};
-// diâmetro do rosto em fração da altura visível; e posição vertical do centro da cabeça
-const FACE_CONF = {
-  albert:     { s: .20, y: .13 }, geovanna: { s: .19, y: .13 },
-  romulo:     { s: .20, y: .13 }, arthur:   { s: .19, y: .13 },
-  guilherme:  { s: .20, y: .13 },
-  otavio:     { s: .21, y: .12 }, anielle:  { s: .21, y: .12 },
-  mito:       { s: .19, y: .11 }, lenda:    { s: .22, y: .12 },
-  silvanna:   { s: .20, y: .12 }, napoleao: { s: .30, y: .22 }
-};
-const assets = { arena: null, sprites: {}, stages: {}, faces: {} };
-function getFaceAsset(key) {
-  const src = FACE_FILES[key];
-  if (!src) return null;
-  if (!assets.faces[key]) assets.faces[key] = loadAsset(src);
-  return assets.faces[key];
-}
-function drawFaceHead(key, x, topY, visibleH, alpha = 1) {
-  const img = getFaceAsset(key);
-  if (!assetReady(img)) return;
-  const cfg = FACE_CONF[key] || { s: .20, y: .13 };
-  const isDog = key === 'napoleao';
-  const diam = cfg.s * visibleH;
-  const r = diam / 2;
-  const cx = x;
-  const cy = topY + visibleH * cfg.y + r;
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.beginPath();
-  if (isDog) ctx.ellipse(cx, cy, r * 1.08, r * .92, 0, 0, Math.PI * 2);
-  else ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.clip();
-  const iw = img.naturalWidth, ih = img.naturalHeight;
-  const sc = Math.max((r * 2) / iw, (r * 2) / ih);
-  const dw = iw * sc, dh = ih * sc;
-  ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
-  ctx.restore();
-  if (!isDog) {
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.strokeStyle = 'rgba(255,216,120,.8)';
-    ctx.lineWidth = Math.max(1.5, r * .08);
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
-    ctx.restore();
-  }
-}
+// As fotos REAIS das pessoas NUNCA aparecem no jogo: serviram apenas como referência
+// para criar os personagens cartoon. A seleção e a arena usam só spritesheets/retratos
+// desenhados. Por isso não há mais carregamento nem desenho de foto real crua.
+const assets = { arena: null, sprites: {}, stages: {} };
 function loadAsset(src) {
   const img = new Image();
   img.decoding = 'async';
@@ -228,12 +178,44 @@ let lastCanvasH = 0;
 let lastDrawTime = 0;
 let lastHudUpdate = 0;
 const spriteMotion = new Map();
+const dashTrail = []; // sombras do corpo durante a esquiva
 let bgCache = { key: null, quality: null, canvas: null };
 let stageIntroUntil = 0;
 let stageIntroData = null;
 let lastStageKey = '';
 let perfLevel = 0;
 const perfStats = { samples: [], lastCheck: 0, badChecks: 0, goodChecks: 0 };
+
+// ===== Game feel: tremor de tela + faíscas de impacto (tudo procedural, sem asset) =====
+let screenShake = 0;
+let ultReadyFlash = 0; // clarão dourado nas bordas quando a ultimate fica pronta
+const hitSparks = [];
+const floaters = []; // palavras de impacto cômicas que sobem e somem
+const rings = [];    // anéis em expansão (morte de chefe, etc.)
+const prevHitFlash = new Map();
+function addShake(a) { screenShake = Math.min(26, screenShake + a); window.__shakeUsed = true; }
+function spawnSparks(x, y, color, n = 9, power = 1) {
+  if (hitSparks.length > 150) return;
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const sp = (70 + Math.random() * 190) * power;
+    hitSparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 70, life: 0.35 + Math.random() * 0.3, ttl: 0.65, r: 2 + Math.random() * 2.6, color });
+  }
+}
+const HIT_WORDS = ['PÁ!', 'TAP!', 'TIK!', 'NHAC!', 'PIM!'];
+const BIG_WORDS = ['POW!', 'BOOM!', 'CRASH!', 'WHAM!', 'BAM!', 'KO!'];
+const HURT_WORDS = ['AI!', 'UI!', 'ECA!'];
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function spawnFloater(x, y, text, color = '#fff3c4', big = false) {
+  const numeric = /^[+\d]/.test(String(text)); // números de dano/cura sobem mais alto e duram mais
+  floaters.push({ x: x + (Math.random() - 0.5) * 14, y, text: String(text), color, big, numeric, t: 0, ttl: big ? 0.95 : (numeric ? 0.9 : 0.7) });
+  if (floaters.length > 40) floaters.shift();
+}
+function spawnRing(x, y, color = '#ffd166', maxR = 150, ttl = 0.55) {
+  rings.push({ x, y, color, maxR, t: 0, ttl });
+  if (rings.length > 24) rings.shift();
+}
+window.__addShake = addShake;
 
 function resolveQuality() {
   // v12: modo único leve/universal. Sem escolha de gráfico, sem troca manual e sem layout quebrando no celular.
@@ -243,8 +225,8 @@ function resolveQuality() {
 function qualityDprCap() {
   // Resolução nativa: nunca renderiza ABAIXO de 1x (que borrava ao esticar).
   // Em celular bom chega a ~1.6x (tela nítida); se travar, cai p/ 1.0x.
-  let cap = device.mobile ? 1.6 : 1.25;
-  if (perfLevel >= 1) cap = Math.min(cap, 1.1);
+  let cap = device.mobile ? 1.5 : 1.25;
+  if (perfLevel >= 1) cap = Math.min(cap, 1.05);
   return cap;
 }
 
@@ -277,10 +259,11 @@ function recordFrameCost(dt) {
   const avg = perfStats.samples.reduce((a, b) => a + b, 0) / perfStats.samples.length;
   const slowFrames = perfStats.samples.filter(v => v > 45).length / perfStats.samples.length;
   const fps = 1000 / Math.max(1, avg);
-  if (fps < 18 || slowFrames > .45) {
+  if (fps < 20 || slowFrames > .40) {
     perfStats.badChecks++;
     perfStats.goodChecks = 0;
-    if (perfStats.badChecks >= 2) setPerfLevel(perfLevel + 1);
+    // No celular, cai para o modo leve mais rápido (1 detecção); no PC espera 2.
+    if (perfStats.badChecks >= (device.mobile ? 1 : 2)) setPerfLevel(perfLevel + 1);
   } else if (fps > 29 && slowFrames < .12) {
     perfStats.goodChecks++;
     perfStats.badChecks = 0;
@@ -1450,8 +1433,14 @@ function drawSpriteImage(key, x, footY, height, facing = 1, alpha = 1, glow = nu
   const lunge = attackLike ? facing * (perf ? 16 : 26) * Math.sin(actionProgress * Math.PI) : 0;
   const hitShake = hitLike ? (Math.random() - .5) * 6 : 0;
   const specialPulse = specialLike ? Math.sin(actionProgress * Math.PI) : 0;
-  const sx = facing * (dashing ? 1.16 : (1 + specialPulse * (perf ? .03 : .06))); // estica no dash / expande na habilidade
-  const sy = (dashing ? 0.9 : (1 - specialPulse * (perf ? .02 : .045)));
+  // Impacto do ataque (squash & stretch cartunesco): encolhe no início e estica no contato.
+  const impact = attackLike ? Math.sin(actionProgress * Math.PI) : 0;
+  const windup = attackLike && actionProgress < 0.28 ? (0.28 - actionProgress) : 0;
+  let squashX = 1, squashY = 1;
+  if (impact > 0.01) { squashX = 1 - impact * 0.05; squashY = 1 + impact * 0.07; }
+  if (windup > 0) { squashX = 1 + windup * 0.12; squashY = 1 - windup * 0.09; }
+  const sx = facing * (dashing ? 1.16 : (1 + specialPulse * (perf ? .03 : .06))) * squashX;
+  const sy = (dashing ? 0.9 : (1 - specialPulse * (perf ? .02 : .045))) * squashY;
   const pulse = 1;
   const imageBottom = footY + pad + bob - (attackLike ? Math.sin(actionProgress * Math.PI) * 6 : 0);
   const centerY = imageBottom - h / 2;
@@ -1513,14 +1502,16 @@ function drawStaff(x, y, length, color, facing, phase, alpha = .85) {
   ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, y); ctx.scale(facing, 1); ctx.rotate(-0.72 + Math.sin(phase) * .08);
   ctx.strokeStyle = color; ctx.lineWidth = 5; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(0, length * .45); ctx.lineTo(0, -length * .55); ctx.stroke();
-  ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 10;
+  ctx.fillStyle = color;
+  if (quality !== 'performance' && perfLevel < 1) { ctx.shadowColor = color; ctx.shadowBlur = 10; }
   ctx.beginPath(); ctx.arc(0, -length * .58, 9, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
 
 function drawDigitalBlade(x, y, length, facing, phase, alpha = .88) {
   ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, y); ctx.scale(facing, 1); ctx.rotate(-0.72 + Math.sin(phase * 1.5) * .08);
-  ctx.strokeStyle = '#18d4ff'; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.shadowColor = '#18d4ff'; ctx.shadowBlur = 12;
+  ctx.strokeStyle = '#18d4ff'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+  if (quality !== 'performance' && perfLevel < 1) { ctx.shadowColor = '#18d4ff'; ctx.shadowBlur = 12; }
   ctx.beginPath(); ctx.moveTo(0, length * .35); ctx.lineTo(0, -length * .55); ctx.stroke();
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(5, length * .05); ctx.lineTo(5, -length * .45); ctx.stroke();
   ctx.restore();
@@ -1749,13 +1740,57 @@ function drawPlayer(p) {
     ctx.restore();
   }
 
-  ctx.fillStyle = 'rgba(0,0,0,.36)';
-  ctx.beginPath(); ctx.ellipse(x, footY + 3, motion.moving ? 52 : 44, motion.moving ? 17 : 14, 0, 0, Math.PI * 2); ctx.fill();
-  if (motion.moving) drawStepDust(x, footY + 2, motion.phase, stageDustColor());
+  // Pulo da esquiva: durante o dash o corpo salta (sombra encolhe/clareia embaixo).
+  const hopT = clamp((Math.abs(motion.speed) - 520) / 300, 0, 1);
+  const hopY = hopT * 26;
+  ctx.save();
+  ctx.globalAlpha *= (0.42 - hopT * 0.16);
+  ctx.fillStyle = '#000';
+  const shScale = 1 - hopT * 0.42;
+  ctx.beginPath(); ctx.ellipse(x, footY + 3, (motion.moving ? 52 : 44) * shScale, (motion.moving ? 17 : 14) * shScale, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  if (motion.moving && hopT <= 0.05) drawStepDust(x, footY + 2, motion.phase, stageDustColor());
+
+  // Rastro de sombra da esquiva: captura o corpo enquanto salta, desenha cópias que desfazem.
+  if (hopT > 0.35) {
+    dashTrail.push({ key: p.hero, x, footY: footY - hopY, height, facing, ts: performance.now() });
+    if (dashTrail.length > 12) dashTrail.shift();
+  }
+  for (let i = dashTrail.length - 1; i >= 0; i--) {
+    const t = dashTrail[i];
+    const age = (performance.now() - t.ts) / 1000;
+    if (age > 0.26) { dashTrail.splice(i, 1); continue; }
+    const a = (0.30 * (1 - age / 0.26)) / 0.36; // compensa o alpha 0.36 do sprite desfocando
+    const tm = { moving: true, phase: t.ts / 100, facing: t.facing };
+    drawSpriteImage(t.key, t.x, t.footY, t.height, t.facing, a, '#bff3ff', tm, { name: 'run', timer: 0, hit: 0 });
+  }
+
+  // Poeira no pouso: quando o salto do dash acaba, levanta um par de nuvenzinhas.
+  const prevHop = motion._hop || 0;
+  if (hopT > 0.35) motion._hop = hopT;
+  else if (prevHop > 0.35) {
+    motion._hop = 0;
+    ctx.save();
+    ctx.fillStyle = stageDustColor();
+    for (let k = -1; k <= 1; k += 2) {
+      ctx.globalAlpha = .26;
+      ctx.beginPath(); ctx.ellipse(x + k * 16, footY + 2, 16, 5.5, k * 0.25, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Faíscas quando o herói apanha + palavra cômica.
+  const prevP = prevHitFlash.get('p-' + p.id);
+  if ((p.hitFlash || 0) > 0.08 && (!prevP || prevP <= 0.08)) {
+    spawnSparks(x, y, '#ff7d7d', 8, 0.9);
+    if (!p.dead) spawnFloater(x, footY - 150, pick(HURT_WORDS), '#ff9a9a', false);
+  }
+  prevHitFlash.set('p-' + p.id, p.hitFlash || 0);
 
   const glow = p.hitFlash > 0 ? '#ff6b6b' : p.ultimate >= 100 ? '#ffd166' : (p.hero === 'guilherme' ? '#7bd3ff' : null);
-  const drawn = drawSpriteImage(p.hero, x, footY, height, facing, 1, glow, motion, { name: p.action, timer: p.actionTimer, hit: p.hitFlash });
-  drawHeroPersonality(p, x, y, footY, drawn, facing, motion);
+  const bodyFootY = footY - hopY;
+  const drawn = drawSpriteImage(p.hero, x, bodyFootY, height, facing, 1, glow, motion, { name: p.action, timer: p.actionTimer, hit: p.hitFlash });
+  drawHeroPersonality(p, x, y - hopY, bodyFootY, drawn, facing, motion);
 
   if (p.dead) {
     ctx.save();
@@ -1765,7 +1800,7 @@ function drawPlayer(p) {
     ctx.restore();
   }
 
-  drawNameplate({ name: p.name, hp: p.hp, maxHp: p.maxHp, shield: p.shield }, x, Math.max(24, drawn.top - 30), 98);
+  drawNameplate({ name: p.name, hp: p.hp, maxHp: p.maxHp, shield: p.shield }, x, Math.max(24, drawn.top - hopY - 6), 98);
   ctx.restore();
 }
 
@@ -1810,6 +1845,14 @@ function drawEnemy(e) {
     drawSpriteImage(e.type, x - facing * 56, footY + 4, height * .96, facing, .30, '#ba7cff', cloneMotion, { name: 'idle', timer: 0, hit: 0 });
   }
 
+  // Faíscas de impacto quando o chefe apanha (hitFlash subiu).
+  const prevE = prevHitFlash.get(e.id);
+  if ((e.hitFlash || 0) > 0.08 && (!prevE || prevE <= 0.08)) {
+    spawnSparks(x, y + e.radius * 0.2, '#ffe27a', 9, 1);
+    if (Math.random() < 0.30) spawnFloater(x, y - e.radius - 30, pick(HIT_WORDS), '#ffe27a', false);
+  }
+  prevHitFlash.set(e.id, e.hitFlash || 0);
+
   const drawn = drawSpriteImage(e.type, x, footY, height, facing, 1, glow, motion, { name: e.action, timer: e.actionTimer, hit: e.hitFlash });
   drawEnemyPersonality(e, x, y, footY, drawn, facing, motion);
 
@@ -1848,21 +1891,39 @@ function drawPickup(pk) {
   const col = isHp ? '#56e08a' : '#c07dff';
   const colDark = isHp ? '#1f8f4d' : '#6d3fb0';
   const r = 15;
+  // Halo de atração: pulsa quando a poção é puxada para perto do meu jogador.
+  const me = myGamePlayer();
+  const near = me ? Math.hypot(me.x - pk.x, me.y - pk.y) : 9999;
+  const attracting = me && !me.dead && near < 175;
   ctx.save();
   ctx.translate(pk.x, pk.y + bob);
+  if (attracting) {
+    const pulse = 0.5 + 0.5 * Math.sin(age * 9);
+    const hal = 20 + pulse * 13;
+    const grd = ctx.createRadialGradient(0, 2, 4, 0, 2, hal);
+    grd.addColorStop(0, isHp ? 'rgba(86,224,138,.30)' : 'rgba(192,125,255,.30)');
+    grd.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.globalAlpha = 0.7; ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(0, 2, hal, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.55 + pulse * 0.4;
+    ctx.strokeStyle = col; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 2, 13 + pulse * 4, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
   // pisca quando está prestes a sumir
-  if (pk.ttl < 3 && Math.floor(age * 6) % 2 === 0) ctx.globalAlpha = 0.35;
-  // brilho
-  ctx.shadowColor = col; ctx.shadowBlur = 22;
-  // frasco
+  if (pk.ttl < 3 && Math.floor(age * 6) % 2 === 0) ctx.globalAlpha = ctx.globalAlpha * 0.4;
+  // brilho (só em modo pesado; shadowBlur é caro no celular/WebView)
+  const glowOn = quality !== 'performance' && perfLevel < 1;
+  if (glowOn) { ctx.shadowColor = col; ctx.shadowBlur = 22; }
+  // frasco (usa roundRect universal por arcos — ctx.roundRect nativo quebra em WebView antigo)
   ctx.fillStyle = colDark;
-  ctx.beginPath(); ctx.roundRect(-9, -6, 18, 20, 7); ctx.fill();
+  roundRect(ctx, -9, -6, 18, 20, 7); ctx.fill();
   // líquido
-  ctx.shadowBlur = 12;
+  if (glowOn) ctx.shadowBlur = 12;
   ctx.fillStyle = col;
-  ctx.beginPath(); ctx.roundRect(-6, 0, 12, 11, 5); ctx.fill();
+  roundRect(ctx, -6, 0, 12, 11, 5); ctx.fill();
   // rolha
-  ctx.shadowBlur = 0;
+  if (glowOn) ctx.shadowBlur = 0;
   ctx.fillStyle = '#caa46a';
   ctx.fillRect(-4, -11, 8, 6);
   // símbolo
@@ -1998,6 +2059,22 @@ function drawEffect(fx) {
     ctx.globalAlpha = remain * .85;
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.ellipse(fx.x, fx.y, (fx.r || 34) * (0.6 + progress), (fx.r || 34) * .42, 0, 0, Math.PI * 2); ctx.stroke();
+  } else if (fx.type === 'pickup') {
+    // Coleta de poção: anel + explosão de corações (vida, verde) ou estrelas (ultimate, roxo).
+    const isHp = (fx.color || '').indexOf('7df4a8') >= 0 || (fx.color || '').indexOf('56e08a') >= 0;
+    const col = fx.color || (isHp ? '#7df4a8' : '#c07dff');
+    ctx.globalAlpha = remain;
+    ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(fx.x, fx.y, (fx.r || 40) * (0.35 + progress * 0.95), 0, Math.PI * 2); ctx.stroke();
+    for (let i = 0; i < 9; i++) {
+      const a = -Math.PI / 2 + (i - 4) * 0.4;
+      const d = (fx.r || 40) * progress * 1.15;
+      const px = fx.x + Math.cos(a) * d;
+      const py = fx.y + Math.sin(a) * d - progress * 34;
+      const sz = (6 + (i % 3) * 2) * (0.5 + remain * 0.5);
+      if (isHp) drawHeartShape(px, py, sz, col, 0.95 * remain);
+      else drawSparkShape(px, py, sz, col, 0.95 * remain);
+    }
   } else if (fx.type === 'hazard' && fx.x2 != null) {
     // Aviso de tiro do chefe: linha de mira + alvo no jogador, piscando para dar tempo de desviar.
     const blink = .35 + .35 * Math.sin(progress * Math.PI * 6);
@@ -2019,33 +2096,6 @@ function drawEffect(fx) {
       ctx.globalAlpha = .13 * remain;
       ctx.fillStyle = color; ctx.beginPath(); ctx.arc(fx.x, fx.y, fx.r || 50, 0, Math.PI*2); ctx.fill();
     }
-  }
-  ctx.restore();
-}
-
-function drawAimLine() {
-  // Mira AUTOMÁTICA: mostra um cadeado no inimigo vivo mais próximo do meu jogador.
-  const me = myGamePlayer();
-  if (!me || me.dead || !game) return;
-  let best = null, bd = Infinity;
-  for (const e of game.enemies || []) {
-    if (e.hp <= 0 || e.invisible) continue;
-    const d = Math.hypot(e.x - me.x, e.y - me.y);
-    if (d < bd) { bd = d; best = e; }
-  }
-  if (!best) return;
-  const autoRange = me.hero === 'albert' ? 230 : 700;
-  if (bd > autoRange) return;
-  const t = performance.now() / 300;
-  const r = (best.radius || 34) + 14 + Math.sin(t) * 2;
-  ctx.save();
-  ctx.globalAlpha = .8;
-  ctx.strokeStyle = '#ffe27a'; ctx.lineWidth = 3;
-  for (let k = 0; k < 4; k++) {
-    const a = k * Math.PI / 2 + t * 0.4;
-    ctx.beginPath();
-    ctx.arc(best.x, best.y, r, a + 0.18, a + Math.PI / 2 - 0.18);
-    ctx.stroke();
   }
   ctx.restore();
 }
@@ -2083,6 +2133,35 @@ function draw(t = 0) {
   lastDrawTime = t;
 
   updateCameraTransform();
+  // Game feel: treme a arena (sem afetar o HUD/fundo) e atualiza faíscas de impacto.
+  screenShake *= Math.pow(0.86, frameDt / 16.7);
+  if (screenShake < 0.2) screenShake = 0;
+  const shakeX = screenShake ? (Math.random() - 0.5) * screenShake / view.scale : 0;
+  const shakeY = screenShake ? (Math.random() - 0.5) * screenShake / view.scale : 0;
+  for (let i = hitSparks.length - 1; i >= 0; i--) {
+    const s = hitSparks[i];
+    s.ttl -= frameDt / 1000;
+    if (s.ttl <= 0) { hitSparks.splice(i, 1); continue; }
+    s.x += s.vx * frameDt / 1000; s.y += s.vy * frameDt / 1000;
+    s.vx *= 0.92; s.vy = s.vy * 0.92 + 300 * frameDt / 1000; // caem levemente
+  }
+  for (let i = floaters.length - 1; i >= 0; i--) {
+    const f = floaters[i];
+    f.t += frameDt / 1000;
+    f.y -= (f.numeric ? 56 : 46) * frameDt / 1000;
+    if (f.t >= f.ttl) floaters.splice(i, 1);
+  }
+  for (let i = rings.length - 1; i >= 0; i--) {
+    const rg = rings[i];
+    rg.t += frameDt / 1000;
+    if (rg.t >= rg.ttl) rings.splice(i, 1);
+  }
+  if (ultReadyFlash > 0) ultReadyFlash = Math.max(0, ultReadyFlash - frameDt / 1400);
+  window.__sparksLen = hitSparks.length;
+  window.__floatersLen = floaters.length;
+  window.__ringsLen = rings.length;
+  window.__shakeNow = screenShake;
+
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, view.cssW, view.cssH);
   ctx.fillStyle = '#120914'; ctx.fillRect(0, 0, view.cssW, view.cssH);
@@ -2090,10 +2169,23 @@ function draw(t = 0) {
   if (game) drawScreenBackground();
 
   ctx.save();
-  ctx.translate(view.ox, view.oy);
+  ctx.translate(view.ox + (screenShake ? shakeX * view.scale : 0), view.oy + (screenShake ? shakeY * view.scale : 0));
   ctx.scale(view.scale, view.scale);
   drawArena();
   drawStageAnimation();
+
+  // Anéis procedurais (morte de chefe) ficam no chão, abaixo dos personagens.
+  for (const rg of rings) {
+    const p = rg.t / rg.ttl;
+    const rad = rg.maxR * (0.25 + p * 0.75);
+    ctx.globalAlpha = (1 - p) * 0.8;
+    ctx.strokeStyle = rg.color; ctx.lineWidth = 10 * (1 - p) + 3;
+    ctx.beginPath(); ctx.arc(rg.x, rg.y, rad, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = (1 - p) * 0.28;
+    ctx.lineWidth = 22 * (1 - p) + 4;
+    ctx.beginPath(); ctx.arc(rg.x, rg.y, rad * 0.8, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
 
   if (game) {
     const effects = game.effects || [];
@@ -2105,7 +2197,32 @@ function draw(t = 0) {
       ...(game.enemies || []).map(e => ({ kind: 'enemy', y: e.y, data: e }))
     ].sort((a, b) => a.y - b.y);
     for (const item of entities) item.kind === 'player' ? drawPlayer(item.data) : drawEnemy(item.data);
-    drawAimLine();
+    // Faíscas de impacto (acima dos personagens).
+    for (const s of hitSparks) {
+      const a = clamp(s.ttl / 0.65, 0, 1);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = s.color;
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r * (0.6 + a * 0.6), 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    // Palavras de impacto cômicas (POW!/PÁ!/AI!) por cima de tudo.
+    for (const f of floaters) {
+      const p = f.t / f.ttl;
+      const a = p < 0.15 ? p / 0.15 : 1 - (p - 0.15) / 0.85;
+      const pop = f.big ? (1 + Math.sin(Math.min(1, p * 3) * Math.PI) * 0.25) : 1;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, a);
+      ctx.translate(f.x, f.y);
+      ctx.scale(pop, pop);
+      ctx.font = `900 ${f.big ? 46 : (f.numeric ? 24 : 26)}px system-ui, sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = f.big ? 9 : (f.numeric ? 6 : 5);
+      ctx.strokeStyle = '#2a0d0d';
+      ctx.strokeText(f.text, 0, 0);
+      ctx.fillStyle = f.color;
+      ctx.fillText(f.text, 0, 0);
+      ctx.restore();
+    }
     for (const fx of effects) if (fx.type === 'text') drawEffect(fx);
     drawStageIntro();
   } else {
@@ -2113,6 +2230,33 @@ function draw(t = 0) {
     ctx.fillText('Arena das Sete Chamas', view.w/2, view.h/2);
   }
   ctx.restore();
+
+  // Pouca vida: vinheta vermelha pulsante nas bordas (espaço de tela, sem shadowBlur).
+  const lowMe = game && !game.gameOver ? (game.players || []).find(p => p.id === meId) : null;
+  if (lowMe && !lowMe.dead && lowMe.hp > 0 && lowMe.hp / Math.max(1, lowMe.maxHp) < 0.30) {
+    const pulse = 0.5 + 0.5 * Math.sin(t / 180);
+    const a = 0.10 + pulse * 0.16;
+    const g2 = ctx.createRadialGradient(view.cssW / 2, view.cssH / 2, Math.min(view.cssW, view.cssH) * 0.32,
+      view.cssW / 2, view.cssH / 2, Math.max(view.cssW, view.cssH) * 0.72);
+    g2.addColorStop(0, 'rgba(255,0,0,0)');
+    g2.addColorStop(1, `rgba(220,30,30,${a})`);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = g2;
+    ctx.fillRect(0, 0, view.cssW, view.cssH);
+  }
+
+  // Ultimate pronta: clarão dourado que invade as bordas e some (feedback de "pode soltar").
+  if (ultReadyFlash > 0.01) {
+    const au = ultReadyFlash * (0.85 + 0.15 * Math.sin(t / 90));
+    const gu = ctx.createRadialGradient(view.cssW / 2, view.cssH / 2, Math.min(view.cssW, view.cssH) * 0.36,
+      view.cssW / 2, view.cssH / 2, Math.max(view.cssW, view.cssH) * 0.70);
+    gu.addColorStop(0, 'rgba(255,209,102,0)');
+    gu.addColorStop(1, `rgba(255,209,102,${0.5 * au})`);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = gu;
+    ctx.fillRect(0, 0, view.cssW, view.cssH);
+  }
+
   recordFrameCost(frameDt);
 }
 
@@ -2239,19 +2383,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ---- Gatilhos de som/vibração a partir do estado do jogo ----
   const seenFx = new Set();
-  let prevMe = null, prevEnemies = null, prevStage = null, prevOver = null, prevVictory = null, prevStageClear = null;
+  const prevEnemyHp = new Map();
+  const prevPlayerHp = new Map();
+  let prevMe = null, prevEnemies = null, prevStage = null, prevOver = null, prevVictory = null, prevStageClear = null, prevUlt = 0;
   function me() { return (window.game && (window.game.players || []).find(p => p.id === (window.meId || null))) || null; }
 
   window.__sfx = sfx; // para testes
   window.addEventListener('state:applied', () => {
     const g = window.game; if (!g) return;
+
+    // Números de dano nos chefes: calcula o quanto cada chefe perdeu de vida.
+    for (const e of (g.enemies || [])) {
+      const ph = prevEnemyHp.get(e.id);
+      if (ph !== undefined && e.hp > 0) {
+        const dmg = Math.round(ph - e.hp);
+        if (dmg >= 3) {
+          const crit = Math.random() < 0.14;
+          spawnFloater(e.x + (Math.random() - .5) * 20, e.y - (e.radius || 40) - 12 - Math.random() * 16,
+            String(dmg), crit ? '#ffb43d' : '#fff3c4', crit);
+        }
+      }
+      prevEnemyHp.set(e.id, e.hp);
+    }
+    // Cura dos jogadores: vida que subiu (verde, com +).
+    for (const p of (g.players || [])) {
+      const pp = prevPlayerHp.get(p.id);
+      if (pp !== undefined && p.hp > pp && !p.dead) {
+        const healed = Math.round(p.hp - pp);
+        if (healed >= 4) spawnFloater(p.x + (Math.random() - .5) * 14, p.y - 78, '+' + healed, '#7df4a8', false);
+      }
+      prevPlayerHp.set(p.id, p.dead ? 0 : p.hp);
+    }
+
     // Efeitos novos do servidor (poção coletada)
     for (const fx of (g.effects || [])) {
       if (fx.type === 'pickup' && !seenFx.has(fx.id)) {
         seenFx.add(fx.id);
         const m = me();
         if (m && Math.hypot((fx.x || m.x) - m.x, (fx.y || m.y) - m.y) < 160) {
-          if (fx.kind === 'hp') { sfx.pickupHp(); vibrate([25]); }
+          // kind não é serializado; detecta vida pela cor verde (mesma regra do desenho).
+          const isHp = fx.kind === 'hp' || (fx.color || '').indexOf('7df4a8') >= 0 || (fx.color || '').indexOf('56e08a') >= 0;
+          if (isHp) { sfx.pickupHp(); vibrate([25]); }
           else { sfx.pickupUl(); vibrate([18, 30, 18]); }
         }
       }
@@ -2259,30 +2431,53 @@ document.addEventListener('DOMContentLoaded', () => {
     if (seenFx.size > 400) seenFx.clear();
 
     const m = me();
+    const shake = window.__addShake || (() => {});
     if (m && prevMe) {
       // levei dano
-      if (m.hp < prevMe.hp && !m.dead) { sfx.hurt(); vibrate([45, 40, 45]); }
+      if (m.hp < prevMe.hp && !m.dead) { sfx.hurt(); vibrate([45, 40, 45]); shake(5); }
       // morri
-      if (m.dead && !prevMe.dead) { sfx.defeat(); vibrate([80, 60, 80, 60, 120]); }
+      if (m.dead && !prevMe.dead) { sfx.defeat(); vibrate([80, 60, 80, 60, 120]); shake(9); }
       // ultimate usada (carga zerou de repente)
-      if (prevMe.ultimate > 70 && (m.ultimate || 0) <= 12 && (m.action === 'ultimate' || m.actionTimer > 0.3)) { sfx.ultimate(); vibrate([30, 20, 30, 20, 60]); }
-      else if (m.action === 'special' && prevMe.action !== 'special') { sfx.special(); }
+      if (prevMe.ultimate > 70 && (m.ultimate || 0) <= 12 && (m.action === 'ultimate' || m.actionTimer > 0.3)) { sfx.ultimate(); vibrate([30, 20, 30, 20, 60]); shake(11); }
+      else if (m.action === 'special' && prevMe.action !== 'special') { sfx.special(); shake(3); }
       else if ((m.action === 'attack' || m.action === 'melee') && prevMe.action !== 'attack' && prevMe.action !== 'melee') { sfx.attack(); }
     }
-    // chefe morrendo
+    // chefe morrendo: explosão grande (anéis + chuva de faíscas + POW!)
     if (prevEnemies) {
       for (const e of (g.enemies || [])) {
         const pe = prevEnemies.find(x => x.id === e.id);
-        if (pe && pe.hp > 0 && e.hp <= 0) { sfx.bossDie(); vibrate([20, 30, 20]); }
+        if (pe && pe.hp > 0 && e.hp <= 0) {
+          sfx.bossDie(); vibrate([20, 30, 20]); shake(15);
+          const dx = e.x || pe.x, dy = (e.y || pe.y) + 30;
+          spawnRing(dx, dy, '#ffd166', 170, 0.55);
+          spawnRing(dx, dy, '#ff8a3d', 120, 0.42);
+          spawnSparks(dx, dy, '#ffe27a', 26, 1.8);
+          spawnSparks(dx, dy, '#ff8a5a', 16, 1.4);
+          spawnFloater(dx, dy - 70, pick(BIG_WORDS), '#ffd166', true);
+        }
       }
     }
-    // fase nova
-    if (prevStage !== null && g.stageIndex > prevStage) { sfx.level(); vibrate([25, 50, 25]); }
+    // fase nova: onda de choque dourada saindo do centro + faíscas
+    if (prevStage !== null && g.stageIndex > prevStage) {
+      sfx.level(); vibrate([25, 50, 25]);
+      const cx = (g.world?.w || 1600) / 2, cy = (g.world?.h || 900) / 2;
+      spawnRing(cx, cy, '#ffd166', 420, 0.8);
+      spawnRing(cx, cy, '#ff9a3d', 300, 0.6);
+      spawnSparks(cx, cy, '#ffe27a', 22, 2.0);
+      shake(6);
+    }
+    // ultimate PRONTA: clarão dourado nas bordas quando a carga chega a 100%
+    if (m && prevUlt < 100 && (m.ultimate || 0) >= 100 && !m.dead) {
+      ultReadyFlash = 1;
+      sfx.special(); vibrate([20, 40, 20]);
+      if (m.hero === 'guilherme') spawnSparks(m.x, m.y - 60, '#8ff7ff', 18, 1.4);
+    }
     // vitória / derrota
     if (g.gameOver && !prevOver) { g.victory ? sfx.victory() : sfx.defeat(); vibrate(g.victory ? [60, 60, 60] : [120, 80, 160]); }
 
     prevMe = m ? { hp: m.hp, dead: m.dead, ultimate: m.ultimate || 0, action: m.action } : null;
-    prevEnemies = (g.enemies || []).map(e => ({ id: e.id, hp: e.hp }));
+    prevEnemies = (g.enemies || []).map(e => ({ id: e.id, hp: e.hp, x: e.x, y: e.y }));
     prevStage = g.stageIndex; prevOver = g.gameOver;
+    prevUlt = m ? (m.ultimate || 0) : 0;
   });
 })();
