@@ -10,7 +10,7 @@ let game = null;
 let openRooms = [];
 let currentScreen = 'menuScreen';
 let toastTimer = null;
-const ASSET_VERSION = '39';
+const ASSET_VERSION = '40';
 const SHOW_ARENA_TEXT = false;
 const SHOW_STAGE_INTRO = true;
 
@@ -2272,7 +2272,9 @@ document.addEventListener('DOMContentLoaded', () => {
         seenFx.add(fx.id);
         const m = me();
         if (m && Math.hypot((fx.x || m.x) - m.x, (fx.y || m.y) - m.y) < 160) {
-          if (fx.kind === 'hp') { sfx.pickupHp(); vibrate([25]); }
+          // kind não é serializado; detecta vida pela cor verde (mesma regra do desenho).
+          const isHp = fx.kind === 'hp' || (fx.color || '').indexOf('7df4a8') >= 0 || (fx.color || '').indexOf('56e08a') >= 0;
+          if (isHp) { sfx.pickupHp(); vibrate([25]); }
           else { sfx.pickupUl(); vibrate([18, 30, 18]); }
         }
       }
