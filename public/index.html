@@ -409,7 +409,8 @@
     <button id="btn-miss" title="Missões do presidente">🎯</button>
     <button id="btn-orc" title="Orçamento dos ministérios">🏛️</button>
     <button id="btn-rel" title="Religiões do mundo">🕌</button>
-    <button id="btn-speed2" title="Alternar velocidade do turno (anfitrião)">⏱️</button>
+    <button id="btn-speed2" title="Velocidade: 1x, 2x, 3x ou 5x (anfitrião)">⏱️ 1x</button>
+    <button id="btn-sair" title="Sair do jogo (o anfitrião salva automaticamente)" style="background:radial-gradient(circle at 35% 30%, #ffd0d0, #d98a8a 60%, #8a3040);">⏻</button>
   </div>
 
   <div class="game-body">
@@ -499,25 +500,21 @@
 
       <div class="bottom-bar">
         <div class="ap-dock" id="m-ap" title="Pontos de ação">●●●●</div>
-        <button class="round-btn" data-act="investir" title="Investir na economia (+2 🏭) — $250 · 1⚡"><small>ECONOMIA</small><span class="costdot">$250</span></button>
-        <button class="round-btn" data-act="militar" title="Recrutar tropas (+3 🪖) — $300 · 1⚡"><small>TROPAS</small><span class="costdot">$300</span></button>
-        <button class="round-btn" data-act="propaganda" title="Propaganda (+7 ❤️) — $150 · 1⚡"><small>MÍDIA</small><span class="costdot">$150</span></button>
-        <button class="round-btn" data-act="nuclear" title="Avançar programa nuclear (+1 ☢️, máx 5; requer 10 de URÂNIO; nível 3+ libera míssil) — $600 · 2⚡">️<small>NUCLEAR</small><span class="costdot">$600</span></button>
-        <button class="round-btn" data-act="ideologia" title="Expandir doutrina (+2 ⚖️ — 60 vence por hegemonia ideológica) — $200 · 1⚡">⚖️<small>DOUTRINA</small><span class="costdot">$200</span></button>
-        <button class="round-btn" data-act="fe" title="Enviar missionários (+2 🕌 — 60 vence por hegemonia religiosa) — $200 · 1⚡"><small>FÉ</small><span class="costdot">$200</span></button>
-        <button class="round-btn" data-act="treinar" title="Treinar exército (+1 🪖 militar) — $150 · 1⚡"><small>TREINAR</small><span class="costdot">$150</span></button>
+        <button class="round-btn" data-act="investir" title="Investir na economia (+2 🏭) — $250 · 1⚡"><small>ECONOMIA</small></button>
+        <button class="round-btn" data-act="militar" title="Recrutar tropas (+3 🪖) — $300 · 1⚡"><small>TROPAS</small></button>
+        <button class="round-btn" data-act="propaganda" title="Propaganda (+7 ❤️) — $150 · 1⚡"><small>MÍDIA</small></button>
+        <button class="round-btn" data-act="nuclear" title="Avançar programa nuclear (+1 ☢️, máx 5; requer 10 de URÂNIO; nível 3+ libera míssil) — $600 · 2⚡">️<small>NUCLEAR</small></button>
+        <button class="round-btn" data-act="ideologia" title="Expandir doutrina (+2 ⚖️ — 60 vence por hegemonia ideológica) — $200 · 1⚡">⚖️<small>DOUTRINA</small></button>
+        <button class="round-btn" data-act="fe" title="Enviar missionários (+2 🕌 — 60 vence por hegemonia religiosa) — $200 · 1⚡"><small>FÉ</small></button>
+        <button class="round-btn" data-act="treinar" title="Treinar exército (+1 🪖 militar) — $150 · 1⚡"><small>TREINAR</small></button>
       </div>
     </div>
 
     <div class="sidebar">
       <h3>📜 Acontecimentos</h3>
       <div class="feed" id="feed"></div>
-      <h3>💬 Diplomacia (chat)</h3>
-      <div class="chat-msgs" id="chat-msgs"></div>
-      <div class="chat-input">
-        <input id="chat-inp" maxlength="200" placeholder="Fale com os líderes...">
-        <button id="chat-send">➤</button>
-      </div>
+      <h3>📰 Notícias</h3>
+
     </div>
   </div>
 </div>
@@ -1080,13 +1077,9 @@ function handle(m){
     return;
   }
   if (m.t === 'state'){ applyState(m); return; }
-  if (m.t === 'chat'){
-    const box = $('chat-msgs');
-    const div = document.createElement('div'); div.className = 'cmsg';
-    const who = document.createElement('span'); who.className='who'; who.textContent = m.flag + ' ' + m.from + ': ';
-    div.appendChild(who); div.appendChild(document.createTextNode(m.text));
-    box.appendChild(div); box.scrollTop = box.scrollHeight;
-  }
+  if (m.t === 'sair_ok'){ try { location.reload(); } catch {} return; }
+  if (m.t === 'aviso'){ toast(m.msg); return; }
+  if (m.t === 'chat'){ /* chat removido a pedido */ }
   else if (m.t === 'batalha'){
     bt = m; btSel = null;
     showScreen('scr-batalha'); btRender();
@@ -1184,6 +1177,7 @@ function renderGame(){
   $('btn-endturn').classList.toggle('hidden', !m.isHost || state.phase!=='game');
   $('btn-pause').classList.toggle('hidden', !m.isHost || state.phase!=='game');
   $('btn-speed2').classList.toggle('hidden', !m.isHost || state.phase!=='game');
+  if (state.phase==='game') $('btn-speed2').textContent = '⏱️ ' + (state.speedMul || 1) + 'x';
   $('btn-pause').textContent = state.paused ? '▶️' : '⏸️';
   $('m-money').textContent = fmt(m.money);
   $('m-pop').textContent = m.pop;
@@ -1193,7 +1187,8 @@ function renderGame(){
   $('m-mil').textContent = m.mil;
   $('m-aprov').textContent = m.aprov + '%';
   $('m-aprov').style.color = m.aprov > 55 ? 'var(--green)' : (m.aprov > 25 ? 'var(--gold2)' : 'var(--red)');
-  $('m-ap').textContent = '●'.repeat(m.ap) + '○'.repeat(Math.max(0,4-m.ap));
+  // dock de AP removido a pedido: o jogo nao e mais por turno
+  const apDock = $('m-ap'); if (apDock && apDock.parentNode) apDock.parentNode.style.display = 'none';
 
   // assessor presidencial com balão de dicas (tutorial estilo MA)
   const adv = $('advisor');
@@ -1417,6 +1412,7 @@ function renderPanel(){
   np.classList.remove('hidden');
   const c = cbid(p.country) || {flag:p.customFlag||'🏳️', name:p.customName||p.name};
   if (PORTRAITS[p.country]) $('np-flag').innerHTML = `<img class="flimg" src="${PORTRAITS[p.country]}" alt="">`;
+  else $('np-flag').innerHTML = `<span class="flimg" style="display:flex;align-items:center;justify-content:center;font-size:30px">${c.flag || '🏳️'}</span>`;
   else $('np-flag').textContent = c.flag;
   $('np-banner-flag').textContent = c.flag;
   $('np-name').textContent = c.name + (p.nuclear>=3 ? ' ☢️' : '');
@@ -1853,19 +1849,30 @@ $('btn-rank').onclick = () => {
   box.innerHTML = html; ov.appendChild(box); document.body.appendChild(ov);
   ov.onclick = e => { if (e.target === ov || e.target.id === 'rank-close') ov.remove(); };
 };
-$('btn-speed2').onclick = () => send({t:'velocidade', speed: state.speed === 15 ? 45 : 15});
+$('btn-speed2').onclick = () => {
+  const antigo = $('menu-vel'); if (antigo) antigo.remove();
+  const menu = document.createElement('div'); menu.id = 'menu-vel';
+  menu.style.cssText = 'position:fixed;top:56px;right:12px;z-index:120;background:linear-gradient(#fdf6e3,#ecd9a8);border:2px solid #8a6a1f;border-radius:10px;padding:8px;box-shadow:0 6px 20px rgba(0,0,0,.5);display:flex;gap:6px;';
+  [1,2,3,5].forEach(v=>{
+    const b = document.createElement('button');
+    b.textContent = v + 'x';
+    b.style.cssText = 'padding:6px 10px;font-weight:800;cursor:pointer;border:1px solid #8a6a1f;border-radius:6px;background:' + ((state.speedMul||1)===v ? '#e8b93c' : '#fff8e6') + ';color:#3a2a05;';
+    b.onclick = () => { send({t:'velocidade', speed:v}); menu.remove(); };
+    menu.appendChild(b);
+  });
+  const fechar = document.createElement('button'); fechar.textContent='✕';
+  fechar.style.cssText='padding:6px 8px;cursor:pointer;border:1px solid #8a6a1f;border-radius:6px;background:#fff8e6;color:#3a2a05;';
+  fechar.onclick = () => menu.remove();
+  menu.appendChild(fechar);
+  document.body.appendChild(menu);
+};
+$('btn-sair').onclick = () => {
+  if (!confirm(m && m.isHost ? 'Salvar o jogo e encerrar a sala? Todos sairão.' : 'Sair da partida?')) return;
+  send({t:'sair'});
+};
 document.querySelectorAll('.round-btn').forEach(b => b.onclick = () => { sfx('click'); send({t:'action', action:b.dataset.act}); });
 $('btn-snd').onclick = () => { muted = !muted; $('btn-snd').textContent = muted ? '🔇' : '🔊'; $('btn-snd').classList.toggle('active', !muted); };
 
-function sendChat(){
-  const inp = $('chat-inp');
-  const text = inp.value.trim();
-  if (!text) return;
-  send({t:'chat', text});
-  inp.value = '';
-}
-$('chat-send').onclick = sendChat;
-$('chat-inp').addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
 $('inp-code').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-join').click(); });
 $('inp-name').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-create').click(); });
 function renderMarket(){

@@ -17,6 +17,7 @@ const zlib = require('zlib');
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const MAGIC = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
+const TICK_BASE = 45;   // segundos de um ciclo em 1x
 const AP_PER_TURN = 4;
 // limite real de jogadores humanos por sala (o mapa só tem 30 posições para nações novas)
 const MAX_PLAYERS = 12;
@@ -520,6 +521,35 @@ function dipCost(p, c) {
   return (p.ministers.dip === 'neg' || p.ideology === 'monarquia') ? Math.round(c / 2) : c;
 }
 
+/* ===== jogo salvo ===== */
+const SAVE_DIR = require('path').join(__dirname, 'saves');
+function savePath(code){ return require('path').join(SAVE_DIR, String(code||'').toUpperCase().replace(/[^A-Z0-9]/g,'') + '.json'); }
+function salvarJogo(room){
+  try {
+    const fs = require('fs');
+    if (!fs.existsSync(SAVE_DIR)) fs.mkdirSync(SAVE_DIR, { recursive: true });
+    // conn/timer nao serializam: sao reconstruidos no carregamento
+    const snap = JSON.stringify(room, (k, v) => (k === 'conn' || k === 'timer' || k === 'sock') ? undefined : v);
+    fs.writeFileSync(savePath(room.code), snap);
+    return true;
+  } catch (e) { console.error('salvarJogo:', e.message); return false; }
+}
+function carregarJogo(code){
+  try {
+    const fs = require('fs');
+    const p = savePath(code);
+    if (!fs.existsSync(p)) return null;
+    const room = JSON.parse(fs.readFileSync(p, 'utf8'));
+    room.timer = null; room.timerEnd = 0;
+    room.paused = true;               // volta pausado
+    for (const pl of room.players) pl.conn = null;
+    // rooms e um Map, mas aceita os dois para nao quebrar se mudar
+    if (typeof rooms.set === 'function') rooms.set(room.code, room); else rooms[room.code] = room;
+    return room;
+  } catch (e) { console.error('carregarJogo:', e.message); return null; }
+}
+function temSave(code){ try { return require('fs').existsSync(savePath(code)); } catch { return false; } }
+
 function snapshot(room) {
   return {
     t: 'state', phase: room.phase, code: room.code, turn: room.turn,
@@ -544,7 +574,7 @@ function snapshot(room) {
       depositos: p.depositos || [], upgrades: p.upgrades || {}, pacts: p.pacts || {},
       seguranca: p.seguranca || { defesa: 0, secreto: 0, policia: 0, guarda: 0 },
     })),
-    world: room.world, market: room.market, mission: MISSIONS[room.missionIdx % MISSIONS.length], paused: room.paused,
+    world: room.world, market: room.market, mission: MISSIONS[room.missionIdx % MISSIONS.length], paused: room.paused, speedMul: room.speedMul || 1, temSave: temSave(room.code),
   };
 }
 function broadcast(room) {
@@ -1728,7 +1758,8 @@ function route(conn, msg) {
     }
     case 'join': {
       if (conn.meta) return;
-      const room = rooms.get(String(msg.code || '').toUpperCase().trim());
+      let room = rooms.get(String(msg.code || '').toUpperCase().trim());
+      if (!room) room = carregarJogo(msg.code);   // servidor reiniciou: tenta o save
       if (!room) return err(conn, 'Sala não encontrada. Confira o código.');
       if (room.phase !== 'lobby') return err(conn, 'Essa partida já começou. Crie sua própria sala!');
       if (room.players.length >= MAX_PLAYERS) return err(conn, `Sala cheia (${MAX_PLAYERS} jogadores).`);
@@ -1741,7 +1772,8 @@ function route(conn, msg) {
     // reassume um jogador que caiu (F5, wifi oscilando) sem perder a partida
     case 'reconnect': {
       if (conn.meta) return;
-      const room = rooms.get(String(msg.code || '').toUpperCase().trim());
+      let room = rooms.get(String(msg.code || '').toUpperCase().trim());
+      if (!room) room = carregarJogo(msg.code);   // voltar outro dia
       if (!room) { conn.send({ t: 'sem_sessao' }); return; }
       const p = room.players.find(x => !x.bot && x.token && x.token === String(msg.token || ''));
       if (!p) { conn.send({ t: 'sem_sessao' }); return; }
@@ -1771,7 +1803,33 @@ function route(conn, msg) {
       broadcast(room);
       break;
     }
-    case 'velocidade': { const { room, player } = conn.meta || {}; if (!room || player.id !== room.hostId) return; room.speed = msg.speed === 15 ? 15 : 45; if (room.phase === 'game' && !room.paused) room.timerEnd = Date.now() + room.speed * 1000; broadcast(room); break; }
+    case 'velocidade': { const { room, player } = conn.meta || {}; if (!room || player.id !== room.hostId) return; const mul = [1,2,3,5].includes(msg.speed) ? msg.speed : 1; room.speedMul = mul; room.speed = Math.round(TICK_BASE / mul); if (room.phase === 'game' && !room.paused) room.timerEnd = Date.now() + room.speed * 1000; broadcast(room); break; }
+    case 'salvar': {
+      const { room, player } = conn.meta || {}; if (!room || player.id !== room.hostId) return;
+      const okS = salvarJogo(room);
+      conn.send(JSON.stringify({ t: 'aviso', msg: okS ? '💾 Jogo salvo. Você pode sair e continuar depois.' : '❌ Não foi possível salvar.' }));
+      break;
+    }
+    case 'sair': {
+      const { room, player } = conn.meta || {};
+      if (!room) { conn.close(); break; }
+      const eraHost = player.id === room.hostId;
+      if (eraHost) salvarJogo(room);                       // anfitrião: salva
+      if (eraHost) {                                        // ...e fecha a sala p/ todos
+        for (const q of room.players) if (q.conn) { try { q.conn.send(JSON.stringify({ t: 'sair_ok', salvo: true })); } catch {} }
+        setTimeout(() => { for (const q of room.players) if (q.conn) { try { q.conn.close(); } catch {} } }, 250);
+        if (typeof rooms.delete === 'function') rooms.delete(room.code); else delete rooms[room.code];
+      } else {
+        try { conn.send(JSON.stringify({ t: 'sair_ok', salvo: false })); } catch {}
+        conn.close();
+      }
+      break;
+    }
+    case 'tem_save': {
+      conn.send(JSON.stringify({ t: 'tem_save', code: msg.code, tem: temSave(msg.code) }));
+      break;
+    }
+
     case 'pausar': {
       const { room, player } = conn.meta || {};
       if (!room || room.phase !== 'game' || player.id !== room.hostId) return;
