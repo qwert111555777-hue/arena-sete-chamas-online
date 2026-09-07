@@ -105,6 +105,16 @@
   .hud .res b{font-family:ui-monospace,monospace; color:var(--gold2);}
   .hud .spacer{flex:1;}
   .hud .timer-big{font-size:20px; font-weight:900; font-family:ui-monospace,monospace; color:var(--gold2);}
+  #btn-pause,#btn-speed2,#btn-endturn,#btn-rank,#btn-news{width:38px;height:38px;border-radius:50%;border:2px solid #8a6a1f;background:radial-gradient(circle at 35% 30%, #ffe9a8, #d9a93c 60%, #8a6a1f);color:#3a2a05;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.5);}
+  #advisor{position:absolute;left:12px;top:12px;z-index:5;display:flex;gap:10px;align-items:flex-start;pointer-events:none;}
+  #advisor img{width:64px;height:64px;border-radius:50%;border:3px solid #d9a93c;box-shadow:0 3px 10px rgba(0,0,0,.6);background:#e8d9b0;}
+  #advisor-bubble{max-width:300px;background:linear-gradient(#fdf6e3,#ecd9a8);color:#3a2f14;border:2px solid #8a6a1f;border-radius:12px;padding:8px 12px;font-size:12px;font-weight:600;box-shadow:0 3px 10px rgba(0,0,0,.5);position:relative;margin-top:8px;}
+  #advisor-bubble:before{content:'';position:absolute;left:-11px;top:20px;border:6px solid transparent;border-right-color:#8a6a1f;}
+  #newspaper{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:98;display:flex;align-items:center;justify-content:center;}
+  #newspaper .paper{width:min(860px,92vw);max-height:84vh;overflow:auto;background:#f3ead1;color:#2b2416;border:1px solid #b7a578;box-shadow:0 10px 40px rgba(0,0,0,.7);padding:22px 26px;font-family:Georgia,'Times New Roman',serif;}
+  #newspaper h1{text-align:center;font-size:30px;letter-spacing:4px;border-bottom:3px double #2b2416;margin:0 0 6px;}
+  #newspaper .cols{columns:3;column-gap:22px;font-size:12px;line-height:1.45;}
+  #newspaper .cols p{break-inside:avoid;border-bottom:1px solid #c9b98b;padding:6px 0;margin:0;}
   .game-body{display:flex; flex:1; min-height:0; position:relative;}
   .map-wrap{flex:1; position:relative; min-width:0; background:#0a1226; overflow:hidden;}
   svg#map{width:100%; height:100%; display:block;}
@@ -321,11 +331,13 @@
     <button id="btn-endturn" title="Encerrar turno agora (só o anfitrião)">⏭</button>
     <button id="btn-pause" title="Pausar/retomar (anfitrião)">⏸️</button>
     <button id="btn-rank" title="Ranking mundial (renda, militar, população, indústria)">📊</button>
+    <button id="btn-news" title="Jornal mundial">📰</button>
     <button id="btn-speed2" title="Alternar velocidade do turno (anfitrião)">⏱️</button>
   </div>
 
   <div class="game-body">
     <div class="map-wrap">
+      <div id="advisor" class="hidden"><img src="assessor.png" alt="assessor"><div id="advisor-bubble"></div></div>
       <svg id="map" viewBox="0 0 1000 520" preserveAspectRatio="xMidYMid slice">
         <defs>
           <linearGradient id="ocean" x1="0" y1="0" x2="0" y2="1">
@@ -903,6 +915,15 @@ function renderGame(){
   $('m-aprov').style.color = m.aprov > 55 ? 'var(--green)' : (m.aprov > 25 ? 'var(--gold2)' : 'var(--red)');
   $('m-ap').textContent = '●'.repeat(m.ap) + '○'.repeat(Math.max(0,4-m.ap));
 
+  // assessor presidencial com balão de dicas (tutorial estilo MA)
+  const adv = $('advisor');
+  if (state.phase==='game' && m && m.alive){
+    adv.classList.remove('hidden');
+    const DICAS = ['construa a Fábrica de concreto primeiro — quase tudo exige 🧱.','sem ⚡ suficiente seus prédios apagam: produção pela metade.','jazidas naturais definem o que seu país produz de graça.','relações 85+ garantem anexação pacífica de nações da IA.','embaixadas custam $10/dia de manutenção — escolha bem.','o programa nuclear exige 10 de ☢️ urânio no mercado.'];
+    const k = Math.floor(state.turn/2) % (DICAS.length+1);
+    $('advisor-bubble').textContent = 'Senhor Presidente: ' + (state.mission ? 'missão — ' + state.mission.desc + ' (+$' + state.mission.reward + '). ' : '') + (k < DICAS.length ? DICAS[k] : '');
+  } else adv.classList.add('hidden');
+
   document.querySelectorAll('.round-btn').forEach(b => {
     const costs = { investir:[1,250], militar:[1,300], propaganda:[1,150], nuclear:[2,600], ideologia:[1,200], fe:[1,200], treinar:[1,150] };
     const [ap, cost] = costs[b.dataset.act];
@@ -1022,9 +1043,33 @@ function renderMap(){
     });
   }
 
+  // navios animados nas minhas rotas comerciais
+  if (m && m.country){
+    const my = proj(cbid(m.country) || {lat:0,lon:0});
+    m.trades.forEach(tid => {
+      const tp = state.players.find(x=>x.id===tid);
+      if (tp && tp.country && tp.alive){
+        const b = proj(cbid(tp.country) || {lat:0,lon:0});
+        const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+        ln.setAttribute('x1',my.x); ln.setAttribute('y1',my.y);
+        ln.setAttribute('x2',b.x); ln.setAttribute('y2',b.y);
+        ln.setAttribute('stroke','#4fc3f7'); ln.setAttribute('stroke-width','1.5');
+        ln.setAttribute('stroke-dasharray','3 6'); ln.setAttribute('opacity','0.6');
+        gLines.appendChild(ln);
+        const ship = document.createElementNS('http://www.w3.org/2000/svg','text');
+        ship.setAttribute('font-size','13'); ship.setAttribute('text-anchor','middle');
+        ship.textContent = '🚢';
+        const am = document.createElementNS('http://www.w3.org/2000/svg','animateMotion');
+        am.setAttribute('dur','16s'); am.setAttribute('repeatCount','indefinite');
+        am.setAttribute('path', `M ${my.x} ${my.y} L ${b.x} ${b.y}`);
+        ship.appendChild(am); gLines.appendChild(ship);
+      }
+    });
+  }
+
   state.players.forEach(p => {
     if (!p.country) return;
-    const c = CBYID[p.country];
+    const c = cbid(p.country) || { id:p.country, flag:p.customFlag||'🏳️', name:p.customName||p.name, lat:8, lon:-40 };
     const pos = proj(c);
     const rel = relTo(p);
     const ringColor = !p.alive ? '#5a6478' : rel==='me' ? '#ffd76a' : rel==='ally' ? '#39d98a' : '#ff6b6b';
@@ -1316,6 +1361,7 @@ function renderPanel(){
     const ally = m.allies.includes(p.id);
     const atWar = m.wars.includes(p.id);
     const pending = state.proposals.some(pr => pr.from===myId && pr.to===p.id);
+    const rel = m.relations[p.id] != null ? m.relations[p.id] : 50;
     acts.appendChild(mkBtn('🕵️','Espionar (1⚡)', ()=>send({t:'action',action:'espionar',target:p.id}), m.ap<1));
     acts.appendChild(mkBtn('⚠️','Declarar GUERRA (1⚡)', ()=>send({t:'action',action:'guerra',target:p.id}), m.ap<1||atWar||ally));
     acts.appendChild(mkBtn('⚔️','Atacar (2⚡, requer guerra)', ()=>send({t:'action',action:'atacar',target:p.id}), m.ap<2||ally||!atWar));
@@ -1334,8 +1380,7 @@ function renderPanel(){
     acts.appendChild(mkBtn('🛐','Espalhar religião (1⚡, $300)', ()=>send({t:'action',action:'espalhar_religiao',target:p.id}), m.ap<1||m.money<300||!m.religion||m.religion==='laico'));
     if (p.bot) acts.appendChild(mkBtn('🏴','Exigir ANEXAÇÃO pacífica (2⚡, $300, rel. 60+)', ()=>send({t:'action',action:'anexar',target:p.id}), m.ap<2||m.money<300||atWar||rel<60));
     // relação bilateral
-    const rel = m.relations[p.id] != null ? m.relations[p.id] : 50;
-    note.textContent = `📈 Relação bilateral: ${rel}/100` + (ally?' · 🤝 aliados':'') + (atWar?' · ⚔️ EM GUERRA':'') + ((m.pacts&&m.pacts[p.id]>state.turn)?' · ✍️ pacto de não-agressão':'') + (state.turn < p.emergencyUntil?' · 🆘 em emergência':'');
+    note.textContent = `📈 Relação bilateral: ${rel}/100 ${rel>=70?'😊':rel>=50?'🙂':rel>=30?'😐':'😠'}` + (ally?' · 🤝 aliados':'') + (atWar?' · ⚔️ EM GUERRA':'') + ((m.pacts&&m.pacts[p.id]>state.turn)?' · ✍️ pacto de não-agressão':'') + (state.turn < p.emergencyUntil?' · 🆘 em emergência':'');
     const uvals = ['infantaria','blindados','artilharia','aviacao','submarinos','frota'].map(k=>p.units[k]||0);
     const usum = uvals.reduce((a,b)=>a+b,0);
     if (m.embassies.includes(p.id)) note.textContent += ' | 🎖️ Forças: ' + uvals.join('-') + ' (nível ' + usum + '/18)';
@@ -1484,6 +1529,16 @@ $('btn-rank').onclick = () => {
   $('btn-rank').classList.toggle('active', !$('rank-panel').classList.contains('hidden'));
   $('btn-help').classList.remove('active');
   renderRanking();
+};
+$('btn-news').onclick = () => {
+  if (!state || state.phase!=='game') return;
+  const itens = (state.log||[]).filter(l=>/^(🗞️|🌍|️|📈||🕊️|🤝|⚔️|☢️|||️)/.test(l.msg)).slice(0,24);
+  const ov = document.createElement('div'); ov.id='newspaper';
+  ov.innerHTML = '<div class="paper"><h1>A ERA MODERNA — NOTÍCIAS</h1><div style="text-align:center;font-size:11px;margin-bottom:10px">Edição do turno '+state.turn+' · '+document.getElementById('g-date').textContent+'</div><div class="cols">'+
+    (itens.length? itens.map(l=>'<p>'+l.msg+'</p>').join('') : '<p>Sem manchetes hoje. O mundo observa em silêncio.</p>') +
+    '</div><div style="text-align:center;margin-top:12px"><button id="np-close" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
+  document.body.appendChild(ov);
+  ov.onclick = e => { if (e.target===ov || e.target.id==='np-close') ov.remove(); };
 };
 $('btn-help').onclick = () => {
   $('help-panel').classList.toggle('hidden');
