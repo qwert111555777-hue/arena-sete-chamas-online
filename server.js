@@ -188,7 +188,7 @@ function snapshot(room) {
       allies: p.allies, connected: p.connected,
       isHost: p.id === room.hostId, reason: p.eliminatedReason,
       color: p.color,
-      nuclear: p.nuclear, influencia: p.influencia, fe: p.fe,
+      nuclear: p.nuclear, influencia: p.influencia, fe: p.fe, wars: p.wars,
       provinces: p.provinces, sanctioning: p.sanctioning, sanctionedBy: p.sanctionedBy,
     })),
   };
@@ -213,7 +213,7 @@ function addPlayer(room, conn, name, isHost) {
     alive: true, allies: [], connected: true,
     eliminatedReason: null,
     nuclear: 0, influencia: 0, fe: 0,
-    provinces: [], sanctioning: [], sanctionedBy: [],
+    provinces: [], sanctioning: [], sanctionedBy: [], wars: [],
   };
   conn.meta = { room, player: p };
   room.players.push(p);
@@ -234,7 +234,7 @@ function startGame(room) {
     p.money = c.money; p.eco = c.eco; p.mil = c.mil;
     p.aprov = 50; p.ap = AP_PER_TURN; p.alive = true;
     p.allies = []; p.eliminatedReason = null;
-    p.nuclear = 0; p.influencia = 0; p.fe = 0;
+    p.nuclear = 0; p.influencia = 0; p.fe = 0; p.wars = [];
     p.provinces = c.provs.map(([name, infra]) => ({ name, infra, owner: p.id }));
     p.sanctioning = []; p.sanctionedBy = [];
   }
@@ -274,7 +274,11 @@ function checkEliminations(room) {
       const s = room.players.find(x => x.id === sid);
       if (s) s.sanctioning = s.sanctioning.filter(id => id !== p.id);
     });
-    p.allies = []; p.sanctioning = []; p.sanctionedBy = [];
+    p.wars.forEach(wid => {
+      const w = room.players.find(x => x.id === wid);
+      if (w) w.wars = w.wars.filter(id => id !== p.id);
+    });
+    p.allies = []; p.sanctioning = []; p.sanctionedBy = []; p.wars = [];
     log(room, `💥 ${cname(p)} (${p.name}) foi ELIMINADO: ${p.eliminatedReason}!`);
   }
 }
@@ -480,6 +484,27 @@ function performAction(room, p, msg) {
       break;
     }
 
+    case 'guerra': {
+      if (!target || target === p || !target.alive) return;
+      if (p.wars.includes(target.id)) { err(p.conn, 'Vocês já estão em guerra.'); return; }
+      if (p.allies.includes(target.id)) { err(p.conn, 'Você não pode declarar guerra a um aliado.'); return; }
+      if (!spend(p, 1, 0)) return;
+      p.wars.push(target.id);
+      target.wars.push(p.id);
+      p.aprov = Math.max(0, p.aprov - 2);
+      log(room, `⚠️ ${cname(p)} declarou GUERRA a ${cname(target)}!`);
+      break;
+    }
+
+    case 'paz': {
+      if (!target || target === p || !target.alive) return;
+      if (!p.wars.includes(target.id)) { err(p.conn, 'Vocês não estão em guerra.'); return; }
+      if (room.proposals.some(pr => pr.from === p.id && pr.to === target.id && pr.kind === 'paz')) return;
+      room.proposals.push({ from: p.id, to: target.id, kind: 'paz' });
+      info(target.conn, `🕊️ ${cname(p)} propôs um tratado de PAZ!`);
+      break;
+    }
+
     case 'ajudar': {
       if (!target || target === p || !target.alive) return;
       if (!spend(p, 1, 200)) return;
@@ -492,11 +517,12 @@ function performAction(room, p, msg) {
 
     case 'alianca': {
       if (!target || target === p || !target.alive) return;
+      if (p.wars.includes(target.id)) { err(p.conn, 'Assine a paz antes de propor aliança.'); return; }
       if (p.allies.includes(target.id)) { err(p.conn, 'Vocês já são aliados.'); return; }
       if (p.allies.length >= 3) { err(p.conn, 'Limite de 3 alianças atingido.'); return; }
       if (target.allies.length >= 3) { err(p.conn, 'O outro país já tem 3 alianças.'); return; }
       if (room.proposals.some(pr => pr.from === p.id && pr.to === target.id)) return;
-      room.proposals.push({ from: p.id, to: target.id });
+      room.proposals.push({ from: p.id, to: target.id, kind: 'alianca' });
       info(target.conn, `🤝 ${cname(p)} propôs uma ALIANÇA com você!`);
       break;
     }
@@ -504,6 +530,7 @@ function performAction(room, p, msg) {
     case 'atacar': {
       if (!target || target === p || !target.alive) return;
       if (p.allies.includes(target.id)) { err(p.conn, 'Você não pode atacar um aliado.'); return; }
+      if (!p.wars.includes(target.id)) { err(p.conn, 'Declare GUERRA primeiro (⚠️, 1⚡).'); return; }
       if (p.ap < 2) { err(p.conn, 'Atacar custa 2 pontos de ação.'); return; }
       p.ap -= 2;
       const aP = p.mil * (0.85 + Math.random() * 0.45);
@@ -535,6 +562,7 @@ function performAction(room, p, msg) {
     case 'nuke': {
       if (!target || target === p || !target.alive) return;
       if (p.allies.includes(target.id)) { err(p.conn, 'Você não pode atacar um aliado.'); return; }
+      if (!p.wars.includes(target.id)) { err(p.conn, 'Declare GUERRA primeiro (⚠️, 1⚡).'); return; }
       if (p.nuclear < NUKE_MIN_LEVEL) { err(p.conn, `Programa nuclear insuficiente (nível ${NUKE_MIN_LEVEL}+ necessário).`); return; }
       if (p.ap < 3) { err(p.conn, 'Lançar um míssil custa 3 pontos de ação.'); return; }
       p.ap -= 3;
@@ -559,7 +587,7 @@ function performAction(room, p, msg) {
 }
 
 function respondProposal(room, p, fromId, accept) {
-  const idx = room.proposals.findIndex(pr => pr.from === fromId && pr.to === p.id);
+  const idx = room.proposals.findIndex(pr => pr.from === fromId && pr.to === p.id && pr.kind !== 'paz');
   if (idx === -1) return;
   room.proposals.splice(idx, 1);
   const from = room.players.find(x => x.id === fromId);
@@ -671,6 +699,26 @@ function route(conn, msg) {
       const { room, player } = conn.meta || {};
       if (!room || room.phase !== 'game') return;
       respondProposal(room, player, msg.from, !!msg.accept);
+      break;
+    }
+    case 'resp_paz': {
+      const { room, player } = conn.meta || {};
+      if (!room || room.phase !== 'game') return;
+      const idx = room.proposals.findIndex(pr => pr.from === msg.from && pr.to === player.id && pr.kind === 'paz');
+      if (idx === -1) return;
+      room.proposals.splice(idx, 1);
+      const from = room.players.find(x => x.id === msg.from);
+      if (!from || !from.alive || !player.alive) { broadcast(room); return; }
+      if (msg.accept) {
+        from.wars = from.wars.filter(id => id !== player.id);
+        player.wars = player.wars.filter(id => id !== from.id);
+        from.aprov = Math.min(100, from.aprov + 2);
+        player.aprov = Math.min(100, player.aprov + 2);
+        log(room, `🕊️ TRATADO DE PAZ assinado entre ${cname(from)} e ${cname(player)}!`);
+      } else {
+        log(room, `🚫 ${cname(player)} recusou a paz proposta por ${cname(from)}.`);
+      }
+      broadcast(room);
       break;
     }
     case 'fim_turno': {
