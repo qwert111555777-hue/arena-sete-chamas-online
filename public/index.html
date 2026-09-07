@@ -314,6 +314,7 @@
     <div class="res">❤️ <b id="m-aprov">50%</b></div>
     <div class="res">👥 <b id="m-pop">0</b></div>
     <div class="res">🌾 <b id="m-comida">0</b></div>
+    <div class="res" title="Missão atual">🎯 <b id="m-mission" style="font-size:11px;">—</b></div>
     <div class="spacer"></div>
     <span class="timer-big" id="g-timer">--:--</span>
     <span class="date-badge" id="g-code" title="Código da sala">----</span>
@@ -916,6 +917,7 @@ function renderGame(){
   $('m-money').textContent = fmt(m.money);
   $('m-pop').textContent = m.pop;
   $('m-comida').textContent = m.rec ? m.rec.comida : 0;
+  $('m-mission').textContent = state.mission ? state.mission.desc + ' (+$' + state.mission.reward + ')' : '—';
   $('m-eco').textContent = m.eco;
   $('m-mil').textContent = m.mil;
   $('m-aprov').textContent = m.aprov + '%';
@@ -1121,7 +1123,8 @@ function renderPanel(){
     `<div class="ms"><span>☢️ Nuclear</span><b>${p.nuclear}/5</b></div>` +
     `<div class="ms"><span>⚖️ · 🕌</span><b>${p.influencia} · ${p.fe}</b></div>` +
     `<div class="ms"><span>👥 População</span><b>${p.pop}</b></div>` +
-    (p.rec ? `<div class="ms"><span>🌾 · ⛏️ · ⚡</span><b>${p.rec.comida} · ${p.rec.minerio} · ${p.rec.energia}</b></div>` : '');
+    (p.rec ? `<div class="ms"><span>🌾 · ⛏️ · ⚡</span><b>${p.rec.comida} · ${p.rec.minerio} · ${p.rec.energia}</b></div>` : '') +
+    `<div class="ms"><span>⚔️ Poder militar</span><b>${p.mil*10 + Object.values(p.units).reduce((a,b)=>a+b,0)*15 + p.nuclear*20}</b></div>`;
 
   // províncias
   const provsEl = $('np-provs'); provsEl.innerHTML = '';
@@ -1241,6 +1244,32 @@ function renderPanel(){
       b.onclick=()=>send({t:'action',action:k}); r.appendChild(b);
       extra.appendChild(r);
     });
+    // construções produtivas
+    sub2('🏗️ Construções produtivas (1⚡)');
+    [['fazenda','🌾 Fazenda (+5 comida/turno)',250],['mina','⛏️ Mina (+4 minério/turno)',300],['usina','⚡ Usina (+4 energia/turno)',350],['petroleo','🛢️ Poço de petróleo (+3⚡ e +$15/turno)',400]].forEach(([k,lb,cost])=>{
+      const r=document.createElement('div'); r.className='xrow';
+      const n=document.createElement('span'); n.className='xn'; n.textContent=lb+' — construídas: '+(p.buildings?p.buildings[k]:0); r.appendChild(n);
+      const b=document.createElement('button'); b.textContent='$'+cost;
+      b.disabled=m.ap<1||m.money<cost;
+      b.onclick=()=>send({t:'action',action:'construir',kind:k}); r.appendChild(b);
+      extra.appendChild(r);
+    });
+    // ações internas
+    sub2('🎭 Ações internas');
+    const rs=document.createElement('div'); rs.className='xrow';
+    const rsn=document.createElement('span'); rsn.className='xn'; rsn.textContent='🎤 Show nacional (+5 aprovação)'; rs.appendChild(rsn);
+    const rsb=document.createElement('button'); rsb.textContent='$150'; rsb.disabled=m.ap<1||m.money<150;
+    rsb.onclick=()=>send({t:'action',action:'show'}); rs.appendChild(rsb); extra.appendChild(rs);
+    if (state.un && state.un.proposer===myId){
+      const rb=document.createElement('div'); rb.className='xrow';
+      const rbn=document.createElement('span'); rbn.className='xn'; rbn.textContent='💰 Subornar votos na ONU (vira metade dos contrários)'; rb.appendChild(rbn);
+      const rbb=document.createElement('button'); rbb.textContent='$200'; rbb.disabled=m.money<200;
+      rbb.onclick=()=>send({t:'action',action:'subornar'}); rb.appendChild(rbb); extra.appendChild(rb);
+    }
+    if (p.famine){
+      const rf=document.createElement('div'); rf.className='xrow';
+      const rfn=document.createElement('span'); rfn.className='xn'; rfn.style.color='#ff5c5c'; rfn.textContent='🍽️ FOME! População morrendo — compre comida no mercado 🛒'; rf.appendChild(rfn); extra.appendChild(rf);
+    }
     // leis nacionais
     sub2('📜 Leis nacionais (1⚡)');
     [['servico_militar','Serviço Militar Obrigatório','+5% ataque em guerras',150],['guarda_nacional','Guarda Nacional','+5% defesa',160],['reforma_agraria','Reforma Agrária','+$10/turno',200],['abertura_comercial','Abertura Comercial','+$10/turno',180],['liberdade_imprensa','Liberdade de Imprensa','+3 aprovação',120],['campanha_patriotica','Campanha Patriótica','+4 aprovação',100]].forEach(([k,nm,desc,cost])=>{
@@ -1257,7 +1286,8 @@ function renderPanel(){
       p.builds.forEach(b=>{
         const r=document.createElement('div'); r.className='xrow';
         const n=document.createElement('span'); n.className='xn';
-        const nm = b.kind==='infra' ? ('Obra: '+(p.provinces[b.prov]?p.provinces[b.prov].name:'—')) : b.kind==='nuclear'?'Etapa nuclear':'Etapa espacial';
+        const BN = {infra:'Obra', nuclear:'Etapa nuclear', espacial:'Etapa espacial', fazenda:'🌾 Fazenda', mina:'⛏️ Mina', usina:'⚡ Usina', petroleo:'🛢️ Poço de petróleo'};
+        const nm = b.kind==='infra' ? ('Obra: '+(p.provinces[b.prov]?p.provinces[b.prov].name:'—')) : (BN[b.kind]||b.kind);
         n.textContent = '⏳ ' + nm + ' (conclui no turno ' + b.until + ')';
         r.appendChild(n); extra.appendChild(r);
       });
@@ -1298,6 +1328,9 @@ function renderPanel(){
     acts.appendChild(mkBtn('🏛️', m.embassies.includes(p.id)?'Embaixada aberta':'Abrir EMBAIXADA (1⚡)', ()=>send({t:'action',action:'embaixada',target:p.id}), m.embassies.includes(p.id)||m.ap<1));
     acts.appendChild(mkBtn('🚫', m.sanctioning.includes(p.id)?'Suspender sanções':'Impor SANÇÕES (1⚡)', ()=>send({t:'action',action:'sancao',target:p.id}), !m.sanctioning.includes(p.id)&&(m.ap<1||m.sanctioning.length>=3)));
     acts.appendChild(mkBtn('💸','Ajudar $200 (+relações)', ()=>send({t:'action',action:'ajudar',target:p.id}), m.ap<1||m.money<200));
+    acts.appendChild(mkBtn('🇺🇳','Propor resolução contra (1⚡, $300)', ()=>send({t:'action',action:'propor_resolucao',target:p.id}), m.ap<1||m.money<300||!!state.un));
+    acts.appendChild(mkBtn('⚖️','Espalhar ideologia (1⚡, $300)', ()=>send({t:'action',action:'espalhar_ideologia',target:p.id}), m.ap<1||m.money<300||!m.ideology));
+    acts.appendChild(mkBtn('🛐','Espalhar religião (1⚡, $300)', ()=>send({t:'action',action:'espalhar_religiao',target:p.id}), m.ap<1||m.money<300||!m.religion||m.religion==='laico'));
     // relação bilateral
     const rel = m.relations[p.id] != null ? m.relations[p.id] : 50;
     note.textContent = `📈 Relação bilateral: ${rel}/100` + (ally?' · 🤝 aliados':'') + (atWar?' · ⚔️ EM GUERRA':'') + (state.turn < p.emergencyUntil?' · 🆘 em emergência':'');
@@ -1403,6 +1436,11 @@ function renderMarket(){
     v.onclick = () => send({t:'action', action:'vender', res:k, qty:10});
     row.append(rn, rs, b, v); panel.appendChild(row);
   });
+  const infra = m.provinces.filter(x=>x.owner===myId).reduce((a,x)=>a+x.infra,0);
+  const bd = m.buildings || {fazenda:0,mina:0,usina:0,petroleo:0};
+  const info=document.createElement('div'); info.style.cssText='color:var(--muted);font-size:11px;margin-top:8px;line-height:1.5;';
+  info.textContent='Sua produção por turno: 🌾+'+(4+infra*3+bd.fazenda*5)+' · ⛏️+'+(2+Math.round(m.eco*0.8)+bd.mina*4)+' · ⚡+'+(3+infra*2+bd.usina*4+bd.petroleo*3)+(bd.petroleo?(' · 💰+$'+bd.petroleo*15):'');
+  panel.appendChild(info);
 }
 $('btn-market').onclick = () => {
   $('market-panel').classList.toggle('hidden');

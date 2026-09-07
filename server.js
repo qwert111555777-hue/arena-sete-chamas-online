@@ -342,7 +342,7 @@ function newRoom() {
     code: makeCode(), phase: 'lobby', turn: 0, timerEnd: 0, speed: 45,
     players: [], hostId: null, proposals: [], log: [], winner: null, timer: null,
     un: null, noWarUntil: 0, noArmsUntil: 0, embargo: null,
-    world: COUNTRIES.slice(), market: { comida: 8, minerio: 12, energia: 10 },
+    world: COUNTRIES.slice(), market: { comida: 8, minerio: 12, energia: 10 }, missionIdx: 0, warAuth: null,
   };
   rooms.set(room.code, room);
   return room;
@@ -379,8 +379,9 @@ function snapshot(room) {
       blockading: p.blockading, blockadedBy: p.blockadedBy,
       units: p.units, builds: p.builds, emergencyUntil: p.emergencyUntil, leis: p.leis,
       pop: p.pop, rec: p.rec, bot: p.bot, customName: p.customName, customFlag: p.customFlag,
+      buildings: p.buildings, stats: p.stats, famine: p.famine,
     })),
-    world: room.world, market: room.market,
+    world: room.world, market: room.market, mission: MISSIONS[room.missionIdx % MISSIONS.length],
   };
 }
 function broadcast(room) {
@@ -399,6 +400,7 @@ function addPlayer(room, conn, name, isHost) {
     sanctioning: [], sanctionedBy: [],
     taxRate: 1, debt: 0, ideology: null, religion: 'laico',
     customName: null, customFlag: '🏳️', bot: false, pop: 0, rec: { comida: 0, minerio: 0, energia: 0 },
+    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0 }, famine: false,
     ministers: { eco: null, def: null, dip: null },
     techs: [], sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
@@ -426,6 +428,8 @@ function makeAIBot(c) {
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
     units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0 },
     builds: [], emergencyUntil: 0, leis: [],
+    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0 }, famine: false,
+    ideology: Object.keys(IDEOLOGIES)[h % 6], religion: Object.keys(RELIGIONS)[h % 5],
   };
 }
 
@@ -438,6 +442,7 @@ function startGame(room) {
     room.world.push(nat); DYNC[cid] = nat;
     p.country = cid;
     p.money = 10000; p.eco = 3; p.mil = 3; p.pop = 0; p.rec = { comida: 0, minerio: 0, energia: 0 };
+    p.buildings = { fazenda: 0, mina: 0, usina: 0, petroleo: 0 }; p.stats = { construidas: 0, vendidas: 0, vitorias: 0 }; p.famine = false;
     p.aprov = 50; p.ap = AP_PER_TURN; p.alive = true;
     p.allies = []; p.eliminatedReason = null; p.nuclear = 0; p.influencia = 0; p.fe = 0; p.wars = [];
     p.provinces = [{ name: 'Capital de ' + nat.name, infra: 1, owner: p.id }];
@@ -519,7 +524,7 @@ const LEIS = {
 
 function incomeOf(room, p) {
   const prov = ownProvinces(p).reduce((s, pr) => s + pr.infra, 0) * PROV_INCOME;
-  let base = p.eco * 10 + prov + Math.floor(p.pop / 8)
+  let base = p.eco * 10 + prov + Math.floor(p.pop / 8) + p.buildings.petroleo * 15
     + p.allies.length * 25
     + p.trades.length * 20
     + (p.space >= 3 ? 30 : 0)
@@ -559,6 +564,7 @@ function resolveUN(room) {
     if (u.type === 'proibir_armas') { room.noArmsUntil = room.turn + 3; log(room, '🇺 A ONU APROVOU: proibição de recrutamento por 3 turnos!'); }
     if (u.type === 'embargo' && tgt) { room.embargo = { target: tgt.id, until: room.turn + 3 }; log(room, `🇺🇳 A ONU APROVOU embargo econômico contra ${cname(tgt)}!`); }
     if (u.type === 'condenar' && tgt) { tgt.aprov = Math.max(0, tgt.aprov - 6); log(room, `🇺🇳 A ONU CONDENOU ${cname(tgt)} (-6 aprovação)!`); }
+    if (u.type === 'autorizar') { room.warAuth = { by: u.proposer, target: u.target, until: room.turn + 8 }; log(room, `🇺🇳 A ONU AUTORIZOU a intervenção militar! Válido por 8 turnos.`); }
   } else {
     log(room, '🇺🇳 A ONU REJEITOU a resolução.');
   }
@@ -593,6 +599,8 @@ function resolveTurn(room) {
       if (b.kind === 'infra') { const pr = p.provinces[b.prov]; if (pr && pr.owner === p.id && pr.infra < 5) { pr.infra += 1; log(room, `🏗️ Construção concluída: ${pr.name} (${cname(p)}) infraestrutura ${pr.infra}.`); } }
       if (b.kind === 'nuclear' && p.nuclear < NUKE_MAX_LEVEL) { p.nuclear += 1; log(room, `☢️ ${cname(p)} conclui etapa do programa nuclear (nível ${p.nuclear}).`); }
       if (b.kind === 'espacial' && p.space < 3) { p.space += 1; p.aprov = Math.min(100, p.aprov + 2); log(room, `🚀 ${cname(p)} conclui etapa do programa espacial (nível ${p.space}).`); }
+      if (PROD_NAMES[b.kind]) { p.buildings[b.kind]++; p.stats.construidas++; log(room, `${PROD_NAMES[b.kind]} construíd${b.kind === 'mina' ? 'a' : 'o'} em ${cname(p)}.`); }
+      if (b.kind === 'infra' || b.kind === 'nuclear') p.stats.construidas++;
     }
     p.money += incomeOf(room, p);
     if (p.money < 0) { p.money = 0; p.mil = Math.max(1, Math.round(p.mil * 0.9)); }
@@ -615,13 +623,17 @@ function resolveTurn(room) {
   // população, produção de recursos e oscilação do mercado
   for (const p of room.players) if (p.alive) {
     const infra = ownProvinces(p).reduce((sx, x) => sx + x.infra, 0);
-    p.rec.comida += 4 + infra * 3;
-    p.rec.minerio += 2 + Math.round(p.eco * 0.8);
-    p.rec.energia += 3 + infra * 2;
+    p.rec.comida += 4 + infra * 3 + p.buildings.fazenda * 5;
+    p.rec.minerio += 2 + Math.round(p.eco * 0.8) + p.buildings.mina * 4;
+    p.rec.energia += 3 + infra * 2 + p.buildings.usina * 4 + p.buildings.petroleo * 3;
     const need = Math.ceil(p.pop / 10);
     let g = 4 + infra * 2;
     if (p.rec.comida >= need) p.rec.comida -= need; else { p.rec.comida = 0; g = Math.max(1, Math.floor(g / 3)); }
     p.pop += g;
+    if (p.rec.comida === 0 && p.pop > 0) {
+      p.pop = Math.max(0, p.pop - 2); p.aprov = Math.max(0, p.aprov - 3);
+      if (!p.famine) { log(room, `🍽️ FOME em ${cname(p)}! A população está morrendo — compre comida no mercado.`); p.famine = true; }
+    } else p.famine = false;
   }
   for (const k of Object.keys(room.market)) room.market[k] = Math.max(3, Math.min(40, Math.round(room.market[k] * (0.88 + Math.random() * 0.3))));
 
@@ -641,15 +653,45 @@ function resolveTurn(room) {
   randomEvent(room);
   if (room.turn % 4 === 0 && !room.un) openUN(room);
   aiTurn(room);
+  const mNow = MISSIONS[room.missionIdx % MISSIONS.length];
+  if (mNow) {
+    const hero = room.players.find(p => p.alive && !p.bot && mNow.check(p));
+    if (hero) {
+      hero.money += mNow.reward; hero.aprov = Math.min(100, hero.aprov + 3);
+      log(room, `🏆 MISSÃO CUMPRIDA por ${cname(hero)}: ${mNow.desc} (+$${mNow.reward}, +3 aprovação)!`);
+      room.missionIdx++;
+    }
+  }
   checkEliminations(room);
   checkVictory(room);
   if (room.phase === 'game') room.timerEnd = Date.now() + room.speed * 1000;
   broadcast(room);
 }
 
+const PROD_BUILDS = { fazenda: 250, mina: 300, usina: 350, petroleo: 400 };
+const PROD_NAMES = { fazenda: '🌾 Fazenda', mina: '⛏️ Mina', usina: '⚡ Usina', petroleo: '🛢️ Poço de petróleo' };
+const MISSIONS = [
+  { id: 'construir_3', desc: 'Conclua 3 construções',            reward: 500, check: p => p.stats.construidas >= 3 },
+  { id: 'vender_30',   desc: 'Venda 30 unidades no mercado',      reward: 400, check: p => p.stats.vendidas >= 30 },
+  { id: 'pop_50',      desc: 'Alcance 50 habitantes',             reward: 500, check: p => p.pop >= 50 },
+  { id: 'leis_2',      desc: 'Aprove 2 leis nacionais',           reward: 450, check: p => p.leis.length >= 2 },
+  { id: 'vencer_1',    desc: 'Vença 1 batalha',                   reward: 600, check: p => p.stats.vitorias >= 1 },
+];
+
 const UNIT_COSTS = { blindados: 300, aviacao: 400, frota: 500, infantaria: 200, artilharia: 350, submarinos: 450 };
 
+function allyDefend(room, atk, def) {
+  for (const al of room.players) {
+    if (!al.alive || al.id === atk.id || al.id === def.id) continue;
+    if (def.allies.includes(al.id) && !al.wars.includes(atk.id) && !atk.allies.includes(al.id)) {
+      al.wars.push(atk.id); atk.wars.push(al.id);
+      log(room, `🤝 ${cname(al)} entrou na guerra para DEFENDER ${cname(def)}!`);
+    }
+  }
+}
+
 function botAttack(room, a, d) {
+  allyDefend(room, a, d);
   let aM = 1, dM = 1;
   if (a.ideology === 'autoritarismo') aM += 0.15;
   if (a.techs.includes('exercito')) aM += 0.15;
@@ -663,7 +705,7 @@ function botAttack(room, a, d) {
     const loot = Math.round(d.money * 0.25);
     d.money -= loot; a.money += loot;
     d.mil = Math.max(1, Math.round(d.mil * 0.8)); a.mil = Math.max(1, Math.round(a.mil * 0.9));
-    d.aprov = Math.max(0, d.aprov - 8);
+    d.aprov = Math.max(0, d.aprov - 8); a.stats.vitorias++;
     log(room, `🤖⚔️ ${cname(a)} atacou ${cname(d)} e VENCEU! Saque: $${loot}.`);
     const provs = ownProvinces(d);
     if (provs.length) { const pr = provs[Math.floor(Math.random() * provs.length)]; pr.owner = a.id; log(room, `🏴 ${cname(a)} OCUPA a província de ${pr.name}!`); }
@@ -682,8 +724,12 @@ function aiTurn(room) {
     const need = Math.ceil(b.pop / 10) + 10;
     if (b.rec.comida > need + 20) { const q = Math.floor((b.rec.comida - need) / 2); b.rec.comida -= q; b.money += q * room.market.comida; }
     if (b.money > 500 && b.builds.length < 2) {
-      const pr = ownProvinces(b).find(x => x.infra < 5);
-      if (pr) { b.money -= 200; b.builds.push({ kind: 'infra', prov: b.provinces.indexOf(pr), until: room.turn + 1 }); }
+      const kinds = ['infra', 'fazenda', 'mina', 'usina', 'petroleo'];
+      const kind = kinds[(room.turn + b.id.length) % kinds.length];
+      if (kind === 'infra') {
+        const pr = ownProvinces(b).find(x => x.infra < 5);
+        if (pr) { b.money -= 200; b.builds.push({ kind: 'infra', prov: b.provinces.indexOf(pr), until: room.turn + 1 }); }
+      } else if (b.money > PROD_BUILDS[kind]) { b.money -= PROD_BUILDS[kind]; b.builds.push({ kind, until: room.turn + 1 }); }
     }
     if (b.money > 900) {
       const ks = ['infantaria', 'blindados', 'artilharia', 'aviacao'];
@@ -935,7 +981,11 @@ function performAction(room, p, msg) {
       p.trades = p.trades.filter(id => id !== target.id); target.trades = target.trades.filter(id => id !== p.id);
       p.relations[target.id] = 0; target.relations[p.id] = 0;
       p.aprov = Math.max(0, p.aprov - 2);
-      log(room, `⚠️ ${cname(p)} declarou GUERRA a ${cname(target)}!`);
+      const auth = room.warAuth && room.warAuth.by === p.id && room.warAuth.target === target.id && room.turn <= room.warAuth.until;
+      if (!auth) {
+        for (const o of room.players) if (o.alive && o.id !== p.id && o.id !== target.id) o.relations[p.id] = Math.max(0, relBetween(o, p) - 8);
+        log(room, `⚠️ ${cname(p)} declarou GUERRA a ${cname(target)} sem autorização da ONU — relações abaladas com o mundo (-8)!`);
+      } else log(room, `⚠️ ${cname(p)} declarou GUERRA a ${cname(target)} com autorização da ONU!`);
       break;
     }
     case 'paz': {
@@ -966,6 +1016,7 @@ function performAction(room, p, msg) {
       if (!p.wars.includes(target.id)) { err(p.conn, 'Declare GUERRA primeiro (⚠️, 1⚡).'); return; }
       if (p.ap < 2) { err(p.conn, 'Atacar custa 2 pontos de ação.'); return; }
       p.ap -= 2;
+      allyDefend(room, p, target);
       let aM = 1, dM = 1;
       if (p.ideology === 'autoritarismo') aM += 0.15;
       if (p.techs.includes('exercito')) aM += 0.15;
@@ -984,6 +1035,7 @@ function performAction(room, p, msg) {
         p.mil = Math.max(1, Math.round(p.mil * 0.9));
         target.aprov = Math.max(0, target.aprov - 8);
         p.aprov = Math.max(0, p.aprov - 3);
+        p.stats.vitorias++;
         log(room, `⚔️ ${cname(p)} atacou ${cname(target)} e VENCEU! Saque: $${loot}.`);
         const provs = ownProvinces(target);
         if (provs.length) { const pr = provs[Math.floor(Math.random() * provs.length)]; pr.owner = p.id; log(room, `🏴 ${cname(p)} OCUPA a província de ${pr.name}!`); }
@@ -1024,7 +1076,63 @@ function performAction(room, p, msg) {
     case 'vender': {
       const q = Math.max(1, Math.min(100, msg.qty | 0));
       if (room.market[msg.res] == null || p.rec[msg.res] < q) return;
-      p.rec[msg.res] -= q; p.money += room.market[msg.res] * q;
+      p.rec[msg.res] -= q; p.money += room.market[msg.res] * q; p.stats.vendidas += q;
+      break;
+    }
+    case 'construir': {
+      if (!PROD_BUILDS[msg.kind]) return;
+      if (!spend(p, 1, PROD_BUILDS[msg.kind])) return;
+      p.builds.push({ kind: msg.kind, until: room.turn + 1 });
+      log(room, `🏗️ ${cname(p)} inicia ${PROD_NAMES[msg.kind]} (conclui no próximo turno).`);
+      break;
+    }
+    case 'show': {
+      if (p.lastShow === room.turn) { err(p.conn, 'Você já fez um show neste turno.'); return; }
+      if (!spend(p, 1, 150)) return;
+      p.lastShow = room.turn; p.aprov = Math.min(100, p.aprov + 5);
+      log(room, `🎤 ${cname(p)} organizou um show nacional (+5 aprovação)!`);
+      break;
+    }
+    case 'propor_resolucao': {
+      if (!target || target === p || !target.alive) return;
+      if (room.un) { err(p.conn, 'A ONU já está em sessão.'); return; }
+      if (!spend(p, 1, 300)) return;
+      room.un = { type: 'autorizar', desc: `Autorizar intervenção militar de ${cname(p)} contra ${cname(target)}`, target: target.id, proposer: p.id, votes: {}, deadline: Date.now() + 20000 };
+      log(room, `🇺🇳 ${cname(p)} propôs resolução na ONU: ${room.un.desc}. Votação aberta!`);
+      for (const b of room.players) if (b.bot && b.alive) room.un.votes[b.id] = relBetween(b, p) >= 45 || Math.random() < 0.25;
+      break;
+    }
+    case 'subornar': {
+      if (!room.un || room.un.type !== 'autorizar' || room.un.proposer !== p.id) { err(p.conn, 'Nenhuma resolução sua em votação.'); return; }
+      if (!spend(p, 0, 200)) return;
+      const nos = Object.keys(room.un.votes).filter(k => room.un.votes[k] === false);
+      const flip = Math.ceil(nos.length / 2);
+      let n = 0;
+      for (const bid of nos) {
+        if (n >= flip) break;
+        room.un.votes[bid] = true; n++;
+      }
+      log(room, `💰 ${cname(p)} comprou apoio diplomático (+${n} votos na ONU).`);
+      break;
+    }
+    case 'espalhar_ideologia': {
+      if (!target || target === p || !target.alive) return;
+      if (!p.ideology) { err(p.conn, 'Adote uma ideologia primeiro.'); return; }
+      if (!spend(p, 1, 300)) return;
+      if (Math.random() < 0.3 + relBetween(p, target) / 200) {
+        target.ideology = p.ideology; bumpRel(p, target, 10);
+        log(room, `⚖️ ${cname(p)} espalhou sua ideologia para ${cname(target)}!`);
+      } else { bumpRel(p, target, -5); log(room, `⚖️ ${cname(target)} rejeitou a propaganda de ${cname(p)} (-5 relações).`); }
+      break;
+    }
+    case 'espalhar_religiao': {
+      if (!target || target === p || !target.alive) return;
+      if (!p.religion || p.religion === 'laico') { err(p.conn, 'Adote uma religião de Estado primeiro.'); return; }
+      if (!spend(p, 1, 300)) return;
+      if (Math.random() < 0.3 + relBetween(p, target) / 200) {
+        target.religion = p.religion; bumpRel(p, target, 10);
+        log(room, `🛐 ${cname(p)} espalhou sua religião para ${cname(target)}!`);
+      } else { bumpRel(p, target, -5); log(room, `🛐 ${cname(target)} rejeitou os missionários de ${cname(p)} (-5 relações).`); }
       break;
     }
     default: return;
