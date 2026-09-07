@@ -153,6 +153,7 @@ function newRoom() {
     timerEnd: 0,
     players: [],
     hostId: null,
+    speed: 45,
     proposals: [],
     log: [],
     winner: null,
@@ -176,6 +177,7 @@ function snapshot(room) {
     code: room.code,
     turn: room.turn,
     timerEnd: room.timerEnd,
+    speed: room.speed,
     winner: room.winner,
     log: room.log.slice(0, 60),
     proposals: room.proposals,
@@ -239,7 +241,7 @@ function startGame(room) {
   room.phase = 'game';
   room.turn = 1;
   room.proposals = [];
-  room.timerEnd = Date.now() + TURN_SECONDS * 1000;
+  room.timerEnd = Date.now() + room.speed * 1000;
   log(room, '🏛️ Mandato iniciado! Governem com sabedoria (ou não).');
   if (!room.timer) {
     room.timer = setInterval(() => {
@@ -322,7 +324,7 @@ function resolveTurn(room) {
   randomEvent(room);
   checkEliminations(room);
   checkVictory(room);
-  if (room.phase === 'game') room.timerEnd = Date.now() + TURN_SECONDS * 1000;
+  if (room.phase === 'game') room.timerEnd = Date.now() + room.speed * 1000;
   broadcast(room);
 }
 
@@ -646,6 +648,13 @@ function route(conn, msg) {
       broadcast(room);
       break;
     }
+    case 'velocidade': {
+      const { room, player } = conn.meta || {};
+      if (!room || room.phase !== 'lobby' || player.id !== room.hostId) return;
+      room.speed = (msg.speed === 15) ? 15 : 45;
+      broadcast(room);
+      break;
+    }
     case 'start': {
       const { room, player } = conn.meta || {};
       if (!room || room.phase !== 'lobby' || player.id !== room.hostId) return;
@@ -699,7 +708,7 @@ const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
-  '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon',
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon',
 };
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://localhost');

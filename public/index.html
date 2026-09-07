@@ -80,6 +80,8 @@
   .c-country.mine{border-color:var(--gold); background:#241f0a; box-shadow:0 0 0 1px var(--gold);}
   .c-country.taken{opacity:.5; cursor:not-allowed;}
   .c-country .fl{font-size:34px;}
+  .flimg{width:46px; height:46px; border-radius:50%; object-fit:cover; border:2px solid var(--border); background:#0c1324;}
+  .np-head .flimg{width:40px; height:40px;}
   .c-country .nm{font-size:13px; font-weight:700; margin-top:4px;}
   .c-country .who{font-size:11px; color:var(--muted); margin-top:2px; min-height:14px;}
   .c-country .stats{font-size:10.5px; color:var(--muted); margin-top:5px;}
@@ -284,6 +286,7 @@
   </div>
 
   <div style="display:flex; gap:10px; margin-top:16px; justify-content:flex-end;">
+    <button id="btn-speed" title="Alternar velocidade dos turnos (só o anfitrião)">⏱️ Turnos de 45s</button>
     <button id="btn-leave" class="danger">Sair da sala</button>
     <button id="btn-start" class="primary" style="min-width:220px;">▶ Iniciar partida</button>
   </div>
@@ -317,7 +320,8 @@
             <stop offset="0" stop-color="#7d9b6a"/><stop offset=".5" stop-color="#b3a06b"/><stop offset="1" stop-color="#8a7f52"/>
           </linearGradient>
         </defs>
-        <rect x="0" y="0" width="1000" height="520" fill="url(#ocean)"/>
+        <g id="map-root">
+        <rect x="-3000" y="-3000" width="7000" height="7000" fill="url(#ocean)"/>
         <g id="continents" fill="url(#land)" stroke="#3d5a3d" stroke-width="1.5" opacity="0.92">
           <!-- América do Norte -->
           <path d="M40,72 Q80,50 140,52 Q220,56 262,74 Q300,92 308,120 Q312,146 290,168 Q278,182 272,190 Q250,206 224,202 Q200,200 196,212 Q214,222 252,228 Q276,232 282,240 L268,246 Q240,244 216,232 Q180,218 160,196 Q120,170 92,140 Q60,110 40,72 Z"/>
@@ -376,6 +380,7 @@
         <g id="map-prov"></g>
         <g id="map-lines"></g>
         <g id="map-markers"></g>
+        </g>
       </svg>
 
       <div id="propose-bar"></div>
@@ -463,6 +468,7 @@ const COUNTRIES = [
   { id:'au', name:'Austrália',     flag:'🇦🇺', lat:-25, lon:134 },
 ];
 const CBYID = Object.fromEntries(COUNTRIES.map(c=>[c.id,c]));
+const PORTRAITS = { br:'portraits/br.jpg', us:'portraits/us.jpg', ru:'portraits/ru.jpg', cn:'portraits/cn.jpg', gb:'portraits/gb.jpg', fr:'portraits/fr.jpg' };
 const proj = c => ({ x:(c.lon+180)/360*1000, y:(90-c.lat)/180*520 });
 const PALETTE = ['#e8b93c','#4da3ff','#ff5c5c','#39d98a','#c77dff','#ff9f43','#4dd0e1','#f06292','#aed581','#ffd54f','#90a4ae','#ba68c8'];
 /* territórios estilizados (mesma projeção do mapa) */
@@ -561,6 +567,8 @@ function handle(m){
     const top = m.log[0] && m.log[0].msg;
     if (top && top !== lastTopLog){
       lastTopLog = top;
+      const myP = me();
+      if (myP && myP.country && /^(⚔️|🛡️|☢️|🚫|🧨|💥)/.test(top) && top.includes(cname(myP))) toast(top, 'info');
       if (top.startsWith('☢️💥')) sfx('nuke');
       else if (top.startsWith('⚔️') || top.startsWith('🛡️') || top.startsWith('💥')) sfx('war');
       else if (top.startsWith('🤝')) sfx('ally');
@@ -604,6 +612,9 @@ function renderLobby(){
   $('lob-code').textContent = state.code;
   $('lob-count').textContent = state.players.length;
   const isHost = me() && me().isHost;
+  const bs = $('btn-speed');
+  bs.classList.toggle('hidden', !isHost);
+  bs.textContent = `⏱️ Turnos de ${state.speed || 45}s`;
   const btn = $('btn-start');
   btn.classList.toggle('hidden', !isHost);
   btn.textContent = state.players.length >= 2
@@ -625,7 +636,7 @@ function renderLobby(){
     const mine = me() && me().country === c.id;
     const div = document.createElement('div');
     div.className = 'c-country' + (mine ? ' mine' : '') + (taken && !mine ? ' taken' : '');
-    div.innerHTML = `<div class="fl">${c.flag}</div><div class="nm">${c.name}</div>`;
+    div.innerHTML = (PORTRAITS[c.id] ? `<img class="flimg" src="${PORTRAITS[c.id]}" alt="">` : `<div class="fl">${c.flag}</div>`) + `<div class="nm">${c.name}</div>`;
     const who = document.createElement('div'); who.className='who';
     who.textContent = taken ? (taken.id===myId ? '✓ você' : taken.name) : 'livre';
     div.appendChild(who);
@@ -716,7 +727,7 @@ function renderMap(){
       d.setAttribute('fill', col); d.setAttribute('fill-opacity','0.75');
       d.setAttribute('stroke', '#0b1020'); d.setAttribute('stroke-width','1');
       d.setAttribute('class','mk');
-      d.onclick = () => { selectedId = pl.id; renderMap(); renderPanel(); };
+      d.onclick = () => { if (dragged) return; selectedId = pl.id; renderMap(); renderPanel(); };
       const tt = document.createElementNS('http://www.w3.org/2000/svg','title');
       tt.textContent = `${prv.name} — infra ${prv.infra}/5 (${owner ? owner.name : '—'})`;
       d.appendChild(tt);
@@ -803,7 +814,7 @@ function renderMap(){
       nb.textContent = '☢️';
       mk.appendChild(nb);
     }
-    mk.onclick = () => { selectedId = (selectedId === p.id ? null : p.id); renderMap(); renderPanel(); };
+    mk.onclick = () => { if (dragged) return; selectedId = (selectedId === p.id ? null : p.id); renderMap(); renderPanel(); };
     g.appendChild(mk);
   });
 }
@@ -815,7 +826,8 @@ function renderPanel(){
   if (!p){ np.classList.add('hidden'); return; }
   np.classList.remove('hidden');
   const c = CBYID[p.country];
-  $('np-flag').textContent = c.flag;
+  if (PORTRAITS[p.country]) $('np-flag').innerHTML = `<img class="flimg" src="${PORTRAITS[p.country]}" alt="">`;
+  else $('np-flag').textContent = c.flag;
   $('np-name').textContent = c.name + (p.nuclear>=3 ? ' ☢️' : '');
   $('np-leader').textContent = p.name + (p.isHost ? ' 👑' : '') + (!p.connected ? ' 📴' : '');
   $('np-stats').innerHTML =
@@ -945,6 +957,7 @@ $('btn-copy-link').onclick = () => {
   navigator.clipboard.writeText(link).then(()=>toast('🔗 Link de convite copiado!')).catch(()=>toast(link,'info'));
 };
 $('btn-leave').onclick = () => location.reload();
+$('btn-speed').onclick = () => send({t:'velocidade', speed: (state.speed===45) ? 15 : 45});
 $('btn-start').onclick = () => send({t:'start'});
 $('btn-endturn').onclick = () => send({t:'fim_turno'});
 document.querySelectorAll('.round-btn').forEach(b => b.onclick = () => { sfx('click'); send({t:'action', action:b.dataset.act}); });
@@ -987,6 +1000,46 @@ setInterval(() => {
   el.textContent = String(Math.floor(left/60)).padStart(2,'0') + ':' + String(left%60).padStart(2,'0');
   el.style.color = left <= 10 ? 'var(--red)' : 'var(--gold2)';
 }, 250);
+
+/* ================= zoom & pan ================= */
+const view = { s:1, tx:0, ty:0 };
+let dragged = false;
+function applyView(){
+  const g = document.getElementById('map-root');
+  if (g) g.setAttribute('transform', `translate(${view.tx},${view.ty}) scale(${view.s})`);
+}
+function svgPoint(e){
+  return new DOMPoint(e.clientX, e.clientY).matrixTransform($('map').getScreenCTM().inverse());
+}
+document.addEventListener('wheel', e => {
+  if ($('scr-game').classList.contains('hidden')) return;
+  if (!e.target.closest('.map-wrap')) return;
+  e.preventDefault();
+  const p = svgPoint(e);
+  const s2 = Math.min(4, Math.max(1, view.s * (e.deltaY < 0 ? 1.15 : 0.87)));
+  view.tx = p.x - (p.x - view.tx) * (s2 / view.s);
+  view.ty = p.y - (p.y - view.ty) * (s2 / view.s);
+  view.s = s2;
+  if (view.s === 1){ view.tx = 0; view.ty = 0; }
+  applyView();
+}, { passive:false });
+let drag = null;
+document.addEventListener('pointerdown', e => {
+  if ($('scr-game').classList.contains('hidden')) return;
+  if (!e.target.closest('.map-wrap')) return;
+  if (e.target.closest('.nation-panel,.bottom-bar,.side-tools,.rank-panel,#propose-bar')) return;
+  drag = { x:e.clientX, y:e.clientY, tx:view.tx, ty:view.ty };
+});
+document.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const ctm = $('map').getScreenCTM();
+  if (Math.abs(e.clientX-drag.x) + Math.abs(e.clientY-drag.y) > 5) dragged = true;
+  view.tx = drag.tx + (e.clientX - drag.x) / ctm.a;
+  view.ty = drag.ty + (e.clientY - drag.y) / ctm.d;
+  applyView();
+});
+document.addEventListener('pointerup', () => { drag = null; setTimeout(()=>{ dragged=false; },0); });
+$('map').addEventListener('dblclick', () => { view.s=1; view.tx=0; view.ty=0; applyView(); });
 
 connect();
 </script>
