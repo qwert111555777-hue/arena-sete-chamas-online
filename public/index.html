@@ -875,6 +875,14 @@ const TECH_MAX = 5;
 const TECH_TREES = [['ec','🏭 Economia'],['cb','⚔️ Combate'],['dp','🤝 Diplomacia'],['ex','🧭 Exploração'],['sp','🚀 Espacial']];
 function techLv(pl, k){ return (pl && pl.techLv && pl.techLv[k]) || 0; }
 
+/* catálogo de construções (espelho do servidor) */
+const BUILD_MAX = 5;
+const BUILD_TABS = [['rec','⛏️ Recursos'], ['ene','⚡ Energia'], ['ali','🌾 Alimentos'], ['ind','🏭 Indústria'], ['mil','🎖️ Militar'], ['inf','🛣️ Infraestrutura']];
+const PROD_BUILDS = {serraria:280, mina_ouro:500, fabrica:300, borracha:340, mina_rara:450, mina_uranio:500, petroleo:400, mina:300, usina:350, hidreletrica:520, usina_nuclear:900, solar:320, eolica:480, alternativa:600, agua:180, mina_sal:200, acucar:240, padaria:260, gado:300, fazenda:250, jardim:150, estufa:420, doces:280, adubo:260, processados:380, premium:560, estaleiro_naval:700, motores:620, maquinas:580, siderurgica:660, base:400, quartel:380, arsenal:420, hangar:520, aerodromo:560, estaleiro:620, centro_ind:700, campo_treino:340, armazem:260, estrada:150, ferrovia:380, metro:520, ciclovia:120, aeroporto:680, porto:600, heliporto:300, terminal:900};
+const CONCRETE_NEED = {serraria:8, mina_ouro:10, fabrica:0, borracha:8, mina_rara:10, mina_uranio:10, petroleo:8, mina:8, usina:8, hidreletrica:12, usina_nuclear:20, solar:6, eolica:12, alternativa:10, agua:5, mina_sal:5, acucar:6, padaria:6, gado:8, fazenda:8, jardim:3, estufa:10, doces:6, adubo:8, processados:8, premium:12, estaleiro_naval:15, motores:12, maquinas:12, siderurgica:15, base:10, quartel:10, arsenal:10, hangar:12, aerodromo:12, estaleiro:15, centro_ind:18, campo_treino:8, armazem:6, estrada:5, ferrovia:12, metro:15, ciclovia:3, aeroporto:18, porto:16, heliporto:8, terminal:22};
+const PROD_NAMES = {serraria:'🪵 Serraria', mina_ouro:'🏦 Mina de Ouro', fabrica:'🧱 Fábrica de Concreto', borracha:'🌳 Fábrica de Borracha', mina_rara:'⚙️ Mina de Terras Raras', mina_uranio:'☢️ Mina de Urânio', petroleo:'🛢️ Torre de Petróleo', mina:'⛏️ Mina de Ferro', usina:'⚡ Usina Termelétrica', hidreletrica:'💧 Usina Hidrelétrica', usina_nuclear:'☢️ Usina Nuclear', solar:'🌞 Usina Solar', eolica:'🌬️ Parque Eólico', alternativa:'♻️ Central de Energia Alternativa', agua:'💧 Fábrica de Água Mineral', mina_sal:'🧂 Mina de Sal', acucar:'🍬 Fábrica de Açúcar', padaria:'🍞 Padaria', gado:'🐄 Fazenda de Gado', fazenda:'🌾 Fazenda', jardim:'🌻 Jardim', estufa:'🏡 Estufa', doces:'🍭 Fábrica de Doces', adubo:'🌱 Fábrica de Aditivos Nutricionais', processados:'🥫 Fábrica de Alimentos Processados', premium:'🍾 Fábrica de Alimentos Premium', estaleiro_naval:'🚢 Estaleiro Naval', motores:'🔧 Fábrica de Motores', maquinas:'🏭 Fábrica de Máquinas', siderurgica:'🔩 Siderúrgica', base:'🎖️ Base Militar', quartel:'🏠 Quartel', arsenal:'🗃️ Arsenal', hangar:'🛡️ Hangar de Tanques', aerodromo:'✈️ Aeródromo', estaleiro:'⚓ Estaleiro Militar', centro_ind:'🏗️ Centro Industrial', campo_treino:'🏋️ Campo de Treino', armazem:'📦 Armazém', estrada:'🛣️ Rodovia', ferrovia:'🚂 Linha Ferroviária', metro:'🚇 Metrô', ciclovia:'🚲 Ciclovia', aeroporto:'🛫 Aeroporto', porto:'🚢 Porto', heliporto:'🚁 Heliporto', terminal:'🌐 Terminal Intercontinental'};
+const BUILD_TAB = {serraria:'rec', mina_ouro:'rec', fabrica:'rec', borracha:'rec', mina_rara:'rec', mina_uranio:'rec', petroleo:'rec', mina:'rec', usina:'ene', hidreletrica:'ene', usina_nuclear:'ene', solar:'ene', eolica:'ene', alternativa:'ene', agua:'ali', mina_sal:'ali', acucar:'ali', padaria:'ali', gado:'ali', fazenda:'ali', jardim:'ali', estufa:'ali', doces:'ind', adubo:'ind', processados:'ind', premium:'ind', estaleiro_naval:'ind', motores:'ind', maquinas:'ind', siderurgica:'ind', base:'mil', quartel:'mil', arsenal:'mil', hangar:'mil', aerodromo:'mil', estaleiro:'mil', centro_ind:'mil', campo_treino:'mil', armazem:'mil', estrada:'inf', ferrovia:'inf', metro:'inf', ciclovia:'inf', aeroporto:'inf', porto:'inf', heliporto:'inf', terminal:'inf'};
+const BUILD_OUT = {serraria:{res:'madeira',qtd:5}, mina_ouro:{money:25}, fabrica:{res:'concreto',qtd:6}, borracha:{res:'borracha',qtd:3}, mina_rara:{res:'terras_raras',qtd:3}, mina_uranio:{res:'uranio',qtd:2}, petroleo:{res:'energia',qtd:3}, mina:{res:'minerio',qtd:4}, usina:{res:'energia',qtd:4}, hidreletrica:{res:'energia',qtd:6}, usina_nuclear:{res:'energia',qtd:12}, solar:{res:'energia',qtd:3}, eolica:{res:'energia',qtd:5}, alternativa:{res:'energia',qtd:4}, agua:{res:'comida',qtd:2}, mina_sal:{res:'comida',qtd:2}, acucar:{res:'comida',qtd:3}, padaria:{res:'comida',qtd:4}, gado:{res:'comida',qtd:5}, fazenda:{res:'comida',qtd:5}, jardim:{res:'comida',qtd:2}, estufa:{res:'comida',qtd:7}, doces:{money:8}, adubo:{res:'comida',qtd:4}, processados:{res:'comida',qtd:6}, premium:{money:18}, estaleiro_naval:{money:12}, motores:{money:14}, maquinas:{res:'minerio',qtd:3}, siderurgica:{res:'minerio',qtd:6}, base:{}, quartel:{}, arsenal:{}, hangar:{}, aerodromo:{}, estaleiro:{}, centro_ind:{}, campo_treino:{}, armazem:{}, estrada:{money:5}, ferrovia:{money:8}, metro:{money:10}, ciclovia:{money:2}, aeroporto:{money:14}, porto:{money:12}, heliporto:{money:6}, terminal:{money:20}};
 const SECTORS_UI = [['educacao','Educação'],['saude','Saúde'],['cultura','Cultura'],['esportes','Esportes'],['habitacao','Habitação'],['justica','Justiça'],['turismo','Turismo']];
 const SEG_UI = {
   defesa:  { em:'🛡️', nome:'Ministério da Defesa', desc:'+8% de defesa por nível',              custos:[400,900,1800] },
@@ -1593,23 +1601,57 @@ function renderPanel(){
       b.onclick=()=>send({t:'action',action:k}); r.appendChild(b);
       ug.appendChild(r);
     });
-    // construções produtivas
-    sub2('🏗️ Construções (1⚡) — obras avançadas exigem 🧱 concreto');
-    [['fabrica','🧱 Fábrica de concreto (+6🧱/turno)',300,0],['serraria','🪵 Serraria (+5 madeira/turno)',280,8],['fazenda','🌾 Fazenda (+5 comida/turno)',250,8],['mina','⛏️ Mina (+4 minério/turno)',300,8],['usina','⚡ Usina (+4 energia/turno)',350,8],['petroleo','🛢️ Poço de petróleo (+3⚡ +$15/turno)',400,8],['mina_ouro','🏦 Mina de ouro (+$25/turno)',500,10],['estrada','🛣️ Estrada (+$5/turno)',150,5],['base','🎖️ Base militar (+5% defesa, máx 5)',400,10],['mina_rara','⚙️ Mina de terras raras (+3⚙️/turno)',450,10],['adubo','🌱 Usina de nutrientes (+4 comida/turno)',260,8],['mina_uranio','☢️ Mina de urânio (+2 urânio/turno, requer jazida)',500,10],['solar','🌞 Usina solar (+3⚡/turno, energia limpa)',320,6],['eolica','🌬️ Parque eólico (+5⚡/turno, exige 5⚙️)',480,12]].forEach(([k,lb,cost,nc])=>{
-      const r=document.createElement('div'); r.className='xrow';
-      const lvl=(p.upgrades&&p.upgrades[k])||0;
-      const n=document.createElement('span'); n.className='xn'; n.textContent=lb+' — '+(p.buildings&&p.buildings[k]?p.buildings[k]:0)+' constr.'+(lvl?' · nv.'+(lvl+1):'')+(nc?' · '+nc+'🧱':''); r.appendChild(n);
-      const b=document.createElement('button'); b.textContent='$'+cost;
-      const gated = (k==='mina_uranio' && !(p.depositos||[]).includes('uranio')) || (k==='eolica' && ((m.rec&&m.rec.terras_raras)||0) < 5);
-      if (gated) b.title = k==='eolica' ? 'Turbinas eólicas exigem 5 ⚙️ terras raras em estoque' : 'Seu país não possui jazidas de urânio';
-      b.disabled=gated||m.ap<1||m.money<cost||((m.rec&&m.rec.concreto||0)<nc);
-      b.onclick=()=>send({t:'action',action:'construir',kind:k}); r.appendChild(b);
-      if (p.buildings && p.buildings[k] && k!=='estrada' && k!=='base') {
-        const ucost=Math.round(cost*0.6*(lvl+1));
-        const u=document.createElement('button'); u.textContent='⬆️$'+ucost;
-        u.title = lvl>=2 ? 'Nível máximo (3)' : 'Melhorar para o nível '+(lvl+2)+' (+50% de produção)';
-        u.disabled=lvl>=2||m.ap<1||m.money<ucost;
-        u.onclick=()=>send({t:'action',action:'upgrade',kind:k}); r.appendChild(u);
+    // construções: 6 abas x 5 níveis
+    if (typeof buildAba === 'undefined') window.buildAba = 'rec';
+    const bTabs = document.createElement('div');
+    bTabs.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;margin:6px 0';
+    BUILD_TABS.forEach(([id, rot])=>{
+      const qtd = Object.keys(BUILD_TAB).filter(k=>BUILD_TAB[k]===id).length;
+      const a = document.createElement('button');
+      a.textContent = rot + ' (' + qtd + ')';
+      a.style.cssText = 'flex:1 1 auto;font-size:10px;padding:4px 6px;cursor:pointer;'
+        + (window.buildAba===id
+            ? 'background:var(--acc,#c8a45c);color:#22190f;font-weight:700;border:1px solid #8a6d33'
+            : 'background:transparent;color:inherit;border:1px solid rgba(255,255,255,.18)');
+      a.onclick = ()=>{ window.buildAba = id; renderPanel(); };
+      bTabs.appendChild(a);
+    });
+    extra.appendChild(bTabs);
+    sub2('🏗️ Construções (1⚡) — melhorável até o nível ' + BUILD_MAX);
+
+    Object.keys(PROD_BUILDS).filter(k=>BUILD_TAB[k]===window.buildAba).forEach(k=>{
+      const cost = PROD_BUILDS[k], nc = CONCRETE_NEED[k] || 0;
+      const out  = BUILD_OUT[k] || {};
+      let ef = '';
+      if (out.res) ef = ' +' + out.qtd + {comida:'🌾',minerio:'⛏️',energia:'⚡',concreto:'🧱',
+                                          madeira:'🪵',terras_raras:'⚙️',uranio:'☢️',borracha:'🌳'}[out.res] + '/n';
+      else if (out.money) ef = ' +$' + out.money + '/n';
+      const r = document.createElement('div'); r.className = 'xrow';
+      const lvl = (p.upgrades && p.upgrades[k]) || 0;
+      const qtd = (p.buildings && p.buildings[k]) || 0;
+      const n = document.createElement('span'); n.className = 'xn';
+      n.textContent = PROD_NAMES[k] + ef
+        + (qtd ? '  ×' + qtd : '')
+        + (qtd ? '  ' + '●'.repeat(lvl + 1) + '○'.repeat(BUILD_MAX - lvl - 1) : '')
+        + (nc ? ' · ' + nc + '🧱' : '');
+      if (!qtd) n.style.opacity = '.78';
+      r.appendChild(n);
+      const gated = (k === 'mina_uranio' && !(p.depositos || []).includes('uranio'))
+                 || (k === 'eolica' && ((m.rec && m.rec.terras_raras) || 0) < 5);
+      const b = document.createElement('button'); b.textContent = '$' + cost;
+      if (gated) b.title = k === 'eolica'
+        ? 'Turbinas eólicas exigem 5 ⚙️ terras raras em estoque'
+        : 'Seu país não possui jazidas de urânio';
+      b.disabled = gated || m.ap < 1 || m.money < cost || ((m.rec && m.rec.concreto) || 0) < nc;
+      b.onclick = ()=>send({t:'action', action:'construir', kind:k}); r.appendChild(b);
+      if (qtd) {
+        const ucost = Math.round(cost * 0.6 * (lvl + 1));
+        const u = document.createElement('button'); u.textContent = '⬆️$' + ucost;
+        u.title = lvl >= BUILD_MAX - 1
+          ? 'Nível máximo (' + BUILD_MAX + ')'
+          : 'Melhorar para o nível ' + (lvl + 2) + ' (+50% de produção)';
+        u.disabled = lvl >= BUILD_MAX - 1 || m.ap < 1 || m.money < ucost;
+        u.onclick = ()=>send({t:'action', action:'upgrade', kind:k}); r.appendChild(u);
       }
       extra.appendChild(r);
     });
@@ -1789,7 +1831,10 @@ $('btn-pause').onclick = () => send({t:'pausar'});
 $('btn-rank').onclick = () => {
   if (!state || state.phase !== 'game') return;
   const ps = state.players.filter(p => p.alive);
-  const renda = p => p.eco*10 + Math.floor(p.pop/8) + (p.buildings.petroleo||0)*15 + (p.buildings.mina_ouro||0)*25 + (p.buildings.estrada||0)*5 + p.trades.length*20;
+  const renda = p => { let b = p.eco*10 + Math.floor(p.pop/8) + p.trades.length*20;
+    for (const k in (p.buildings||{})) { const n = p.buildings[k]||0; if (!n) continue;
+      const o = BUILD_OUT[k]; if (o && o.money) b += n * o.money * (1 + 0.5*((p.upgrades&&p.upgrades[k])||0)); }
+    return b; };
   const poder = p => p.mil*10 + Object.values(p.units).reduce((a,b)=>a+b,0)*15 + p.nuclear*20;
   const inds  = p => Object.values(p.buildings).reduce((a,b)=>a+b,0) + p.eco;
   const cats = [['💰 Renda', renda, v=>'$'+v], ['⚔️ Poder militar', poder, v=>v], ['👥 População', p=>p.pop, v=>v], ['🏭 Indústria', inds, v=>v]];
@@ -1827,7 +1872,7 @@ function renderMarket(){
   const panel = $('market-panel');
   if (panel.classList.contains('hidden') || !state || !state.market) return;
   const m = me(); if (!m) return;
-  const names = { comida:'🌾 Comida', minerio:'⛏️ Minério', energia:'⚡ Energia', concreto:'🧱 Concreto', madeira:'🪵 Madeira', terras_raras:'⚙️ Terras raras', uranio:'☢️ Urânio' };
+  const names = { comida:'🌾 Comida', minerio:'⛏️ Minério', energia:'⚡ Energia', concreto:'🧱 Concreto', madeira:'🪵 Madeira', terras_raras:'⚙️ Terras raras', uranio:'☢️ Urânio', borracha:'🌳 Borracha' };
   panel.innerHTML = '<h3>🛒 Mercado global de recursos</h3><div style="color:var(--muted);font-size:11px;margin-bottom:8px;line-height:1.5;">Os preços oscilam a cada turno. Suas províncias produzem recursos todo turno: comida alimenta a população (sem comida, ela cresce 3x mais devagar); minério e energia podem ser vendidos por lucro.</div>';
   Object.keys(state.market).forEach(k => {
     const row = document.createElement('div'); row.className = 'rank-row'; row.style.gap = '6px';

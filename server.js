@@ -502,7 +502,7 @@ function newRoom() {
     code: makeCode(), phase: 'lobby', turn: 0, timerEnd: 0, speed: 45,
     players: [], hostId: null, proposals: [], log: [], winner: null, timer: null,
     un: null, noWarUntil: 0, noArmsUntil: 0, embargo: null, paused: false, pausedRemaining: 0,
-    world: COUNTRIES.slice(), market: { comida: 8, minerio: 12, energia: 10, concreto: 10, madeira: 7, terras_raras: 20, uranio: 25 }, missionIdx: 0, warAuth: null, paused: false, pausedRemaining: 0,
+    world: COUNTRIES.slice(), market: { comida: 8, minerio: 12, energia: 10, concreto: 10, madeira: 7, terras_raras: 20, uranio: 25, borracha: 14 }, missionIdx: 0, warAuth: null, paused: false, pausedRemaining: 0,
   };
   rooms.set(room.code, room);
   return room;
@@ -578,7 +578,7 @@ function addPlayer(room, conn, name, isHost) {
     nuclear: 0, influencia: 0, fe: 0, provinces: [], wars: [],
     sanctioning: [], sanctionedBy: [],
     taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, budget: {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: 0, ideology: null, religion: 'laico',
-    customName: null, customFlag: '🏳️', bot: false, pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 0, madeira: 0, terras_raras: 12, uranio: 0 },
+    customName: null, customFlag: '🏳️', bot: false, pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 25, madeira: 0, terras_raras: 12, uranio: 0, borracha: 0 },
     xp: 0, blackout: false, depositos: [], upgrades: {}, pacts: {},
     buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0 }, famine: false,
     ministers: { eco: null, def: null, dip: null },
@@ -599,7 +599,7 @@ function makeAIBot(c) {
   return {
     id: c.id, name: c.name, country: c.id, bot: true, conn: null, connected: true, color: 0,
     customName: null, customFlag: null, isHost: false,
-    money: 10000, eco: 3 + (h % 4), mil: 3 + ((h >> 2) % 4), pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 0, madeira: 0, terras_raras: 12, uranio: 0 }, xp: 0, blackout: false, depositos: depositosOf(c.id), upgrades: {}, pacts: {},
+    money: 10000, eco: 3 + (h % 4), mil: 3 + ((h >> 2) % 4), pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 25, madeira: 0, terras_raras: 12, uranio: 0, borracha: 0 }, xp: 0, blackout: false, depositos: depositosOf(c.id), upgrades: {}, pacts: {},
     aprov: 50, ap: AP_PER_TURN, alive: true, allies: [], eliminatedReason: null,
     nuclear: 0, influencia: 0, fe: 0, wars: [],
     provinces: [{ name: c.name, infra: 1, owner: c.id, origem: c.id }],
@@ -623,7 +623,7 @@ function startGame(room) {
     const nat = { id: cid, name: p.customName || (p.name + 'lândia'), flag: p.customFlag || '🏳️', lat: spot[0] + Math.floor(i / NEWLANDS.length) * 5, lon: spot[1] };
     room.world.push(nat); DYNC[cid] = nat;
     p.country = cid;
-    p.money = 10000; p.eco = 3; p.mil = 3; p.pop = 0; p.rec = { comida: 0, minerio: 0, energia: 0, concreto: 0, madeira: 0, terras_raras: 12, uranio: 0 }; p.xp = 0; p.blackout = false;
+    p.money = 10000; p.eco = 3; p.mil = 3; p.pop = 0; p.rec = { comida: 0, minerio: 0, energia: 0, concreto: 25, madeira: 0, terras_raras: 12, uranio: 0, borracha: 0 }; p.xp = 0; p.blackout = false;
     p.depositos = depositosOf(cid); p.upgrades = {}; p.pacts = {};
     p.buildings = { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }; p.stats = { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0 }; p.famine = false;
     p.aprov = 50; p.ap = AP_PER_TURN; p.alive = true;
@@ -719,7 +719,13 @@ const LEIS = {
 
 function incomeOf(room, p) {
   const prov = ownProvinces(p).reduce((s, pr) => s + pr.infra, 0) * PROV_INCOME;
-  let base = p.eco * 10 + prov + Math.floor(p.pop / 8) + p.buildings.petroleo * 15 + p.buildings.mina_ouro * 25 + p.buildings.estrada * 5
+  let bldMoney = 0;
+  for (const k in p.buildings) {
+    const n = p.buildings[k] || 0; if (!n) continue;
+    const o = BUILD_OUT[k]; if (!o || !o.money) continue;
+    bldMoney += n * o.money * upM(p, k);
+  }
+  let base = p.eco * 10 + prov + Math.floor(p.pop / 8) + bldMoney
     + p.allies.length * 25
     + ((p.depositos || []).includes('ouro') ? 15 : 0)
     - p.embassies.length * 10
@@ -824,22 +830,24 @@ function resolveTurn(room) {
   // população, produção de recursos e oscilação do mercado
   for (const p of room.players) if (p.alive) {
     const infra = ownProvinces(p).reduce((sx, x) => sx + x.infra, 0);
-    const nBld = p.buildings.fazenda + p.buildings.mina + p.buildings.usina + p.buildings.petroleo + p.buildings.fabrica + p.buildings.serraria + p.buildings.mina_ouro + p.buildings.mina_rara + p.buildings.adubo + p.buildings.mina_uranio;
-    const needEn = Math.ceil(nBld / 3);
-    p.rec.energia += 3 + infra * 2 + Math.round(p.buildings.usina * 4 * upM(p, 'usina')) + Math.round(p.buildings.petroleo * 3 * upM(p, 'petroleo'))
-                 + Math.round(p.buildings.solar * 3 * upM(p, 'solar'))
-                 + Math.round(p.buildings.eolica * 5 * upM(p, 'eolica'));
+    let nBld = 0;
+    for (const k in p.buildings) nBld += (p.buildings[k] || 0);
+    const needEn = Math.ceil(nBld / 4);
+    p.rec.energia += 3 + infra * 2;
     let mult = 1;
     if (nBld > 0 && p.rec.energia < needEn) {
       mult = 0.5;
       if (!p.blackout) { log(room, `🔌 APAGÃO em ${cname(p)}! Energia insuficiente — produção pela metade. Construa usinas.`); p.blackout = true; }
     } else { p.blackout = false; p.rec.energia -= needEn; }
-    p.rec.comida += Math.round((4 + infra * 3 + p.buildings.fazenda * 5 * upM(p, 'fazenda') + p.buildings.adubo * 4 * upM(p, 'adubo')) * mult);
-    p.rec.minerio += Math.round((2 + Math.round(p.eco * 0.8) + p.buildings.mina * 4 * upM(p, 'mina')) * mult);
-    p.rec.concreto += Math.round((1 + p.buildings.fabrica * 6 * upM(p, 'fabrica')) * mult);
-    p.rec.madeira += Math.round(p.buildings.serraria * 5 * upM(p, 'serraria') * mult);
-    p.rec.terras_raras += Math.round(p.buildings.mina_rara * 3 * upM(p, 'mina_rara') * mult);
-    p.rec.uranio += Math.round(p.buildings.mina_uranio * 2 * upM(p, 'mina_uranio') * mult);
+    p.rec.comida += Math.round((4 + infra * 3) * mult);
+    p.rec.minerio += Math.round((2 + Math.round(p.eco * 0.8)) * mult);
+    p.rec.concreto += Math.round(1 * mult);
+    // produção de cada prédio, direto do catálogo
+    for (const k in p.buildings) {
+      const n = p.buildings[k] || 0; if (!n) continue;
+      const o = BUILD_OUT[k]; if (!o || !o.res) continue;
+      p.rec[o.res] = (p.rec[o.res] || 0) + Math.round(n * o.qtd * upM(p, k) * mult);
+    }
     const dep = p.depositos || [];
     if (dep.includes('petroleo')) p.rec.energia += 2;
     if (dep.includes('minerio')) p.rec.minerio += 2;
@@ -890,9 +898,15 @@ function resolveTurn(room) {
   broadcast(room);
 }
 
-const PROD_BUILDS = { fabrica: 300, serraria: 280, fazenda: 250, mina: 300, usina: 350, petroleo: 400, mina_ouro: 500, estrada: 150, base: 400, mina_rara: 450, adubo: 260, mina_uranio: 500, solar: 320, eolica: 480 };
-const CONCRETE_NEED = { fabrica: 0, serraria: 8, fazenda: 8, mina: 8, usina: 8, petroleo: 8, mina_ouro: 10, estrada: 5, base: 10, mina_rara: 10, adubo: 8, mina_uranio: 10, solar: 6, eolica: 12 };
-const PROD_NAMES = { fabrica: '🧱 Fábrica de concreto', serraria: '🪵 Serraria', fazenda: '🌾 Fazenda', mina: '⛏️ Mina', usina: '⚡ Usina', petroleo: '🛢️ Poço de petróleo', mina_ouro: '🏦 Mina de ouro', estrada: '🛣️ Estrada', base: '🎖️ Base militar', mina_rara: '⚙️ Mina de terras raras', adubo: '🌱 Usina de nutrientes', mina_uranio: '☢️ Mina de urânio', solar: '🌞 Usina solar', eolica: '🌬️ Parque eólico' };
+/* ===== construções: 6 abas x 5 níveis (paridade com o MA3) =====
+   BUILD_OUT diz o que cada prédio rende por nível: {res,qtd} ou {money} */
+const BUILD_MAX = 5;
+const BUILD_TABS = [['rec','⛏️ Recursos'], ['ene','⚡ Energia'], ['ali','🌾 Alimentos'], ['ind','🏭 Indústria'], ['mil','🎖️ Militar'], ['inf','🛣️ Infraestrutura']];
+const PROD_BUILDS = {serraria:280, mina_ouro:500, fabrica:300, borracha:340, mina_rara:450, mina_uranio:500, petroleo:400, mina:300, usina:350, hidreletrica:520, usina_nuclear:900, solar:320, eolica:480, alternativa:600, agua:180, mina_sal:200, acucar:240, padaria:260, gado:300, fazenda:250, jardim:150, estufa:420, doces:280, adubo:260, processados:380, premium:560, estaleiro_naval:700, motores:620, maquinas:580, siderurgica:660, base:400, quartel:380, arsenal:420, hangar:520, aerodromo:560, estaleiro:620, centro_ind:700, campo_treino:340, armazem:260, estrada:150, ferrovia:380, metro:520, ciclovia:120, aeroporto:680, porto:600, heliporto:300, terminal:900};
+const CONCRETE_NEED = {serraria:8, mina_ouro:10, fabrica:0, borracha:8, mina_rara:10, mina_uranio:10, petroleo:8, mina:8, usina:8, hidreletrica:12, usina_nuclear:20, solar:6, eolica:12, alternativa:10, agua:5, mina_sal:5, acucar:6, padaria:6, gado:8, fazenda:8, jardim:3, estufa:10, doces:6, adubo:8, processados:8, premium:12, estaleiro_naval:15, motores:12, maquinas:12, siderurgica:15, base:10, quartel:10, arsenal:10, hangar:12, aerodromo:12, estaleiro:15, centro_ind:18, campo_treino:8, armazem:6, estrada:5, ferrovia:12, metro:15, ciclovia:3, aeroporto:18, porto:16, heliporto:8, terminal:22};
+const PROD_NAMES = {serraria:'🪵 Serraria', mina_ouro:'🏦 Mina de Ouro', fabrica:'🧱 Fábrica de Concreto', borracha:'🌳 Fábrica de Borracha', mina_rara:'⚙️ Mina de Terras Raras', mina_uranio:'☢️ Mina de Urânio', petroleo:'🛢️ Torre de Petróleo', mina:'⛏️ Mina de Ferro', usina:'⚡ Usina Termelétrica', hidreletrica:'💧 Usina Hidrelétrica', usina_nuclear:'☢️ Usina Nuclear', solar:'🌞 Usina Solar', eolica:'🌬️ Parque Eólico', alternativa:'♻️ Central de Energia Alternativa', agua:'💧 Fábrica de Água Mineral', mina_sal:'🧂 Mina de Sal', acucar:'🍬 Fábrica de Açúcar', padaria:'🍞 Padaria', gado:'🐄 Fazenda de Gado', fazenda:'🌾 Fazenda', jardim:'🌻 Jardim', estufa:'🏡 Estufa', doces:'🍭 Fábrica de Doces', adubo:'🌱 Fábrica de Aditivos Nutricionais', processados:'🥫 Fábrica de Alimentos Processados', premium:'🍾 Fábrica de Alimentos Premium', estaleiro_naval:'🚢 Estaleiro Naval', motores:'🔧 Fábrica de Motores', maquinas:'🏭 Fábrica de Máquinas', siderurgica:'🔩 Siderúrgica', base:'🎖️ Base Militar', quartel:'🏠 Quartel', arsenal:'🗃️ Arsenal', hangar:'🛡️ Hangar de Tanques', aerodromo:'✈️ Aeródromo', estaleiro:'⚓ Estaleiro Militar', centro_ind:'🏗️ Centro Industrial', campo_treino:'🏋️ Campo de Treino', armazem:'📦 Armazém', estrada:'🛣️ Rodovia', ferrovia:'🚂 Linha Ferroviária', metro:'🚇 Metrô', ciclovia:'🚲 Ciclovia', aeroporto:'🛫 Aeroporto', porto:'🚢 Porto', heliporto:'🚁 Heliporto', terminal:'🌐 Terminal Intercontinental'};
+const BUILD_TAB = {serraria:'rec', mina_ouro:'rec', fabrica:'rec', borracha:'rec', mina_rara:'rec', mina_uranio:'rec', petroleo:'rec', mina:'rec', usina:'ene', hidreletrica:'ene', usina_nuclear:'ene', solar:'ene', eolica:'ene', alternativa:'ene', agua:'ali', mina_sal:'ali', acucar:'ali', padaria:'ali', gado:'ali', fazenda:'ali', jardim:'ali', estufa:'ali', doces:'ind', adubo:'ind', processados:'ind', premium:'ind', estaleiro_naval:'ind', motores:'ind', maquinas:'ind', siderurgica:'ind', base:'mil', quartel:'mil', arsenal:'mil', hangar:'mil', aerodromo:'mil', estaleiro:'mil', centro_ind:'mil', campo_treino:'mil', armazem:'mil', estrada:'inf', ferrovia:'inf', metro:'inf', ciclovia:'inf', aeroporto:'inf', porto:'inf', heliporto:'inf', terminal:'inf'};
+const BUILD_OUT = {serraria:{res:'madeira',qtd:5}, mina_ouro:{money:25}, fabrica:{res:'concreto',qtd:6}, borracha:{res:'borracha',qtd:3}, mina_rara:{res:'terras_raras',qtd:3}, mina_uranio:{res:'uranio',qtd:2}, petroleo:{res:'energia',qtd:3}, mina:{res:'minerio',qtd:4}, usina:{res:'energia',qtd:4}, hidreletrica:{res:'energia',qtd:6}, usina_nuclear:{res:'energia',qtd:12}, solar:{res:'energia',qtd:3}, eolica:{res:'energia',qtd:5}, alternativa:{res:'energia',qtd:4}, agua:{res:'comida',qtd:2}, mina_sal:{res:'comida',qtd:2}, acucar:{res:'comida',qtd:3}, padaria:{res:'comida',qtd:4}, gado:{res:'comida',qtd:5}, fazenda:{res:'comida',qtd:5}, jardim:{res:'comida',qtd:2}, estufa:{res:'comida',qtd:7}, doces:{money:8}, adubo:{res:'comida',qtd:4}, processados:{res:'comida',qtd:6}, premium:{money:18}, estaleiro_naval:{money:12}, motores:{money:14}, maquinas:{res:'minerio',qtd:3}, siderurgica:{res:'minerio',qtd:6}, base:{}, quartel:{}, arsenal:{}, hangar:{}, aerodromo:{}, estaleiro:{}, centro_ind:{}, campo_treino:{}, armazem:{}, estrada:{money:5}, ferrovia:{money:8}, metro:{money:10}, ciclovia:{money:2}, aeroporto:{money:14}, porto:{money:12}, heliporto:{money:6}, terminal:{money:20}};
 const MISSIONS = [
   { id: 'construir_3', desc: 'Conclua 3 construções',            reward: 500, check: p => p.stats.construidas >= 3 },
   { id: 'vender_30',   desc: 'Venda 30 unidades no mercado',      reward: 400, check: p => p.stats.vendidas >= 30 },
@@ -1481,12 +1495,12 @@ function performAction(room, p, msg) {
       if (!PROD_BUILDS[k]) return;
       if (!p.buildings[k]) { err(p.conn, 'Construa o prédio antes de melhorá-lo.'); return; }
       const lvl = (p.upgrades && p.upgrades[k]) || 0;
-      if (lvl >= 2) { err(p.conn, '⬆️ Melhoria já está no nível máximo (3).'); return; }
+      if (lvl >= BUILD_MAX - 1) { err(p.conn, `⬆️ Melhoria já está no nível máximo (${BUILD_MAX}).`); return; }
       let uCost = Math.round(PROD_BUILDS[k] * 0.6 * (lvl + 1));
       uCost = Math.ceil(uCost * (1 - 0.05 * techLevel(p, 'infra')));
       if (!spend(p, 1, uCost)) return;
       p.upgrades = p.upgrades || {}; p.upgrades[k] = lvl + 1;
-      log(room, `⬆️ ${cname(p)} melhora ${PROD_NAMES[k]} para o nível ${lvl + 2} (+50% de produção).`);
+      log(room, `⬆️ ${cname(p)} melhora ${PROD_NAMES[k]} para o nível ${lvl + 2}/${BUILD_MAX} (+50% de produção).`);
       break;
     }
     case 'treinar': {
