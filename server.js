@@ -53,8 +53,38 @@ const COUNTRIES = [
   { id:'cl', name:'Chile',          flag:'🇨🇱', eco:7,  mil:6,  money:800,  provs:[['Santiago',2],['Valparaíso',1],['Patagônia',1]] },
   { id:'pt', name:'Portugal',       flag:'🇵🇹', eco:8,  mil:6,  money:900,  provs:[['Lisboa',2],['Porto',1],['Algarve',1]] },
   { id:'au', name:'Austrália',      flag:'🇦🇺', eco:9,  mil:6,  money:1000, provs:[['Nova Gales do Sul',2],['Queensland',1],['Vitória',1]] },
+  { id:'nl', name:'Países Baixos', flag:'🇳🇱', eco:10, mil:4, money:1100, provs:[['Holanda do Norte',2],['Holanda do Sul',1],['Géldria',1]] },
+  { id:'be', name:'Bélgica', flag:'🇧🇪', eco:8, mil:4, money:950, provs:[['Flandres',2],['Valônia',1]] },
+  { id:'no', name:'Noruega', flag:'🇳🇴', eco:9, mil:4, money:1050, provs:[['Østlandet',2],['Vestlandet',1]] },
+  { id:'fi', name:'Finlândia', flag:'🇫🇮', eco:8, mil:4, money:950, provs:[['Uusimaa',2],['Lapônia',1]] },
+  { id:'dk', name:'Dinamarca', flag:'🇩🇰', eco:8, mil:3, money:950, provs:[['Zelândia',2],['Jutlândia',1]] },
+  { id:'gr', name:'Grécia', flag:'🇬🇷', eco:7, mil:4, money:850, provs:[['Ática',2],['Macedônia',1]] },
+  { id:'ie', name:'Irlanda', flag:'🇮🇪', eco:8, mil:2, money:950, provs:[['Leinster',2],['Munster',1]] },
+  { id:'cz', name:'Tchéquia', flag:'🇨🇿', eco:7, mil:4, money:850, provs:[['Boêmia',2],['Morávia',1]] },
+  { id:'ro', name:'Romênia', flag:'🇷🇴', eco:6, mil:5, money:800, provs:[['Valáquia',2],['Transilvânia',1]] },
+  { id:'hu', name:'Hungria', flag:'🇭🇺', eco:6, mil:4, money:800, provs:[['Hungria Central',2],['Grande Planície',1]] },
+  { id:'at', name:'Áustria', flag:'🇦🇹', eco:8, mil:3, money:950, provs:[['Viena',2],['Tirol',1]] },
+  { id:'ch', name:'Suíça', flag:'🇨🇭', eco:10, mil:3, money:1150, provs:[['Planalto Central',2],['Romandia',1]] },
+  { id:'il', name:'Israel', flag:'🇮🇱', eco:10, mil:8, money:1100, provs:[['Distrito Central',2],['Neguev',1]] },
+  { id:'iq', name:'Iraque', flag:'🇮🇶', eco:5, mil:7, money:800, provs:[['Bagdá',2],['Baçorá',1]] },
+  { id:'ma', name:'Marrocos', flag:'🇲🇦', eco:5, mil:4, money:750, provs:[['Casablanca',2],['Rabat',1]] },
+  { id:'dz', name:'Argélia', flag:'🇩🇿', eco:5, mil:6, money:800, provs:[['Argel',2],['Orã',1]] },
+  { id:'tn', name:'Tunísia', flag:'🇹🇳', eco:4, mil:3, money:700, provs:[['Túnis',2],['Sfax',1]] },
+  { id:'ly', name:'Líbia', flag:'🇱🇾', eco:4, mil:4, money:750, provs:[['Tripolitânia',2],['Cirenaica',1]] },
+  { id:'ke', name:'Quênia', flag:'🇰🇪', eco:4, mil:3, money:700, provs:[['Nairóbi',2],['Costa',1]] },
+  { id:'et', name:'Etiópia', flag:'🇪🇹', eco:3, mil:5, money:650, provs:[['Adis Abeba',2],['Oromia',1]] },
+  { id:'gh', name:'Gana', flag:'🇬🇭', eco:4, mil:3, money:700, provs:[['Grande Acra',2],['Axânti',1]] },
+  { id:'tz', name:'Tanzânia', flag:'🇹🇿', eco:3, mil:3, money:650, provs:[['Dar es Salaam',2],['Dodoma',1]] },
+  { id:'th', name:'Tailândia', flag:'🇹🇭', eco:6, mil:5, money:850, provs:[['Chao Phraya',2],['Isan',1]] },
+  { id:'vn', name:'Vietnã', flag:'🇻🇳', eco:5, mil:7, money:800, provs:[['Rio Vermelho',2],['Mekong',1]] },
+  { id:'ph', name:'Filipinas', flag:'🇵🇭', eco:5, mil:5, money:800, provs:[['Luzon',2],['Mindanau',1]] },
+  { id:'my', name:'Malásia', flag:'🇲🇾', eco:6, mil:4, money:850, provs:[['Península Malaia',2],['Malásia Oriental',1]] },
+  { id:'bd', name:'Bangladesh', flag:'🇧🇩', eco:4, mil:4, money:700, provs:[['Daca',2],['Chittagong',1]] },
+  { id:'kz', name:'Cazaquistão', flag:'🇰🇿', eco:5, mil:5, money:850, provs:[['Astana',2],['Almaty',1]] },
+  { id:'nz', name:'Nova Zelândia', flag:'🇳🇿', eco:8, mil:2, money:950, provs:[['Ilha do Norte',2],['Ilha do Sul',1]] },
+  { id:'np', name:'Nepal', flag:'🇳🇵', eco:2, mil:3, money:600, provs:[['Vale de Catmandu',2],['Terai',1]] },
 ];
-const LATLON = { ar:[-34,-64], ca:[56,-106], es:[40,-4], it:[42,12], tr:[39,35], sa:[24,45], ir:[32,53], eg:[26,30], za:[-29,25], id:[-2,118], kr:[36,128], pk:[30,69], pl:[52,19], ua:[49,32], se:[62,15], co:[4,-73], cl:[-35,-71], pt:[39,-8] };
+const LATLON = { ar:[-34,-64], ca:[56,-106], es:[40,-4], it:[42,12], tr:[39,35], sa:[24,45], ir:[32,53], eg:[26,30], za:[-29,25], id:[-2,118], kr:[36,128], pk:[30,69], pl:[52,19], ua:[49,32], se:[62,15], co:[4,-73], cl:[-35,-71], pt:[39,-8], nl:[52,5], be:[51,4], no:[61,9], fi:[64,26], dk:[56,10], gr:[39,22], ie:[53,-8], cz:[50,15], ro:[46,25], hu:[47,19], at:[47,14], ch:[47,8], il:[31,35], iq:[33,44], ma:[32,-6], dz:[28,3], tn:[34,9], ly:[27,17], ke:[0,38], et:[9,39], gh:[8,-1], tz:[-6,35], th:[15,101], vn:[16,107], ph:[13,122], my:[4,109], bd:[24,90], kz:[48,67], nz:[-41,174], np:[28,84] };
 const COUNTRY_BY_ID = Object.fromEntries(COUNTRIES.map(c => [c.id, c]));
 const cname = p => { const c = COUNTRY_BY_ID[p.country]; return c ? c.flag + ' ' + c.name : p.name; };
 
@@ -209,7 +239,7 @@ function snapshot(room) {
       ministers: p.ministers, techs: p.techs, sectors: p.sectors, space: p.space,
       relations: p.relations, embassies: p.embassies, trades: p.trades,
       blockading: p.blockading, blockadedBy: p.blockadedBy,
-      units: p.units, builds: p.builds, emergencyUntil: p.emergencyUntil,
+      units: p.units, builds: p.builds, emergencyUntil: p.emergencyUntil, leis: p.leis,
     })),
   };
 }
@@ -231,7 +261,7 @@ function addPlayer(room, conn, name, isHost) {
     ministers: { eco: null, def: null, dip: null },
     techs: [], sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
-    units: { blindados: 0, aviacao: 0, frota: 0 }, builds: [], emergencyUntil: 0,
+    units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0 }, builds: [], emergencyUntil: 0, leis: [],
   };
   conn.meta = { room, player: p };
   room.players.push(p);
@@ -255,7 +285,7 @@ function startGame(room) {
     p.ministers = { eco: null, def: null, dip: null };
     p.techs = []; p.sectors = { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0 };
     p.space = 0; p.relations = {}; p.embassies = []; p.trades = []; p.blockading = []; p.blockadedBy = [];
-    p.units = { blindados: 0, aviacao: 0, frota: 0 }; p.builds = []; p.emergencyUntil = 0;
+    p.units = { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0 }; p.builds = []; p.emergencyUntil = 0; p.leis = [];
     for (const o of room.players) if (o !== p) { p.relations[o.id] = 50; o.relations[p.id] = 50; }
   }
   room.phase = 'game'; room.turn = 1; room.proposals = [];
@@ -312,6 +342,15 @@ function checkVictory(room) {
   }
 }
 
+const LEIS = {
+  servico_militar:   { name: 'Serviço Militar Obrigatório', cost: 150, desc: '+5% ataque em guerras' },
+  guarda_nacional:   { name: 'Guarda Nacional',             cost: 160, desc: '+5% defesa' },
+  reforma_agraria:   { name: 'Reforma Agrária',             cost: 200, desc: '+$10/turno' },
+  abertura_comercial:{ name: 'Abertura Comercial',          cost: 180, desc: '+$10/turno' },
+  liberdade_imprensa:{ name: 'Liberdade de Imprensa',       cost: 120, desc: '+3 aprovação' },
+  campanha_patriotica:{ name: 'Campanha Patriótica',        cost: 100, desc: '+4 aprovação' },
+};
+
 function incomeOf(room, p) {
   const prov = ownProvinces(p).reduce((s, pr) => s + pr.infra, 0) * PROV_INCOME;
   let base = p.eco * 10 + prov
@@ -321,6 +360,8 @@ function incomeOf(room, p) {
     + sectorSum(p) * 2
     + relBonus(p);
   if (p.techs.includes('livrecomercio')) base += 20;
+  if (p.leis.includes('reforma_agraria')) base += 10;
+  if (p.leis.includes('abertura_comercial')) base += 10;
   let mult = 1;
   if (p.ideology === 'democracia') mult += 0.05;
   if (p.ideology === 'comunismo') mult -= 0.10;
@@ -571,12 +612,23 @@ function performAction(room, p, msg) {
       log(room, `🆘 ${cname(p)} pede AJUDA INTERNACIONAL${room.turn < p.emergencyUntil ? ' (em emergência!)' : ''}.`);
       break;
     }
-    case 'blindados': case 'aviacao': case 'frota': {
-      const costs = { blindados: 300, aviacao: 400, frota: 500 };
+    case 'lei': {
+      const lei = LEIS[msg.value];
+      if (!lei || p.leis.includes(msg.value)) return;
+      if (!spend(p, 1, lei.cost)) return;
+      p.leis.push(msg.value);
+      if (msg.value === 'liberdade_imprensa') p.aprov = Math.min(100, p.aprov + 3);
+      if (msg.value === 'campanha_patriotica') p.aprov = Math.min(100, p.aprov + 4);
+      log(room, `📜 ${cname(p)} aprova a lei "${lei.name}" (${lei.desc}).`);
+      break;
+    }
+    case 'blindados': case 'aviacao': case 'frota': case 'infantaria': case 'artilharia': case 'submarinos': {
+      const costs = { blindados: 300, aviacao: 400, frota: 500, infantaria: 200, artilharia: 350, submarinos: 450 };
+      const UNAMES = { blindados: 'forças BLINDADAS', aviacao: 'sua AVIAÇÃO', frota: 'sua FROTA NAVAL', infantaria: 'sua INFANTARIA', artilharia: 'sua ARTILHARIA', submarinos: 'seus SUBMARINOS' };
       if (p.units[msg.action] >= 3) { err(p.conn, 'Nível máximo de unidade.'); return; }
       if (!spend(p, 1, costs[msg.action])) return;
       p.units[msg.action] += 1;
-      log(room, `🎖️ ${cname(p)} fortalece ${msg.action === 'blindados' ? 'forças BLINDADAS' : msg.action === 'aviacao' ? 'sua AVIAÇÃO' : 'sua FROTA NAVAL'} (nível ${p.units[msg.action]}).`);
+      log(room, `🎖️ ${cname(p)} fortalece ${UNAMES[msg.action]} (nível ${p.units[msg.action]}).`);
       break;
     }
     case 'embaixada': {
@@ -649,8 +701,10 @@ function performAction(room, p, msg) {
       if (p.ideology === 'autoritarismo') aM += 0.15;
       if (p.techs.includes('exercito')) aM += 0.15;
       if (p.ministers.def === 'fal') aM += 0.10;
-      aM += 0.05 * p.units.blindados + 0.02 * p.units.aviacao;
-      dM += 0.05 * target.units.aviacao + 0.03 * target.units.frota;
+      aM += 0.05 * p.units.blindados + 0.02 * p.units.aviacao + 0.04 * p.units.artilharia + 0.02 * p.units.submarinos;
+      dM += 0.05 * target.units.aviacao + 0.03 * target.units.frota + 0.04 * target.units.infantaria + 0.02 * target.units.submarinos;
+      if (p.leis.includes('servico_militar')) aM += 0.05;
+      if (target.leis.includes('guarda_nacional')) dM += 0.05;
       if (target.ministers.def === 'estr') dM += 0.10;
       const aP = p.mil * aM * (0.85 + Math.random() * 0.45);
       const dP = target.mil * dM * (0.9 + Math.random() * 0.45) * 1.08;

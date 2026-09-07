@@ -288,7 +288,7 @@
   </div>
 
   <div class="panel" style="background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:20px;">
-    <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); margin-bottom:12px;">Jogadores na sala (<span id="lob-count">0</span>/30)</h3>
+    <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); margin-bottom:12px;">Jogadores na sala (<span id="lob-count">0</span>/60)</h3>
     <div class="players-strip" id="lob-players"></div>
     <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); margin:20px 0 0;">Escolha sua nação</h3>
     <div class="country-grid" id="lob-countries"></div>
@@ -495,6 +495,36 @@ const COUNTRIES = [
   { id:'cl', name:'Chile',         flag:'🇨🇱', lat:-35, lon:-71 },
   { id:'pt', name:'Portugal',      flag:'🇵🇹', lat:39,  lon:-8 },
   { id:'au', name:'Austrália',     flag:'🇦🇺', lat:-25, lon:134 },
+  { id:'nl', name:'Países Baixos', flag:'🇳🇱', lat:52, lon:5 },
+  { id:'be', name:'Bélgica', flag:'🇧🇪', lat:51, lon:4 },
+  { id:'no', name:'Noruega', flag:'🇳🇴', lat:61, lon:9 },
+  { id:'fi', name:'Finlândia', flag:'🇫🇮', lat:64, lon:26 },
+  { id:'dk', name:'Dinamarca', flag:'🇩🇰', lat:56, lon:10 },
+  { id:'gr', name:'Grécia', flag:'🇬🇷', lat:39, lon:22 },
+  { id:'ie', name:'Irlanda', flag:'🇮🇪', lat:53, lon:-8 },
+  { id:'cz', name:'Tchéquia', flag:'🇨🇿', lat:50, lon:15 },
+  { id:'ro', name:'Romênia', flag:'🇷🇴', lat:46, lon:25 },
+  { id:'hu', name:'Hungria', flag:'🇭🇺', lat:47, lon:19 },
+  { id:'at', name:'Áustria', flag:'🇦🇹', lat:47, lon:14 },
+  { id:'ch', name:'Suíça', flag:'🇨🇭', lat:47, lon:8 },
+  { id:'il', name:'Israel', flag:'🇮🇱', lat:31, lon:35 },
+  { id:'iq', name:'Iraque', flag:'🇮🇶', lat:33, lon:44 },
+  { id:'ma', name:'Marrocos', flag:'🇲🇦', lat:32, lon:-6 },
+  { id:'dz', name:'Argélia', flag:'🇩🇿', lat:28, lon:3 },
+  { id:'tn', name:'Tunísia', flag:'🇹🇳', lat:34, lon:9 },
+  { id:'ly', name:'Líbia', flag:'🇱🇾', lat:27, lon:17 },
+  { id:'ke', name:'Quênia', flag:'🇰🇪', lat:0, lon:38 },
+  { id:'et', name:'Etiópia', flag:'🇪🇹', lat:9, lon:39 },
+  { id:'gh', name:'Gana', flag:'🇬🇭', lat:8, lon:-1 },
+  { id:'tz', name:'Tanzânia', flag:'🇹🇿', lat:-6, lon:35 },
+  { id:'th', name:'Tailândia', flag:'🇹🇭', lat:15, lon:101 },
+  { id:'vn', name:'Vietnã', flag:'🇻🇳', lat:16, lon:107 },
+  { id:'ph', name:'Filipinas', flag:'🇵🇭', lat:13, lon:122 },
+  { id:'my', name:'Malásia', flag:'🇲🇾', lat:4, lon:109 },
+  { id:'bd', name:'Bangladesh', flag:'🇧🇩', lat:24, lon:90 },
+  { id:'kz', name:'Cazaquistão', flag:'🇰🇿', lat:48, lon:67 },
+  { id:'nz', name:'Nova Zelândia', flag:'🇳🇿', lat:-41, lon:174 },
+  { id:'np', name:'Nepal', flag:'🇳🇵', lat:28, lon:84 },
 ];
 const CBYID = Object.fromEntries(COUNTRIES.map(c=>[c.id,c]));
 const IDEOLOGIES = { democracia:'Democracia +5% renda', autoritarismo:'Autoritarismo +15% atq', comunismo:'Comunismo setores baratos', fascismo:'Fascismo recrutar barato', monarquia:'Monarquia dip barata', republica:'República tech barata' };
@@ -505,7 +535,7 @@ const SECTORS_UI = [['educacao','Educação'],['saude','Saúde'],['cultura','Cul
 const SPACE_COSTS = [500,800,1200];
 const PORTRAITS = { br:'portraits/br.jpg', us:'portraits/us.jpg', ru:'portraits/ru.jpg', cn:'portraits/cn.jpg', gb:'portraits/gb.jpg', fr:'portraits/fr.jpg', de:'portraits/de.jpg', in:'portraits/in.jpg', jp:'portraits/jp.jpg', mx:'portraits/mx.jpg', ng:'portraits/ng.jpg', au:'portraits/au.jpg' };
 const proj = c => ({ x:(c.lon+180)/360*1000, y:(90-c.lat)/180*520 });
-const PALETTE = ['#e8b93c','#4da3ff','#ff5c5c','#39d98a','#c77dff','#ff9f43','#4dd0e1','#f06292','#aed581','#ffd54f','#90a4ae','#ba68c8','#7986cb','#4db6ac','#dce775','#ff8a65','#a1887f','#9575cd','#64b5f6','#e57373','#81c784','#d4ab6a','#6ad4c8','#f38bb8','#b8d06e','#ffc94d','#8fa8b8','#c792ea','#5ec9f5','#ff7d7d'];
+const PALETTE = Array.from({length:60},(_,i)=>'hsl('+((i*137)%360)+' 55% '+(42+(i%4)*8)+'%)');
 /* territórios estilizados (mesma projeção do mapa) */
 const PROV_POS = {
   us: [[170,150],[230,175],[290,140]],
@@ -1047,7 +1077,7 @@ function renderPanel(){
     });
     // forças armadas
     sub2('🎖️ Unidades (1⚡)');
-    [['blindados','Blindados +5% atq',300],['aviacao','Aviação +5% def',400],['frota','Frota (bloqueios)',500]].forEach(([k,lb,cost])=>{
+    [['infantaria','Infantaria +4% def',200],['blindados','Blindados +5% atq',300],['artilharia','Artilharia +4% atq',350],['aviacao','Aviação +5% def',400],['submarinos','Submarinos +2% atq/def',450],['frota','Frota (bloqueios)',500]].forEach(([k,lb,cost])=>{
       const r=document.createElement('div'); r.className='xrow';
       const n=document.createElement('span'); n.className='xn'; n.textContent=lb; r.appendChild(n);
       const pp=document.createElement('span'); pp.className='pips';
@@ -1055,6 +1085,16 @@ function renderPanel(){
       const b=document.createElement('button'); b.textContent='$'+cost;
       b.disabled=p.units[k]>=3||m.ap<1||m.money<cost;
       b.onclick=()=>send({t:'action',action:k}); r.appendChild(b);
+      extra.appendChild(r);
+    });
+    // leis nacionais
+    sub2('📜 Leis nacionais (1⚡)');
+    [['servico_militar','Serviço Militar Obrigatório','+5% ataque em guerras',150],['guarda_nacional','Guarda Nacional','+5% defesa',160],['reforma_agraria','Reforma Agrária','+$10/turno',200],['abertura_comercial','Abertura Comercial','+$10/turno',180],['liberdade_imprensa','Liberdade de Imprensa','+3 aprovação',120],['campanha_patriotica','Campanha Patriótica','+4 aprovação',100]].forEach(([k,nm,desc,cost])=>{
+      const r=document.createElement('div'); r.className='xrow';
+      const n=document.createElement('span'); n.className='xn'; n.textContent=nm+' ('+desc+')'; r.appendChild(n);
+      const b=document.createElement('button'); b.textContent=p.leis.includes(k)?'✓ ativa':'$'+cost;
+      b.disabled=p.leis.includes(k)||m.ap<1||m.money<cost;
+      b.onclick=()=>send({t:'action',action:'lei',value:k}); r.appendChild(b);
       extra.appendChild(r);
     });
     // construções em andamento
@@ -1107,6 +1147,10 @@ function renderPanel(){
     // relação bilateral
     const rel = m.relations[p.id] != null ? m.relations[p.id] : 50;
     note.textContent = `📈 Relação bilateral: ${rel}/100` + (ally?' · 🤝 aliados':'') + (atWar?' · ⚔️ EM GUERRA':'') + (state.turn < p.emergencyUntil?' · 🆘 em emergência':'');
+    const uvals = ['infantaria','blindados','artilharia','aviacao','submarinos','frota'].map(k=>p.units[k]||0);
+    const usum = uvals.reduce((a,b)=>a+b,0);
+    if (m.embassies.includes(p.id)) note.textContent += ' | 🎖️ Forças: ' + uvals.join('-') + ' (nível ' + usum + '/18)';
+    else note.textContent += ' | 🕶️ Forças: ' + (usum<=3?'baixo':usum<=8?'médio':'alto') + ' (abrir embaixada revela detalhes)';
   }
   if (p.alive && p.sanctionedBy.length){
     const names = p.sanctionedBy.map(id => { const x = state.players.find(q=>q.id===id); return x ? x.name : '?'; }).join(', ');
