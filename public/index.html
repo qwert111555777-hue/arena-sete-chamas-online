@@ -350,7 +350,30 @@
           <!-- Nova Zelândia -->
           <path d="M942,384 Q950,378 956,386 Q954,396 946,400 Q940,394 942,384 Z"/>
         </g>
+        <g id="map-deco">
+          <g stroke="#ffffff" stroke-opacity="0.05" stroke-width="1">
+            <line x1="125" y1="0" x2="125" y2="520"/><line x1="250" y1="0" x2="250" y2="520"/><line x1="375" y1="0" x2="375" y2="520"/><line x1="500" y1="0" x2="500" y2="520"/><line x1="625" y1="0" x2="625" y2="520"/><line x1="750" y1="0" x2="750" y2="520"/><line x1="875" y1="0" x2="875" y2="520"/>
+            <line x1="0" y1="130" x2="1000" y2="130"/><line x1="0" y1="260" x2="1000" y2="260"/><line x1="0" y1="390" x2="1000" y2="390"/>
+          </g>
+          <rect x="0" y="0" width="1000" height="12" fill="#e8f4ff" opacity="0.45"/>
+          <rect x="0" y="508" width="1000" height="12" fill="#e8f4ff" opacity="0.55"/>
+          <ellipse cx="520" cy="196" rx="34" ry="13" fill="#d9c58f" opacity="0.5"/>
+          <ellipse cx="806" cy="352" rx="26" ry="9" fill="#d9c58f" opacity="0.4"/>
+          <g stroke="#7a7a5c" stroke-width="1.4" fill="none" opacity="0.55">
+            <path d="M300,300 l6,-8 l6,8 M312,318 l6,-8 l6,8 M296,336 l6,-8 l6,8"/>
+            <path d="M170,150 l6,-8 l6,8 M182,166 l6,-8 l6,8"/>
+            <path d="M700,196 l6,-8 l6,8 M712,200 l6,-8 l6,8"/>
+            <path d="M508,124 l5,-7 l5,7"/>
+          </g>
+          <g fill="#9fb6d9" opacity="0.5" font-size="11" letter-spacing="3" font-style="italic">
+            <text x="392" y="228">OCEANO ATLÂNTICO</text>
+            <text x="52" y="300">OCEANO PACÍFICO</text>
+            <text x="948" y="252" text-anchor="end">PACÍFICO</text>
+            <text x="652" y="322">OCEANO ÍNDICO</text>
+          </g>
+        </g>
         <g id="map-terr"></g>
+        <g id="map-prov"></g>
         <g id="map-lines"></g>
         <g id="map-markers"></g>
       </svg>
@@ -358,6 +381,7 @@
       <div id="propose-bar"></div>
 
       <div class="side-tools">
+        <button class="tool-btn" id="btn-snd" title="Som liga/desliga">🔊</button>
         <button class="tool-btn" id="btn-rank" title="Ranking das nações">📊</button>
         <button class="tool-btn" id="btn-help" title="Como jogar">❓</button>
       </div>
@@ -442,6 +466,20 @@ const CBYID = Object.fromEntries(COUNTRIES.map(c=>[c.id,c]));
 const proj = c => ({ x:(c.lon+180)/360*1000, y:(90-c.lat)/180*520 });
 const PALETTE = ['#e8b93c','#4da3ff','#ff5c5c','#39d98a','#c77dff','#ff9f43','#4dd0e1','#f06292','#aed581','#ffd54f','#90a4ae','#ba68c8'];
 /* territórios estilizados (mesma projeção do mapa) */
+const PROV_POS = {
+  us: [[170,150],[230,175],[290,140]],
+  mx: [[230,222],[210,215],[262,225]],
+  br: [[320,270],[355,330],[385,290]],
+  gb: [[497,108],[492,95],[487,110]],
+  fr: [[488,128],[492,140],[478,130]],
+  de: [[518,122],[508,114],[522,112]],
+  ru: [[630,100],[760,85],[920,90]],
+  cn: [[840,145],[835,172],[795,150]],
+  in: [[705,200],[700,215],[712,232]],
+  jp: [[884,158],[878,162],[886,146]],
+  ng: [[512,244],[522,232],[526,248]],
+  au: [[890,362],[880,335],[872,368]],
+};
 const TERRITORIES = {
   us: [[155,132],[200,120],[262,118],[305,128],[308,150],[288,170],[272,188],[240,200],[210,196],[178,170],[156,152]],
   mx: [[196,202],[240,206],[262,208],[276,222],[268,238],[246,232],[220,222],[202,212]],
@@ -489,9 +527,48 @@ function toast(msg, kind){
   setTimeout(()=>d.remove(), 3800);
 }
 
+/* ================= som (WebAudio, sem assets) ================= */
+let AC = null, muted = false;
+function beep(freq, dur, type, vol, when){
+  if (muted) return;
+  try{
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    const t = AC.currentTime + (when||0);
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type||'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol||0.12, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+function sfx(kind){
+  if (kind==='click') beep(620,.08,'triangle',.1);
+  else if (kind==='build') beep(300,.1,'triangle',.1);
+  else if (kind==='war'){ beep(120,.4,'sawtooth',.2); beep(80,.5,'square',.14,.05); }
+  else if (kind==='nuke'){ beep(60,.9,'sawtooth',.3); beep(45,1.1,'square',.22,.1); beep(90,.6,'triangle',.18,.2); }
+  else if (kind==='ally'){ beep(520,.12,'triangle',.1); beep(660,.14,'triangle',.1,.12); beep(780,.2,'triangle',.1,.24); }
+  else if (kind==='turn') beep(440,.06,'sine',.07);
+  else if (kind==='err') beep(180,.2,'square',.1);
+  else if (kind==='win'){ [523,659,784,1046].forEach((f,i)=>beep(f,.25,'triangle',.14,i*.15)); }
+}
+let lastTopLog = null, lastTurn = 0;
+
 /* ================= mensagens ================= */
 function handle(m){
-  if (m.t === 'state'){ state = m; myId = m.you; render(); }
+  if (m.t === 'state'){
+    state = m; myId = m.you;
+    if (m.turn !== lastTurn){ if (lastTurn) sfx('turn'); lastTurn = m.turn; }
+    const top = m.log[0] && m.log[0].msg;
+    if (top && top !== lastTopLog){
+      lastTopLog = top;
+      if (top.startsWith('☢️💥')) sfx('nuke');
+      else if (top.startsWith('⚔️') || top.startsWith('🛡️') || top.startsWith('💥')) sfx('war');
+      else if (top.startsWith('🤝')) sfx('ally');
+      else if (top.startsWith('🏆')) sfx('win');
+      else if (top.startsWith('🏗️') || top.startsWith('🏭') || top.startsWith('🪖')) sfx('build');
+    }
+    render();
+  }
   else if (m.t === 'chat'){
     const box = $('chat-msgs');
     const div = document.createElement('div'); div.className = 'cmsg';
@@ -499,7 +576,7 @@ function handle(m){
     div.appendChild(who); div.appendChild(document.createTextNode(m.text));
     box.appendChild(div); box.scrollTop = box.scrollHeight;
   }
-  else if (m.t === 'error') toast('⚠️ ' + m.msg, 'error');
+  else if (m.t === 'error'){ toast('⚠️ ' + m.msg, 'error'); sfx('err'); }
   else if (m.t === 'info') toast(m.msg, 'info');
 }
 
@@ -625,6 +702,27 @@ function renderMap(){
   const g = document.getElementById('map-markers');
   gT.innerHTML = ''; gLines.innerHTML = ''; g.innerHTML = '';
 
+  const gP = document.getElementById('map-prov');
+  gP.innerHTML = '';
+  state.players.forEach(pl => {
+    const spots = PROV_POS[pl.country] || [];
+    pl.provinces.forEach((prv, i) => {
+      const pos = spots[i]; if (!pos) return;
+      const owner = state.players.find(x => x.id === prv.owner);
+      const col = owner && owner.alive ? PALETTE[owner.color % PALETTE.length] : '#3a4356';
+      const sz = 3 + prv.infra;
+      const d = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+      d.setAttribute('points', `${pos[0]},${pos[1]-sz} ${pos[0]+sz},${pos[1]} ${pos[0]},${pos[1]+sz} ${pos[0]-sz},${pos[1]}`);
+      d.setAttribute('fill', col); d.setAttribute('fill-opacity','0.75');
+      d.setAttribute('stroke', '#0b1020'); d.setAttribute('stroke-width','1');
+      d.setAttribute('class','mk');
+      d.onclick = () => { selectedId = pl.id; renderMap(); renderPanel(); };
+      const tt = document.createElementNS('http://www.w3.org/2000/svg','title');
+      tt.textContent = `${prv.name} — infra ${prv.infra}/5 (${owner ? owner.name : '—'})`;
+      d.appendChild(tt);
+      gP.appendChild(d);
+    });
+  });
   state.players.forEach(pl => {
     const poly = TERRITORIES[pl.country];
     if (!poly) return;
@@ -849,7 +947,8 @@ $('btn-copy-link').onclick = () => {
 $('btn-leave').onclick = () => location.reload();
 $('btn-start').onclick = () => send({t:'start'});
 $('btn-endturn').onclick = () => send({t:'fim_turno'});
-document.querySelectorAll('.round-btn').forEach(b => b.onclick = () => send({t:'action', action:b.dataset.act}));
+document.querySelectorAll('.round-btn').forEach(b => b.onclick = () => { sfx('click'); send({t:'action', action:b.dataset.act}); });
+$('btn-snd').onclick = () => { muted = !muted; $('btn-snd').textContent = muted ? '🔇' : '🔊'; $('btn-snd').classList.toggle('active', !muted); };
 
 function sendChat(){
   const inp = $('chat-inp');
