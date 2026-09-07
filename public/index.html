@@ -737,7 +737,144 @@ function cbid(id){ if (state && state.world){ const w = state.world.find(x=>x.id
 const IDEOLOGIES = { democracia:'Democracia +5% renda', autoritarismo:'Autoritarismo +15% atq', comunismo:'Comunismo setores baratos', fascismo:'Fascismo recrutar barato', monarquia:'Monarquia dip barata', republica:'República tech barata' };
 const RELIGIONS = { laico:'Laico', cristao:'Cristã', muculmano:'Islâmica', budista:'Budista', hindu:'Hindu' };
 const MINISTERS = { eco:{tec:'Tecocrata +10% renda', pop:'Populista +1❤️'}, def:{fal:'Falcão +10% atq', estr:'Estrategista +10% def'}, dip:{neg:'Negociador dip -50%', inf:'Influenciador +1⚖️'} };
-const TECHS = { livrecomercio:['Livre Comércio',500], automacao:['Automação',600], exercito:['Exército Prof.',600], antiaerea:['Def. Antiaérea',600], bemestar:['Bem-Estar',500], midia:['Mídia Global',500], engenharia:['Engenharia Avançada',600] };
+/* 125 tecnologias: 5 árvores x 25, 5 níveis cada (espelho do servidor) */
+const TECHS = {
+  /* ---------- ECONOMIA ---------- */
+  serraria:      ['ec','Serraria',                    '+madeira'],
+  mina_ouro_t:   ['ec','Mina de Ouro',                '+ouro'],
+  mina_ferro:    ['ec','Mina de Ferro',               '+minério'],
+  usina_concreto:['ec','Usina de Concreto',           '+concreto'],
+  torre_petroleo:['ec','Torre de Petróleo',           '+petróleo'],
+  mina_uranio_t: ['ec','Mina de Urânio',              '+urânio'],
+  metais_raros:  ['ec','Fábrica de Metais Raros',     '+terras raras'],
+  borracha:      ['ec','Fábrica de Borracha',         '+borracha'],
+  usina_termica: ['ec','Usina Térmica',               '+energia'],
+  usina_hidro:   ['ec','Usina Hidrelétrica',          '+energia limpa'],
+  usina_nuclear: ['ec','Usina Nuclear',               '+energia (alta)'],
+  energia_alt:   ['ec','Energia Alternativa',         '+energia limpa'],
+  padaria:       ['ec','Padaria',                     '+alimentos'],
+  estufa:        ['ec','Estufa',                      '+alimentos'],
+  fazenda_gado:  ['ec','Fazenda de Gado',             '+alimentos'],
+  mineral:       ['ec','Fábrica de Água Mineral',     '+alimentos'],
+  acucar:        ['ec','Fábrica de Açúcar',           '+alimentos'],
+  siderurgica:   ['ec','Siderúrgica',                 '+bens militares'],
+  estaleiro:     ['ec','Estaleiro Naval',             '+bens militares'],
+  motores:       ['ec','Fábrica de Motores',          '+bens militares'],
+  maquinas:      ['ec','Fábrica de Máquinas',         '+bens militares'],
+  infra:         ['ec','Melhorias de Infraestrutura', 'obras mais rápidas'],
+  tolerancia:    ['ec','Tolerância Fiscal',           '+arrecadação'],
+  valor_agreg:   ['ec','Valor Agregado',              '+receita de venda'],
+  condicoes:     ['ec','Condições Favoráveis',        '+produção geral'],
+  /* ---------- COMBATE ---------- */
+  escola_oficiais:['cb','Escola de Oficiais de Infantaria', '+ataque infantaria'],
+  orientacao:     ['cb','Sistema de Orientação a Laser',    '+precisão'],
+  exoesqueleto:   ['cb','Exoesqueleto',                     '+defesa infantaria'],
+  canhao_122:     ['cb','Uso de Canhões 122 mm',            '+ataque artilharia'],
+  canhao_152:     ['cb','Uso de Canhões 152 mm',            '+ataque artilharia'],
+  canhao_23:      ['cb','Uso de Canhões 23 mm',             '+defesa antiaérea'],
+  cruzeiro:       ['cb','Precisão de Mísseis de Cruzeiro',  '+ataque aviação'],
+  bombardeio:     ['cb','Programa de Bombardeio',           '+ataque aviação'],
+  hipersonicos:   ['cb','Mísseis Hipersônicos',             '+ataque (forte)'],
+  base_neutra:    ['cb','Ativação de Base em Zona Neutra',  '+projeção'],
+  escudos:        ['cb','Instalação de Escudos Antichoque', '+defesa'],
+  torpedos:       ['cb','Tubos de Torpedo',                 '+ataque frota'],
+  sinalizacao:    ['cb','Conjunto de Sinalização Náutica',  '+defesa frota'],
+  carboneto:      ['cb','Blindagem de Carboneto de Tungstênio','+defesa blindados'],
+  carga:          ['cb','Aumentar a Carga Levantada',       '+capacidade'],
+  balisticos:     ['cb','Mísseis Balísticos',               '+ataque nuclear'],
+  interceptadores:['cb','Instalação de Mísseis Interceptadores','defesa antiaérea'],
+  centro_pesq:    ['cb','Centro de Pesquisa Militar Estratégica','+pesquisa'],
+  recrutamento:   ['cb','Recrutamento de Oficiais de Alto Escalão','+treino'],
+  contraintelig:  ['cb','Divisão de Contrainteligência',    'contra-espionagem'],
+  sabotagem:      ['cb','Tecnologia Avançada de Sabotagem', '+sabotagem'],
+  saboteurs:      ['cb','Equipar Saboteurs',                '+sabotagem'],
+  logistica:      ['cb','Melhoria da Logística',            '+movimento'],
+  planejamento:   ['cb','Centro de Planejamento',           '+AP'],
+  treino:         ['cb','Campo de Treino Avançado',         '+treino'],
+  /* ---------- DIPLOMACIA ---------- */
+  beneficios_emb: ['dp','Benefícios para a Embaixada', '+relações'],
+  relacoes_int:   ['dp','Relações Internacionais',     '+relações'],
+  ao_que_interessa:['dp','Vamos ao que Interessa',     '+negociação'],
+  evite_problemas:['dp','Evite Problemas',             '-crise'],
+  forme_maioria:  ['dp','Forme Maioria',               '+voto na ONU'],
+  dominante:      ['dp','Politicamente Dominante',     '+influência'],
+  politica_ext:   ['dp','Política Externa',            '+relações'],
+  influencia_cult:['dp','Influência Cultural',         '+influência'],
+  negociador:     ['dp','Negociador',                  'acordos melhores'],
+  respeitado:     ['dp','Respeitado e Temido',         '+relações, +ameaça'],
+  mobilizacao:    ['dp','Mobilização Precoce',         '+reação a guerra'],
+  periodo_paz:    ['dp','Período de Paz',              '+aprovação'],
+  confianca:      ['dp','Relações de Confiança',       '+alianças'],
+  pegue_melhor:   ['dp','Pegue o Melhor',              '+contratos'],
+  boas_maneiras:  ['dp','Boas Maneiras',               '+relações'],
+  academia:       ['dp','Academia Nacional de Ciências','+pesquisa'],
+  medicamento:    ['dp','Medicamento Grátis',          '+aprovação'],
+  vencedores:     ['dp','Os Vencedores Escrevem a História','+prestígio'],
+  estado_direito: ['dp','Estado de Direito',           '+aprovação'],
+  recepcao:       ['dp','Uma Recepção Calorosa',       '+relações'],
+  tradicoes:      ['dp','Tradições Compartilhadas',    '+fe'],
+  devido_respeito:['dp','Devido Respeito',             '+relações'],
+  banquetes:      ['dp','Grandes Banquetes',           '+relações'],
+  centro_tur:     ['dp','Centro Turístico',            '+turismo'],
+  solucao:        ['dp','Solução Necessária',          'resolve crises'],
+  /* ---------- EXPLORAÇÃO ---------- */
+  cartografia:    ['ex','Cartografia Avançada',        '+visão de mapa'],
+  satelite:       ['ex','Satélite de Observação',      '+visão'],
+  radar:          ['ex','Rede de Radar',               '+detecção'],
+  sonar:          ['ex','Sonar de Profundidade',       '+detecção naval'],
+  geodesia:       ['ex','Geodesia',                    '+depósitos'],
+  prospeccao:     ['ex','Prospecção Geológica',        '+depósitos'],
+  perfuracao:     ['ex','Perfuração Profunda',         '+petróleo'],
+  antartica:      ['ex','Explore a Antártica',         '+território'],
+  florestal:      ['ex','Gestão Florestal',            '+madeira'],
+  pesqueira:      ['ex','Frota Pesqueira',             '+alimentos'],
+  dessalinizacao: ['ex','Dessalinização',              '+água'],
+  agricultura:    ['ex','Agricultura Intensiva',       '+alimentos'],
+  adubos:         ['ex','Fábrica de Aditivos Nutricionais','+alimentos'],
+  processados:    ['ex','Fábrica de Alimentos Processados','+alimentos'],
+  premium:        ['ex','Fábrica de Alimentos Premium','+alimentos'],
+  doces:          ['ex','Fábrica de Doces',            '+alimentos'],
+  mina_sal:       ['ex','Mina de Sal',                 '+alimentos'],
+  jardim:         ['ex','Jardim',                      '+alimentos'],
+  rodovia:        ['ex','Rodovia',                     '+infra'],
+  ferrovia:       ['ex','Linha Ferroviária',           '+infra'],
+  metro:          ['ex','Metrô',                       '+infra'],
+  aeroporto:      ['ex','Aeroporto',                   '+infra'],
+  porto:          ['ex','Porto',                       '+infra'],
+  heliporto:      ['ex','Heliporto',                   '+infra'],
+  terminal:       ['ex','Terminal Intercontinental',   '+infra'],
+  /* ---------- ESPACIAL ---------- */
+  foguete:        ['sp','Programa de Foguetes',        'base espacial'],
+  satelite_esp:   ['sp','Satélite Artificial',         '+visão'],
+  modulo:         ['sp','Módulo Orbital',              'missão tripulada'],
+  estacao:        ['sp','Estação Orbital',             '+pesquisa'],
+  sonda_lunar:    ['sp','Sonda Lunar',                 'explora a Lua'],
+  lua:            ['sp','Pouso na Lua',                '+prestígio'],
+  base_lunar:     ['sp','Base Lunar',                  'presença permanente'],
+  sonda_marte:    ['sp','Sonda Marciana',              'explora Marte'],
+  marte:          ['sp','Missão a Marte',              '+prestígio'],
+  colonia_marte:  ['sp','Colônia em Marte',            '+prestígio'],
+  sonda_jupiter:  ['sp','Sonda a Júpiter',             'explora Júpiter'],
+  jupiter:        ['sp','Missão a Júpiter',            '+prestígio'],
+  telescopio:     ['sp','Telescópio Espacial',         '+pesquisa'],
+  Plutao:         ['sp','Sonda a Plutão',              'explora Plutão'],
+  minerio_esp:    ['sp','Mineração de Asteroides',     '+recursos'],
+  energia_solar:  ['sp','Energia Solar Orbital',       '+energia'],
+  defesa_esp:     ['sp','Defesa Planetária',           'contra asteroides'],
+  propulsao:      ['sp','Propulsão Avançada',          'missões rápidas'],
+  criogenia:      ['sp','Criogenia',                   'missões longas'],
+  ia:             ['sp','Inteligência Artificial',     '+geral'],
+  colonia_orb:    ['sp','Colônia Orbital',             '+população'],
+  elevador:       ['sp','Elevador Espacial',           'lançamento barato'],
+  warp:           ['sp','Pesquisa de Dobra',           'naves interestelares'],
+  primeira_luz:   ['sp','Primeira Luz',                '+prestígio'],
+  federacao:      ['sp','Federação Planetária',        'vitória diplomática'],
+};
+const TECH_COSTS = [50, 99, 198, 396, 797];
+const TECH_MAX = 5;
+const TECH_TREES = [['ec','🏭 Economia'],['cb','⚔️ Combate'],['dp','🤝 Diplomacia'],['ex','🧭 Exploração'],['sp','🚀 Espacial']];
+function techLv(pl, k){ return (pl && pl.techLv && pl.techLv[k]) || 0; }
+
 const SECTORS_UI = [['educacao','Educação'],['saude','Saúde'],['cultura','Cultura'],['esportes','Esportes'],['habitacao','Habitação'],['justica','Justiça'],['turismo','Turismo']];
 const SEG_UI = {
   defesa:  { em:'🛡️', nome:'Ministério da Defesa', desc:'+8% de defesa por nível',              custos:[400,900,1800] },
@@ -1396,19 +1533,41 @@ function renderPanel(){
       b.onclick=()=>send({t:'action',action:'seguranca',value:k}); r.appendChild(b);
       extra.appendChild(r);
     });
-    // tecnologias
-    [['🏭 Economia',['livrecomercio','automacao','engenharia']],['⚔️ Guerra',['exercito','antiaerea']],['🤝 Diplomacia',['bemestar','midia']]].forEach(([cat,keys])=>{
-      sub2('🔬 Pesquisa: ' + cat + ' (1⚡)');
-      keys.forEach(k=>{
-        const r=document.createElement('div'); r.className='xrow';
-        const n=document.createElement('span'); n.className='xn';
-        n.textContent = TECHS[k][0] + (p.techs.includes(k)?' ✅':'');
-        r.appendChild(n);
-        const b=document.createElement('button'); b.textContent='$'+TECHS[k][1];
-        b.disabled = p.techs.includes(k)||m.ap<1||m.money<TECHS[k][1];
-        b.onclick=()=>send({t:'action',action:'tech',value:k}); r.appendChild(b);
-        extra.appendChild(r);
-      });
+    // tecnologias: 5 árvores x 25 tecnologias x 5 níveis
+    if (typeof techAba === 'undefined') window.techAba = 'ec';
+    const abasDiv = document.createElement('div');
+    abasDiv.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;margin:6px 0';
+    TECH_TREES.forEach(([id, rot])=>{
+      const nDes = Object.values(TECHS).filter(t=>t[0]===id).length;
+      const totN = Object.keys(TECHS).filter(k=>TECHS[k][0]===id)
+                     .reduce((a,k)=>a + techLv(m, k), 0);
+      const a = document.createElement('button');
+      a.textContent = rot + ' ' + totN + '/' + (nDes * TECH_MAX);
+      a.style.cssText = 'flex:1 1 auto;font-size:10px;padding:4px 6px;cursor:pointer;'
+        + (window.techAba===id
+            ? 'background:var(--acc,#c8a45c);color:#22190f;font-weight:700;border:1px solid #8a6d33'
+            : 'background:transparent;color:inherit;border:1px solid rgba(255,255,255,.18)');
+      a.onclick = ()=>{ window.techAba = id; renderPanel(); };
+      abasDiv.appendChild(a);
+    });
+    extra.appendChild(abasDiv);
+
+    const chaves = Object.keys(TECHS).filter(k=>TECHS[k][0]===window.techAba);
+    sub2('🔬 Pesquisa (1⚡) — ' + chaves.length + ' tecnologias');
+    chaves.forEach(k=>{
+      const lv = techLv(m, k);
+      const r = document.createElement('div'); r.className='xrow';
+      const n = document.createElement('span'); n.className='xn';
+      n.textContent = TECHS[k][1] + '  ' + '●'.repeat(lv) + '○'.repeat(TECH_MAX-lv)
+                    + '  ' + (lv>=TECH_MAX ? 'MÁX' : '$' + TECH_COSTS[lv]);
+      if (lv >= TECH_MAX) n.style.opacity = '.62';
+      r.appendChild(n);
+      const b = document.createElement('button');
+      b.textContent = lv>=TECH_MAX ? '✔' : 'Nv ' + (lv+1);
+      b.disabled = lv>=TECH_MAX || m.ap<1 || m.money<TECH_COSTS[lv];
+      b.onclick = ()=>send({t:'action', action:'tech', value:k});
+      r.appendChild(b);
+      extra.appendChild(r);
     });
     // setores
     sub2('🏙️ Setores sociais (1⚡ · $150)');

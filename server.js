@@ -250,15 +250,155 @@ const MINISTERS = {
   def: { fal: { name: 'Falcão', desc: '+10% ataque' }, estr: { name: 'Estrategista', desc: '+10% defesa' } },
   dip: { neg: { name: 'Negociador', desc: 'diplomacia -50% custo' }, inf: { name: 'Influenciador', desc: '+1 influência/turno' } },
 };
+// Cinco árvores de desenvolvimento, 25 tecnologias cada, 5 níveis.
+// Custos por nível medidos nas capturas do MA3: 50 / 99 / 198 / 396 / 797.
+const TECH_COSTS = [50, 99, 198, 396, 797];
+const TECH_MAX = 5;
+const TECH_TREES = [
+  ['economia',    '🏭 Economia'],
+  ['combate',     '⚔️ Combate'],
+  ['diplomacia',  '🤝 Diplomacia'],
+  ['exploracao',  '🧭 Exploração'],
+  ['espacial',    '🚀 Espacial'],
+];
+// [id, nome, efeito-resumo]
 const TECHS = {
-  livrecomercio: { name: 'Livre Comércio Global', cost: 500, desc: '+$20/turno' },
-  automacao:     { name: 'Automação Industrial',  cost: 600, desc: '+2 economia' },
-  exercito:      { name: 'Exército Profissional', cost: 600, desc: '+15% ataque' },
-  antiaerea:     { name: 'Defesa Antiaérea',      cost: 600, desc: 'dano nuclear -50%' },
-  bemestar:      { name: 'Estado de Bem-Estar',   cost: 500, desc: 'desgaste de aprovação pela metade' },
-  midia:         { name: 'Mídia Global',          cost: 500, desc: '+1 influência/turno' },
-  engenharia:    { name: 'Engenharia Avançada',   cost: 600, desc: 'construções e melhorias 15% mais baratas' },
+  /* ---------- ECONOMIA ---------- */
+  serraria:      ['ec','Serraria',                    '+madeira'],
+  mina_ouro_t:   ['ec','Mina de Ouro',                '+ouro'],
+  mina_ferro:    ['ec','Mina de Ferro',               '+minério'],
+  usina_concreto:['ec','Usina de Concreto',           '+concreto'],
+  torre_petroleo:['ec','Torre de Petróleo',           '+petróleo'],
+  mina_uranio_t: ['ec','Mina de Urânio',              '+urânio'],
+  metais_raros:  ['ec','Fábrica de Metais Raros',     '+terras raras'],
+  borracha:      ['ec','Fábrica de Borracha',         '+borracha'],
+  usina_termica: ['ec','Usina Térmica',               '+energia'],
+  usina_hidro:   ['ec','Usina Hidrelétrica',          '+energia limpa'],
+  usina_nuclear: ['ec','Usina Nuclear',               '+energia (alta)'],
+  energia_alt:   ['ec','Energia Alternativa',         '+energia limpa'],
+  padaria:       ['ec','Padaria',                     '+alimentos'],
+  estufa:        ['ec','Estufa',                      '+alimentos'],
+  fazenda_gado:  ['ec','Fazenda de Gado',             '+alimentos'],
+  mineral:       ['ec','Fábrica de Água Mineral',     '+alimentos'],
+  acucar:        ['ec','Fábrica de Açúcar',           '+alimentos'],
+  siderurgica:   ['ec','Siderúrgica',                 '+bens militares'],
+  estaleiro:     ['ec','Estaleiro Naval',             '+bens militares'],
+  motores:       ['ec','Fábrica de Motores',          '+bens militares'],
+  maquinas:      ['ec','Fábrica de Máquinas',         '+bens militares'],
+  infra:         ['ec','Melhorias de Infraestrutura', 'obras mais rápidas'],
+  tolerancia:    ['ec','Tolerância Fiscal',           '+arrecadação'],
+  valor_agreg:   ['ec','Valor Agregado',              '+receita de venda'],
+  condicoes:     ['ec','Condições Favoráveis',        '+produção geral'],
+  /* ---------- COMBATE ---------- */
+  escola_oficiais:['cb','Escola de Oficiais de Infantaria', '+ataque infantaria'],
+  orientacao:     ['cb','Sistema de Orientação a Laser',    '+precisão'],
+  exoesqueleto:   ['cb','Exoesqueleto',                     '+defesa infantaria'],
+  canhao_122:     ['cb','Uso de Canhões 122 mm',            '+ataque artilharia'],
+  canhao_152:     ['cb','Uso de Canhões 152 mm',            '+ataque artilharia'],
+  canhao_23:      ['cb','Uso de Canhões 23 mm',             '+defesa antiaérea'],
+  cruzeiro:       ['cb','Precisão de Mísseis de Cruzeiro',  '+ataque aviação'],
+  bombardeio:     ['cb','Programa de Bombardeio',           '+ataque aviação'],
+  hipersonicos:   ['cb','Mísseis Hipersônicos',             '+ataque (forte)'],
+  base_neutra:    ['cb','Ativação de Base em Zona Neutra',  '+projeção'],
+  escudos:        ['cb','Instalação de Escudos Antichoque', '+defesa'],
+  torpedos:       ['cb','Tubos de Torpedo',                 '+ataque frota'],
+  sinalizacao:    ['cb','Conjunto de Sinalização Náutica',  '+defesa frota'],
+  carboneto:      ['cb','Blindagem de Carboneto de Tungstênio','+defesa blindados'],
+  carga:          ['cb','Aumentar a Carga Levantada',       '+capacidade'],
+  balisticos:     ['cb','Mísseis Balísticos',               '+ataque nuclear'],
+  interceptadores:['cb','Instalação de Mísseis Interceptadores','defesa antiaérea'],
+  centro_pesq:    ['cb','Centro de Pesquisa Militar Estratégica','+pesquisa'],
+  recrutamento:   ['cb','Recrutamento de Oficiais de Alto Escalão','+treino'],
+  contraintelig:  ['cb','Divisão de Contrainteligência',    'contra-espionagem'],
+  sabotagem:      ['cb','Tecnologia Avançada de Sabotagem', '+sabotagem'],
+  saboteurs:      ['cb','Equipar Saboteurs',                '+sabotagem'],
+  logistica:      ['cb','Melhoria da Logística',            '+movimento'],
+  planejamento:   ['cb','Centro de Planejamento',           '+AP'],
+  treino:         ['cb','Campo de Treino Avançado',         '+treino'],
+  /* ---------- DIPLOMACIA ---------- */
+  beneficios_emb: ['dp','Benefícios para a Embaixada', '+relações'],
+  relacoes_int:   ['dp','Relações Internacionais',     '+relações'],
+  ao_que_interessa:['dp','Vamos ao que Interessa',     '+negociação'],
+  evite_problemas:['dp','Evite Problemas',             '-crise'],
+  forme_maioria:  ['dp','Forme Maioria',               '+voto na ONU'],
+  dominante:      ['dp','Politicamente Dominante',     '+influência'],
+  politica_ext:   ['dp','Política Externa',            '+relações'],
+  influencia_cult:['dp','Influência Cultural',         '+influência'],
+  negociador:     ['dp','Negociador',                  'acordos melhores'],
+  respeitado:     ['dp','Respeitado e Temido',         '+relações, +ameaça'],
+  mobilizacao:    ['dp','Mobilização Precoce',         '+reação a guerra'],
+  periodo_paz:    ['dp','Período de Paz',              '+aprovação'],
+  confianca:      ['dp','Relações de Confiança',       '+alianças'],
+  pegue_melhor:   ['dp','Pegue o Melhor',              '+contratos'],
+  boas_maneiras:  ['dp','Boas Maneiras',               '+relações'],
+  academia:       ['dp','Academia Nacional de Ciências','+pesquisa'],
+  medicamento:    ['dp','Medicamento Grátis',          '+aprovação'],
+  vencedores:     ['dp','Os Vencedores Escrevem a História','+prestígio'],
+  estado_direito: ['dp','Estado de Direito',           '+aprovação'],
+  recepcao:       ['dp','Uma Recepção Calorosa',       '+relações'],
+  tradicoes:      ['dp','Tradições Compartilhadas',    '+fe'],
+  devido_respeito:['dp','Devido Respeito',             '+relações'],
+  banquetes:      ['dp','Grandes Banquetes',           '+relações'],
+  centro_tur:     ['dp','Centro Turístico',            '+turismo'],
+  solucao:        ['dp','Solução Necessária',          'resolve crises'],
+  /* ---------- EXPLORAÇÃO ---------- */
+  cartografia:    ['ex','Cartografia Avançada',        '+visão de mapa'],
+  satelite:       ['ex','Satélite de Observação',      '+visão'],
+  radar:          ['ex','Rede de Radar',               '+detecção'],
+  sonar:          ['ex','Sonar de Profundidade',       '+detecção naval'],
+  geodesia:       ['ex','Geodesia',                    '+depósitos'],
+  prospeccao:     ['ex','Prospecção Geológica',        '+depósitos'],
+  perfuracao:     ['ex','Perfuração Profunda',         '+petróleo'],
+  antartica:      ['ex','Explore a Antártica',         '+território'],
+  florestal:      ['ex','Gestão Florestal',            '+madeira'],
+  pesqueira:      ['ex','Frota Pesqueira',             '+alimentos'],
+  dessalinizacao: ['ex','Dessalinização',              '+água'],
+  agricultura:    ['ex','Agricultura Intensiva',       '+alimentos'],
+  adubos:         ['ex','Fábrica de Aditivos Nutricionais','+alimentos'],
+  processados:    ['ex','Fábrica de Alimentos Processados','+alimentos'],
+  premium:        ['ex','Fábrica de Alimentos Premium','+alimentos'],
+  doces:          ['ex','Fábrica de Doces',            '+alimentos'],
+  mina_sal:       ['ex','Mina de Sal',                 '+alimentos'],
+  jardim:         ['ex','Jardim',                      '+alimentos'],
+  rodovia:        ['ex','Rodovia',                     '+infra'],
+  ferrovia:       ['ex','Linha Ferroviária',           '+infra'],
+  metro:          ['ex','Metrô',                       '+infra'],
+  aeroporto:      ['ex','Aeroporto',                   '+infra'],
+  porto:          ['ex','Porto',                       '+infra'],
+  heliporto:      ['ex','Heliporto',                   '+infra'],
+  terminal:       ['ex','Terminal Intercontinental',   '+infra'],
+  /* ---------- ESPACIAL ---------- */
+  foguete:        ['sp','Programa de Foguetes',        'base espacial'],
+  satelite_esp:   ['sp','Satélite Artificial',         '+visão'],
+  modulo:         ['sp','Módulo Orbital',              'missão tripulada'],
+  estacao:        ['sp','Estação Orbital',             '+pesquisa'],
+  sonda_lunar:    ['sp','Sonda Lunar',                 'explora a Lua'],
+  lua:            ['sp','Pouso na Lua',                '+prestígio'],
+  base_lunar:     ['sp','Base Lunar',                  'presença permanente'],
+  sonda_marte:    ['sp','Sonda Marciana',              'explora Marte'],
+  marte:          ['sp','Missão a Marte',              '+prestígio'],
+  colonia_marte:  ['sp','Colônia em Marte',            '+prestígio'],
+  sonda_jupiter:  ['sp','Sonda a Júpiter',             'explora Júpiter'],
+  jupiter:        ['sp','Missão a Júpiter',            '+prestígio'],
+  telescopio:     ['sp','Telescópio Espacial',         '+pesquisa'],
+  Plutao:         ['sp','Sonda a Plutão',              'explora Plutão'],
+  minerio_esp:    ['sp','Mineração de Asteroides',     '+recursos'],
+  energia_solar:  ['sp','Energia Solar Orbital',       '+energia'],
+  defesa_esp:     ['sp','Defesa Planetária',           'contra asteroides'],
+  propulsao:      ['sp','Propulsão Avançada',          'missões rápidas'],
+  criogenia:      ['sp','Criogenia',                   'missões longas'],
+  ia:             ['sp','Inteligência Artificial',     '+geral'],
+  colonia_orb:    ['sp','Colônia Orbital',             '+população'],
+  elevador:       ['sp','Elevador Espacial',           'lançamento barato'],
+  warp:           ['sp','Pesquisa de Dobra',           'naves interestelares'],
+  primeira_luz:   ['sp','Primeira Luz',                '+prestígio'],
+  federacao:      ['sp','Federação Planetária',        'vitória diplomática'],
 };
+function techTree(k){ const t = TECHS[k]; return t ? t[0] : null; }
+function techName(k){ const t = TECHS[k]; return t ? t[1] : k; }
+function techDesc(k){ const t = TECHS[k]; return t ? t[2] : ''; }
+function techCost(lvl){ return TECH_COSTS[Math.min(lvl, TECH_COSTS.length - 1)] || 999; }
+function techLevel(p, k){ return (p.techLv && p.techLv[k]) || 0; }
 const SECTORS = [
   ['educacao', 'Educação'], ['saude', 'Saúde'], ['cultura', 'Cultura'],
   ['esportes', 'Esportes'], ['habitacao', 'Habitação'], ['justica', 'Justiça'], ['turismo', 'Turismo'],
@@ -394,7 +534,7 @@ function snapshot(room) {
       nuclear: p.nuclear, influencia: p.influencia, fe: p.fe, wars: p.wars,
       provinces: p.provinces, sanctioning: p.sanctioning, sanctionedBy: p.sanctionedBy,
       taxRate: p.taxRate, taxes: p.taxes || {corp:10, rend:10, prod:10, amb:5}, budget: p.budget || {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: p.debt, ideology: p.ideology, religion: p.religion,
-      ministers: p.ministers, techs: p.techs, sectors: p.sectors, space: p.space,
+      ministers: p.ministers, techs: p.techs, techLv: p.techLv || {}, sectors: p.sectors, space: p.space,
       relations: p.bot ? {} : p.relations, embassies: p.embassies, trades: p.trades,
       blockading: p.blockading, blockadedBy: p.blockadedBy,
       units: p.units, builds: p.builds, emergencyUntil: p.emergencyUntil, leis: p.leis,
@@ -442,7 +582,7 @@ function addPlayer(room, conn, name, isHost) {
     xp: 0, blackout: false, depositos: [], upgrades: {}, pacts: {},
     buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0 }, famine: false,
     ministers: { eco: null, def: null, dip: null },
-    techs: [], sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 },
+    techs: [], techLv: {}, sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
     units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 }, builds: [], emergencyUntil: 0, leis: [],
     seguranca: { defesa: 0, secreto: 0, policia: 0, guarda: 0 },
@@ -465,7 +605,7 @@ function makeAIBot(c) {
     provinces: [{ name: c.name, infra: 1, owner: c.id, origem: c.id }],
     sanctioning: [], sanctionedBy: [], taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, budget: {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: 0, ideology: null, religion: 'laico',
     ministers: { eco: null, def: null, dip: null },
-    techs: [], sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 },
+    techs: [], techLv: {}, sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
     units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 },
     builds: [], emergencyUntil: 0, leis: [],
@@ -492,7 +632,7 @@ function startGame(room) {
     p.sanctioning = []; p.sanctionedBy = [];
     p.taxRate = 1; p.taxes = {corp:10, rend:10, prod:10, amb:5}; p.budget = {exe:1, int:1, tra:1, edu:1, ambm:1}; p.debt = 0; p.ideology = null; p.religion = 'laico';
     p.ministers = { eco: null, def: null, dip: null };
-    p.techs = []; p.sectors = { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 };
+    p.techs = []; p.techLv = {}; p.sectors = { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 };
     p.space = 0; p.relations = {}; p.embassies = []; p.trades = []; p.blockading = []; p.blockadedBy = [];
     p.units = { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 }; p.builds = []; p.emergencyUntil = 0; p.leis = [];
     p.seguranca = { defesa: 0, secreto: 0, policia: 0, guarda: 0 };
@@ -587,7 +727,7 @@ function incomeOf(room, p) {
     + (p.space >= 3 ? 30 : 0)
     + sectorSum(p) * 2
     + relBonus(p);
-  if (p.techs.includes('livrecomercio')) base += 20;
+  base += 20 * techLevel(p, 'valor_agreg');
   if (p.leis.includes('reforma_agraria')) base += 10;
   if (p.leis.includes('abertura_comercial')) base += 10;
   if (p.budget){ base *= 1 + (p.budget.tra-1)*0.03 + (p.budget.edu-1)*0.02; }
@@ -664,7 +804,7 @@ function resolveTurn(room) {
     if (p.money < 0) { p.money = 0; p.mil = Math.max(1, Math.round(p.mil * 0.9)); }
     // aprovação
     let dAprov = -1;
-    if (p.techs.includes('bemestar')) dAprov = Math.ceil(dAprov / 2);
+    if (techLevel(p, 'estado_direito') > 0) dAprov = Math.ceil(dAprov / (1 + techLevel(p, 'estado_direito')));
     dAprov += Math.min(1, Math.floor(sectorSum(p) / 3));
     if (p.ideology === 'autoritarismo') dAprov -= 1;
     if (p.ideology === 'monarquia') dAprov += 1;
@@ -678,7 +818,7 @@ function resolveTurn(room) {
     // fé / influência passivos
     if (p.religion && p.religion !== 'laico') p.fe += 1;
     if (p.ministers.dip === 'inf') p.influencia += 1;
-    if (p.techs.includes('midia')) p.influencia += 1;
+    p.influencia += techLevel(p, 'influencia_cult');
     p.ap = AP_PER_TURN;
   }
   // população, produção de recursos e oscilação do mercado
@@ -783,7 +923,7 @@ function botAttack(room, a, d) {
   allyDefend(room, a, d);
   let aM = 1, dM = 1;
   if (a.ideology === 'autoritarismo') aM += 0.15;
-  if (a.techs.includes('exercito')) aM += 0.15;
+  aM += 0.15 * techLevel(a, 'escola_oficiais');
   aM += 0.05 * a.units.blindados + 0.02 * a.units.aviacao + 0.04 * a.units.artilharia + 0.02 * a.units.submarinos + 0.02 * a.units.porta_avioes;
   dM += 0.05 * d.units.aviacao + 0.03 * d.units.frota + 0.04 * d.units.infantaria + 0.02 * d.units.submarinos + 0.04 * d.units.porta_avioes;
   dM += 0.05 * Math.min(5, d.buildings.base || 0);
@@ -948,12 +1088,17 @@ function performAction(room, p, msg) {
       log(room, `💼 ${cname(p)} nomeia ${MINISTERS[msg.post][msg.value].name} para a pasta ${msg.post === 'eco' ? 'Economia' : msg.post === 'def' ? 'Defesa' : 'Diplomacia'}.`);
       break;
     case 'tech': {
-      const t = TECHS[msg.value]; if (!t || p.techs.includes(msg.value)) return;
-      const cost = p.ideology === 'republica' ? Math.round(t.cost * 0.75) : t.cost;
+      const k = msg.value; if (!TECHS[k]) return;
+      const lvl = techLevel(p, k);
+      if (lvl >= TECH_MAX) return err(p.conn, 'Essa tecnologia já está no nível máximo.');
+      const cost = p.ideology === 'republica' ? Math.round(techCost(lvl) * 0.75) : techCost(lvl);
       if (!spend(p, 1, cost)) return;
-      p.techs.push(msg.value);
-      if (msg.value === 'automacao') p.eco += 2;
-      log(room, `🔬 ${cname(p)} pesquisa ${t.name}!`);
+      p.techLv = p.techLv || {};
+      p.techLv[k] = lvl + 1;
+      if (!p.techs.includes(k)) p.techs.push(k);
+      if (k === 'condicoes') p.eco += 1;
+      p.xp += 5;
+      log(room, `🔬 ${cname(p)}: ${techName(k)} nível ${lvl + 1}/${TECH_MAX} ($${cost})`);
       break;
     }
     case 'setor': {
@@ -1174,7 +1319,7 @@ function performAction(room, p, msg) {
       if (p.nuclear < NUKE_MIN_LEVEL) { err(p.conn, `Programa nuclear insuficiente (nível ${NUKE_MIN_LEVEL}+ necessário).`); return; }
       if (p.ap < 3) { err(p.conn, 'Lançar um míssil custa 3 pontos de ação.'); return; }
       p.ap -= 3; p.nuclear -= 1;
-      const shield = target.techs.includes('antiaerea');
+      const shield = techLevel(target, 'interceptadores') > 0;
       target.mil = Math.max(1, Math.round(target.mil * (shield ? 0.7 : 0.4)));
       target.aprov = Math.max(0, target.aprov - (shield ? 10 : 20));
       p.aprov = Math.max(0, p.aprov - 10);
@@ -1206,7 +1351,7 @@ function performAction(room, p, msg) {
       const need = CONCRETE_NEED[msg.kind] || 0;
       if (p.rec.concreto < need) { err(p.conn, `🧱 Precisa de ${need} de concreto — construa uma Fábrica de concreto primeiro.`); return; }
       let cCost = PROD_BUILDS[msg.kind];
-      if (p.techs.includes('engenharia')) cCost = Math.ceil(cCost * 0.85);
+      cCost = Math.ceil(cCost * (1 - 0.05 * techLevel(p, 'infra')));
       if (!spend(p, 1, cCost)) return;
       p.rec.concreto -= need;
       p.builds.push({ kind: msg.kind, until: room.turn + 1 });
@@ -1278,8 +1423,11 @@ function performAction(room, p, msg) {
       const falta = k => (k === 'eco' ? 'economia' : 'conhecimento');
       let ganhou = 0;
       for (const quem of [p, target]) {
-        const disp = Object.keys(TECHS).filter(k => !quem.techs.includes(k));
-        if (disp.length) { quem.techs.push(disp[Math.floor(Math.random() * disp.length)]); ganhou++; }
+        quem.techLv = quem.techLv || {};
+        const disp = Object.keys(TECHS).filter(k => techLevel(quem, k) < TECH_MAX);
+        if (disp.length) { const k = disp[Math.floor(Math.random() * disp.length)];
+          quem.techLv[k] = techLevel(quem, k) + 1;
+          if (!quem.techs.includes(k)) quem.techs.push(k); ganhou++; }
         else quem.eco += 1;
       }
       bumpRel(p, target, 12); p.xp += 10;
@@ -1335,7 +1483,7 @@ function performAction(room, p, msg) {
       const lvl = (p.upgrades && p.upgrades[k]) || 0;
       if (lvl >= 2) { err(p.conn, '⬆️ Melhoria já está no nível máximo (3).'); return; }
       let uCost = Math.round(PROD_BUILDS[k] * 0.6 * (lvl + 1));
-      if (p.techs.includes('engenharia')) uCost = Math.ceil(uCost * 0.85);
+      uCost = Math.ceil(uCost * (1 - 0.05 * techLevel(p, 'infra')));
       if (!spend(p, 1, uCost)) return;
       p.upgrades = p.upgrades || {}; p.upgrades[k] = lvl + 1;
       log(room, `⬆️ ${cname(p)} melhora ${PROD_NAMES[k]} para o nível ${lvl + 2} (+50% de produção).`);
