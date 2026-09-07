@@ -332,6 +332,9 @@
     <button id="btn-pause" title="Pausar/retomar (anfitrião)">⏸️</button>
     <button id="btn-rank" title="Ranking mundial (renda, militar, população, indústria)">📊</button>
     <button id="btn-news" title="Jornal mundial">📰</button>
+    <button id="btn-tax" title="Impostos (4 sliders, estilo MA3)">🧾</button>
+    <button id="btn-stats" title="Estatísticas do país">📈</button>
+    <button id="btn-miss" title="Missões do presidente">🎯</button>
     <button id="btn-speed2" title="Alternar velocidade do turno (anfitrião)">⏱️</button>
   </div>
 
@@ -1252,9 +1255,10 @@ function renderPanel(){
     });
     // setores
     sub2('🏙️ Setores sociais (1⚡ · $150)');
-    SECTORS_UI.forEach(([k,nm])=>{
+    const MIN_EMO = ['🎓','','🛣️','🌾','🔬','🎭'];
+    SECTORS_UI.forEach(([k,nm],ix)=>{
       const r=document.createElement('div'); r.className='xrow';
-      const n=document.createElement('span'); n.className='xn'; n.textContent=nm; r.appendChild(n);
+      const n=document.createElement('span'); n.className='xn'; n.textContent=MIN_EMO[ix%6]+' '+nm+' · +$'+(p.sectors[k]*2)+'/d 🧑‍💼'; r.appendChild(n);
       const pp=document.createElement('span'); pp.className='pips';
       pp.textContent='▪'.repeat(p.sectors[k])+'▫'.repeat(5-p.sectors[k]); r.appendChild(pp);
       const b=document.createElement('button'); b.textContent='+';
@@ -1529,6 +1533,56 @@ $('btn-rank').onclick = () => {
   $('btn-rank').classList.toggle('active', !$('rank-panel').classList.contains('hidden'));
   $('btn-help').classList.remove('active');
   renderRanking();
+};
+$('btn-tax').onclick = () => {
+  const m = me(); if (!m) return;
+  const t = m.taxes || {corp:10, rend:10, prod:10, amb:5};
+  const ov = document.createElement('div'); ov.id='newspaper';
+  const row = (k,lb) => `<div style="display:flex;align-items:center;gap:10px;margin:10px 0"><span style="width:170px;font-weight:700">${lb}</span><input type="range" min="0" max="30" value="${t[k]}" data-k="${k}" style="flex:1"><b id="tv-${k}" style="width:44px">${t[k]}%</b></div>`;
+  ov.innerHTML = '<div class="paper" style="width:min(560px,92vw)"><h1 style="font-size:22px">🧾 IMPOSTOS</h1><div style="font-size:12px;margin:6px 0">Como no MA3: cada alíqueta muda sua receita e a aprovação do povo. Ambiental alta (+12%) melhora a aprovação.</div>'
+    + row('corp','🏢 Empresas') + row('rend','💵 Renda pessoal') + row('prod','🏭 Produção') + row('amb','🌳 Ambiental')
+    + '<div style="text-align:center;margin-top:10px"><button id="tx-ok" style="padding:6px 22px;cursor:pointer">Aplicar</button> <button id="tx-x" style="padding:6px 14px;cursor:pointer">Fechar</button></div></div>';
+  document.body.appendChild(ov);
+  ov.querySelectorAll('input').forEach(i => i.oninput = () => { document.getElementById('tv-'+i.dataset.k).textContent = i.value+'%'; });
+  ov.onclick = e => { if (e.target===ov || e.target.id==='tx-x') ov.remove(); };
+  ov.querySelector('#tx-ok').onclick = () => {
+    const g = k => +ov.querySelector(`input[data-k="${k}"]`).value;
+    send({t:'impostos', taxes:{corp:g('corp'), rend:g('rend'), prod:g('prod'), amb:g('amb')}});
+    ov.remove();
+  };
+};
+$('btn-stats').onclick = () => {
+  const m = me(); if (!m) return;
+  const num = n => n.toLocaleString('pt-BR');
+  const mig = m.aprov>50 ? '+'+num(Math.floor((m.aprov-50)*3)) : '-'+num(Math.floor((50-m.aprov)*3));
+  const rows = [
+    ['💰 PIB nacional', num(m.money*4 + m.eco*1500 + m.pop*120)],
+    [' Empregos', num(m.eco*137 + Math.floor(m.pop*0.4))],
+    ['👶 Nascimentos / turno', num(Math.floor(m.pop*0.02)+85)],
+    ['🪦 Mortes / turno', num(Math.floor(m.pop*0.012)+31)],
+    ['🧳 Migração', mig],
+    ['🚔 Crimes por 100.000 hab', num(Math.max(40,(100-m.aprov)*8+81))],
+    ['🚗 Acidentes de trânsito / ano', num(414 + Math.floor(m.mil/2))],
+    ['🏭 Indústria', num(m.eco + Object.values(m.buildings).reduce((a,b)=>a+b,0))],
+  ];
+  const ov = document.createElement('div'); ov.id='newspaper';
+  ov.innerHTML = '<div class="paper" style="width:min(520px,92vw)"><h1 style="font-size:22px">📈 ESTATÍSTICAS DO PAÍS</h1>'
+    + rows.map(([k,v])=>`<div style="display:flex;justify-content:space-between;border-bottom:1px solid #c9b98b;padding:7px 2px;font-size:13px"><span>${k}</span><b>${v}</b></div>`).join('')
+    + '<div style="text-align:center;margin-top:12px"><button id="st-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
+  document.body.appendChild(ov);
+  ov.onclick = e => { if (e.target===ov || e.target.id==='st-x') ov.remove(); };
+};
+$('btn-miss').onclick = () => {
+  if (!state) return;
+  const MS = [['construir_3','🏗️','Conclua 3 construções',500],['vender_30','🛒','Venda 30 unidades no mercado',400],['pop_50','👥','Alcance 50 habitantes',500],['leis_2','📜','Aprove 2 leis nacionais',450],['vencer_1','⚔️','Vença 1 batalha',600],['educacao_2','🎓','Leve Educação ao nível 2',400],['presente_2','🎁','Envie 2 presentes diplomáticos',350],['anexar','🏴','Ocupe território inimigo',700],['blindados_1','🛡️','Produza forças blindadas',400],['treinar_3','🪖','Treine o exército 3 vezes',400]];
+  const cur = state.mission && state.mission.id;
+  const G = ['linear-gradient(135deg,#7a4a1f,#d9a93c)','linear-gradient(135deg,#1f4a7a,#39d98a)','linear-gradient(135deg,#5a1f7a,#ff6b6b)','linear-gradient(135deg,#145a52,#ffd76a)'];
+  const ov = document.createElement('div'); ov.id='newspaper';
+  ov.innerHTML = '<div class="paper" style="width:min(760px,94vw)"><h1 style="font-size:22px">🎯 MISSÕES DO PRESIDENTE</h1><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px">'
+    + MS.map(([id,em,ds,rw],i)=>`<div style="border:2px solid ${id===cur?'#2e7d32':'#8a6a1f'};background:#fff8e6;padding:6px;text-align:center"><div style="height:64px;background:${G[i%4]};display:flex;align-items:center;justify-content:center;font-size:34px;border-radius:4px">${em}</div><div style="font-size:11px;margin:6px 0;min-height:28px">${ds}</div><b style="color:#8a6a1f">+${rw} 🪙</b>${id===cur?'<div style="font-size:10px;color:#2e7d32;font-weight:800">ATIVA</div>':''}</div>`).join('')
+    + '</div><div style="text-align:center;margin-top:12px"><button id="ms-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
+  document.body.appendChild(ov);
+  ov.onclick = e => { if (e.target===ov || e.target.id==='ms-x') ov.remove(); };
 };
 $('btn-news').onclick = () => {
   if (!state || state.phase!=='game') return;

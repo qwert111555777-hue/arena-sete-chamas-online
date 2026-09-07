@@ -383,7 +383,7 @@ function snapshot(room) {
       isHost: p.id === room.hostId, reason: p.eliminatedReason,
       nuclear: p.nuclear, influencia: p.influencia, fe: p.fe, wars: p.wars,
       provinces: p.provinces, sanctioning: p.sanctioning, sanctionedBy: p.sanctionedBy,
-      taxRate: p.taxRate, debt: p.debt, ideology: p.ideology, religion: p.religion,
+      taxRate: p.taxRate, taxes: p.taxes || {corp:10, rend:10, prod:10, amb:5}, debt: p.debt, ideology: p.ideology, religion: p.religion,
       ministers: p.ministers, techs: p.techs, sectors: p.sectors, space: p.space,
       relations: p.bot ? {} : p.relations, embassies: p.embassies, trades: p.trades,
       blockading: p.blockading, blockadedBy: p.blockadedBy,
@@ -410,7 +410,7 @@ function addPlayer(room, conn, name, isHost) {
     allies: [], connected: true, eliminatedReason: null,
     nuclear: 0, influencia: 0, fe: 0, provinces: [], wars: [],
     sanctioning: [], sanctionedBy: [],
-    taxRate: 1, debt: 0, ideology: null, religion: 'laico',
+    taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, debt: 0, ideology: null, religion: 'laico',
     customName: null, customFlag: '🏳️', bot: false, pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 0, madeira: 0, terras_raras: 12, uranio: 0 },
     xp: 0, blackout: false, depositos: [], upgrades: {}, pacts: {},
     buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0 }, famine: false,
@@ -435,7 +435,7 @@ function makeAIBot(c) {
     aprov: 50, ap: AP_PER_TURN, alive: true, allies: [], eliminatedReason: null,
     nuclear: 0, influencia: 0, fe: 0, wars: [],
     provinces: [{ name: c.name, infra: 1, owner: c.id }],
-    sanctioning: [], sanctionedBy: [], taxRate: 1, debt: 0, ideology: null, religion: 'laico',
+    sanctioning: [], sanctionedBy: [], taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, debt: 0, ideology: null, religion: 'laico',
     ministers: { eco: null, def: null, dip: null },
     techs: [], sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
@@ -461,7 +461,7 @@ function startGame(room) {
     p.allies = []; p.eliminatedReason = null; p.nuclear = 0; p.influencia = 0; p.fe = 0; p.wars = [];
     p.provinces = [{ name: 'Capital de ' + nat.name, infra: 1, owner: p.id }];
     p.sanctioning = []; p.sanctionedBy = [];
-    p.taxRate = 1; p.debt = 0; p.ideology = null; p.religion = 'laico';
+    p.taxRate = 1; p.taxes = {corp:10, rend:10, prod:10, amb:5}; p.debt = 0; p.ideology = null; p.religion = 'laico';
     p.ministers = { eco: null, def: null, dip: null };
     p.techs = []; p.sectors = { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 };
     p.space = 0; p.relations = {}; p.embassies = []; p.trades = []; p.blockading = []; p.blockadedBy = [];
@@ -633,6 +633,7 @@ function resolveTurn(room) {
     if (p.ministers.eco === 'pop') dAprov += 1;
     if (p.taxRate === 0) dAprov += 1;
     if (p.taxRate === 2) dAprov -= 2;
+    if (p.taxes && p.taxes.amb >= 12) dAprov += 1;
     p.aprov = Math.max(0, Math.min(100, p.aprov + dAprov));
     // fé / influência passivos
     if (p.religion && p.religion !== 'laico') p.fe += 1;
@@ -925,6 +926,14 @@ function performAction(room, p, msg) {
       break;
     }
     case 'imposto': p.taxRate = Math.max(0, Math.min(2, msg.value | 0)); log(room, `🧾 ${cname(p)} ajusta impostos para ${['baixa', 'média', 'alta'][p.taxRate]}.`); break;
+    case 'impostos': {
+      const t = msg.taxes || {}; const cl = v => Math.max(0, Math.min(30, v|0));
+      p.taxes = { corp: cl(t.corp ?? 10), rend: cl(t.rend ?? 10), prod: cl(t.prod ?? 10), amb: cl(t.amb ?? 5) };
+      const avg = (p.taxes.corp + p.taxes.rend + p.taxes.prod) / 3;
+      p.taxRate = avg < 8 ? 0 : avg > 15 ? 2 : 1;
+      log(room, `🧾 ${cname(p)} redefine impostos: empresas ${p.taxes.corp}%, renda ${p.taxes.rend}%, produção ${p.taxes.prod}%, ambiental ${p.taxes.amb}%.`);
+      break;
+    }
     case 'emprestimo': p.money += 600; p.debt += 720; log(room, `🏦 ${cname(p)} contrai empréstimo de $600 (dívida $${p.debt}).`); break;
     case 'pagar': { const x = Math.min(p.debt, p.money); if (x <= 0) return; p.money -= x; p.debt -= x; log(room, `🏦 ${cname(p)} paga $${x} da dívida.`); break; }
     case 'infra': {
