@@ -254,7 +254,39 @@
   @keyframes floatUp{from{opacity:1; transform:translateY(0);} to{opacity:0; transform:translateY(-28px);}}
   .conn-status{position:fixed; bottom:10px; right:14px; font-size:11px; color:var(--muted); z-index:60;}
   .conn-status.bad{color:var(--red);}
-</style>
+
+  /* ---------- BATALHA TÁTICA ---------- */
+  #scr-batalha{position:fixed;inset:0;background:rgba(6,10,20,.97);z-index:60;overflow:auto;padding:14px;}
+  .bt-wrap{max-width:920px;margin:0 auto;}
+  .bt-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap;}
+  #bt-titulo{font-size:19px;font-weight:800;color:var(--gold);}
+  #bt-status{font-size:13px;color:var(--muted);}
+  .bt-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;
+    background:linear-gradient(#12203a,#0d1729);border:2px solid var(--border);
+    border-radius:10px;padding:8px;margin-bottom:12px;}
+  .bt-cell{aspect-ratio:1/1;border-radius:8px;border:1px solid #1c2942;background:#0c1424;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-size:22px;position:relative;transition:.12s;user-select:none;}
+  .bt-cell.atk-field{background:#0f1b2e;}
+  .bt-cell.def-field{background:#1a1422;}
+  .bt-cell.mine{cursor:pointer;border-color:var(--gold);}
+  .bt-cell.mine:hover{background:#1b2a45;}
+  .bt-cell.sel{box-shadow:0 0 0 2px var(--gold) inset;background:#1b2a45;}
+  .bt-cell.alvo{cursor:crosshair;border-color:var(--red);background:#2d1620;}
+  .bt-cell.alvo:hover{background:#3d1c2a;}
+  .bt-hp{position:absolute;left:4px;right:4px;bottom:3px;height:4px;background:#22304a;border-radius:2px;overflow:hidden;}
+  .bt-hp i{display:block;height:100%;background:var(--green);}
+  .bt-hp i.low{background:var(--red);}
+  .bt-tag{position:absolute;top:2px;left:4px;font-size:9px;color:var(--muted);font-weight:700;}
+  .bt-bottom{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .bt-unidade,.bt-log{background:var(--panel);border:1px solid var(--border);border-radius:10px;
+    padding:10px;font-size:13px;line-height:1.5;}
+  .bt-acoes{grid-column:span 2;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .bt-log{grid-column:span 2;max-height:150px;overflow:auto;}
+  .bt-log div{padding:3px 0;border-bottom:1px solid #172138;color:var(--muted);font-size:12px;}
+  @media(max-width:560px){ .bt-cell{font-size:17px;} #bt-titulo{font-size:15px;} }
+
+  </style>
 </head>
 <body>
 
@@ -262,6 +294,29 @@
 <div class="conn-status" id="conn-status"></div>
 
 <!-- ============ TELA INICIAL ============ -->
+<!-- ============ BATALHA TÁTICA ============ -->
+<div id="scr-batalha" class="hidden">
+  <div class="bt-wrap">
+    <div class="bt-top">
+      <div id="bt-titulo">⚔️ BATALHA</div>
+      <div id="bt-status"></div>
+      <button id="bt-recuar" class="danger">🏳️ Recuar</button>
+    </div>
+    <div id="bt-grid" class="bt-grid"></div>
+    <div class="bt-bottom">
+      <div id="bt-unidade" class="bt-unidade">—</div>
+      <div id="bt-legenda" class="bt-unidade" style="font-size:12px;color:var(--muted)">
+        <b style="color:var(--text)">Como jogar</b><br>
+        Toque numa <b>sua</b> unidade (borda dourada) e depois num inimigo em vermelho para atacar.<br>
+        Use os botões de mover para ajustar o alcance.<br>
+        Campo de cima = atacante · campo de baixo = defensor.
+      </div>
+      <div id="bt-acoes" class="bt-acoes"></div>
+      <div id="bt-log" class="bt-log"></div>
+    </div>
+  </div>
+</div>
+
 <div id="scr-home">
   <div class="flagband">🇧🇷 🇺🇸 🇷🇺 🇨🇳 🇩🇪 🇫🇷 🇬🇧 🇳🇬 🇯🇵</div>
   <h1>PRESIDENTE <span>ONLINE</span></h1>
@@ -884,6 +939,12 @@ function handle(m){
     div.appendChild(who); div.appendChild(document.createTextNode(m.text));
     box.appendChild(div); box.scrollTop = box.scrollHeight;
   }
+  else if (m.t === 'batalha'){
+    bt = m; btSel = null;
+    showScreen('scr-batalha'); btRender();
+    if (m.fim && m.resultado && m.resultado.vencedor) sfx(m.resultado.vencedor === m.lado ? 'win' : 'war');
+    return;
+  }
   else if (m.t === 'error'){ toast('⚠️ ' + m.msg, 'error'); sfx('err'); }
   else if (m.t === 'info') toast(m.msg, 'info');
 }
@@ -899,10 +960,11 @@ function gameDate(turn){
   return `${dd}-${mm}-${d.getFullYear()}`;
 }
 function showScreen(id){
-  ['scr-home','scr-lobby','scr-game'].forEach(s => $(s).classList.toggle('hidden', s!==id));
+  ['scr-home','scr-lobby','scr-game','scr-batalha'].forEach(s => $(s).classList.toggle('hidden', s!==id));
 }
 function render(){
   if (!state) return;
+  if (bt && !bt.fim){ showScreen('scr-batalha'); btRender(); return; }
   if (state.phase === 'lobby'){ showScreen('scr-lobby'); renderLobby(); }
   else { showScreen('scr-game'); renderGame(); renderOverlay(); renderMarket(); }
 }
@@ -1786,6 +1848,98 @@ document.addEventListener('pointerup', () => { drag = null; setTimeout(()=>{ dra
 $('map').addEventListener('dblclick', () => { view.s=1; view.tx=0; view.ty=0; applyView(); });
 
 connect();
+
+/* ================= batalha tática (cliente) ================= */
+const UNIT_EM = { infantaria:'🪖', blindados:'🛡️', artilharia:'💥', aviacao:'✈️',
+                  frota:'⚓', submarinos:'🌊', porta_avioes:'🛳️', milicia:'🔰' };
+const UNIT_NOME = { infantaria:'Infantaria', blindados:'Blindados', artilharia:'Artilharia',
+                    aviacao:'Aviação', frota:'Frota', submarinos:'Submarinos',
+                    porta_avioes:'Porta-aviões', milicia:'Milícia' };
+let bt = null, btSel = null;
+
+function btRender(){
+  if (!bt) return;
+  const minhaVez = !bt.fim && bt.vez === bt.lado;
+  $('bt-titulo').textContent = '⚔️ ' + bt.nomes.atk + '  ×  ' + bt.nomes.def;
+  const segs = Math.max(0, Math.ceil((bt.deadline - Date.now()) / 1000));
+  $('bt-status').textContent = bt.fim
+    ? (bt.resultado && bt.resultado.vencedor === 'atk'
+        ? '🏆 ' + bt.nomes.atk + ' venceu a batalha'
+        : '🛡️ ' + bt.nomes.def + ' resistiu e venceu')
+    : ('Rodada ' + bt.round + ' · ' + (minhaVez ? '▶ SUA VEZ' : '⏳ vez do adversário') + ' · ' + segs + 's');
+  $('bt-recuar').disabled = !!bt.fim;
+
+  const g = $('bt-grid'); g.innerHTML = '';
+  for (let y = 0; y < bt.linhas; y++){
+    for (let x = 0; x < bt.cols; x++){
+      const c = document.createElement('div');
+      c.className = 'bt-cell ' + (y <= 2 ? 'atk-field' : 'def-field');
+      const u = bt.unidades.find(z => z.hp > 0 && z.x === x && z.y === y);
+      if (u){
+        c.textContent = UNIT_EM[u.tipo] || '❓';
+        const hp = document.createElement('div'); hp.className = 'bt-hp';
+        const barra = document.createElement('i');
+        const pct = Math.max(0, u.hp / u.hpMax);
+        barra.style.width = (pct * 100) + '%';
+        if (pct < 0.35) barra.className = 'low';
+        hp.appendChild(barra); c.appendChild(hp);
+        const tg = document.createElement('div'); tg.className = 'bt-tag'; tg.textContent = u.hp; c.appendChild(tg);
+        if (u.dono === bt.lado && minhaVez) c.classList.add('mine');
+        if (btSel === u.uid) c.classList.add('sel');
+        if (btSel && u.dono !== bt.lado && minhaVez){
+          const sel = bt.unidades.find(z => z.uid === btSel);
+          if (sel && Math.max(Math.abs(sel.x - x), Math.abs(sel.y - y)) <= sel.alc) c.classList.add('alvo');
+        }
+        c.onclick = () => btClique(u);
+      }
+      g.appendChild(c);
+    }
+  }
+
+  const sel = btSel ? bt.unidades.find(z => z.uid === btSel) : null;
+  $('bt-unidade').innerHTML = sel
+    ? (UNIT_EM[sel.tipo] || '') + ' <b>' + (UNIT_NOME[sel.tipo] || sel.tipo) + '</b><br>' +
+      '❤️ ' + sel.hp + '/' + sel.hpMax + ' · ⚔️ ' + sel.atk + ' · 🛡️ ' + sel.def + ' · 🎯 alcance ' + sel.alc
+    : (minhaVez ? 'Toque numa das suas unidades para agir.' : 'Aguarde a vez do adversário.');
+
+  const ac = $('bt-acoes'); ac.innerHTML = '';
+  if (sel && minhaVez){
+    [['↑', 0, -1], ['↓', 0, 1], ['←', -1, 0], ['→', 1, 0]].forEach(([lb, dx, dy]) => {
+      const b = document.createElement('button');
+      b.textContent = 'Mover ' + lb;
+      b.onclick = () => { send({ t:'batalha_mover', uid:sel.uid, dx, dy }); btSel = null; };
+      ac.appendChild(b);
+    });
+    const n = document.createElement('span');
+    n.style.cssText = 'color:var(--muted);font-size:12px';
+    n.textContent = 'Depois toque num inimigo destacado em vermelho para atacar.';
+    ac.appendChild(n);
+  }
+  $('bt-log').innerHTML = (bt.log || []).map(l => '<div>' + l + '</div>').join('');
+}
+
+function btClique(u){
+  if (!bt || bt.fim) return;
+  const minhaVez = bt.vez === bt.lado;
+  if (!minhaVez) return;
+  if (u.dono === bt.lado){ btSel = (btSel === u.uid ? null : u.uid); btRender(); return; }
+  if (btSel){
+    const sel = bt.unidades.find(z => z.uid === btSel);
+    if (sel && Math.max(Math.abs(sel.x - u.x), Math.abs(sel.y - u.y)) <= sel.alc){
+      send({ t:'batalha_acao', uid:sel.uid, alvoUid:u.uid });
+      btSel = null;
+    } else toast('Fora de alcance. Reposicione a unidade.', 'error');
+  }
+}
+
+$('bt-recuar').onclick = () => {
+  if (!bt || bt.fim) return;
+  if (confirm('Recuar encerra a batalha e conta como derrota. Confirmar?'))
+    send({ t:'batalha_recuar' });
+};
+// relógio visual da batalha
+setInterval(() => { if (bt) btRender(); }, 1000);
+
 </script>
 </body>
 </html>

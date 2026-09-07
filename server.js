@@ -1157,40 +1157,12 @@ function performAction(room, p, msg) {
       if (p.allies.includes(target.id)) { err(p.conn, 'Você não pode atacar um aliado.'); return; }
       if (!p.wars.includes(target.id)) { err(p.conn, 'Declare GUERRA primeiro (⚠️, 1⚡).'); return; }
       if (p.ap < 2) { err(p.conn, 'Atacar custa 2 pontos de ação.'); return; }
+      if (room.batalha && !room.batalha.fim) { err(p.conn, 'Já há uma batalha em andamento nesta sala.'); return; }
+      if (p.pacts && p.pacts[target.id] > room.turn) { err(p.conn, 'Pacto de não-agressão vigente com essa nação.'); return; }
       p.ap -= 2;
       allyDefend(room, p, target);
-      let aM = 1, dM = 1;
-      if (p.ideology === 'autoritarismo') aM += 0.15;
-      if (p.techs.includes('exercito')) aM += 0.15;
-      if (p.ministers.def === 'fal') aM += 0.10;
-      aM += 0.05 * p.units.blindados + 0.02 * p.units.aviacao + 0.04 * p.units.artilharia + 0.02 * p.units.submarinos + 0.02 * p.units.porta_avioes;
-      dM += 0.05 * target.units.aviacao + 0.03 * target.units.frota + 0.04 * target.units.infantaria + 0.02 * target.units.submarinos + 0.04 * target.units.porta_avioes;
-      dM += 0.05 * Math.min(5, target.buildings.base || 0);
-      if (p.leis.includes('servico_militar')) aM += 0.05;
-      if (target.leis.includes('guarda_nacional')) dM += 0.05;
-      if (target.ministers.def === 'estr') dM += 0.10;
-      const sD = target.seguranca || {};
-      dM += 0.08 * (sD.defesa || 0) + 0.06 * (sD.guarda || 0);
-      const aP = p.mil * aM * (0.85 + Math.random() * 0.45);
-      const dP = target.mil * dM * (0.9 + Math.random() * 0.45) * 1.08;
-      if (aP > dP) {
-        const loot = Math.round(target.money * 0.25);
-        target.money -= loot; p.money += loot;
-        target.mil = Math.max(1, Math.round(target.mil * 0.8));
-        p.mil = Math.max(1, Math.round(p.mil * 0.9));
-        target.aprov = Math.max(0, target.aprov - 8);
-        p.aprov = Math.max(0, p.aprov - 3);
-        p.stats.vitorias++; p.xp += 15;
-        log(room, `⚔️ ${cname(p)} atacou ${cname(target)} e VENCEU! Saque: $${loot}.`);
-        const provs = ownProvinces(target);
-        if (provs.length) { const pr = provs[Math.floor(Math.random() * provs.length)]; pr.owner = p.id; log(room, `🏴 ${cname(p)} OCUPA a província de ${pr.name}!`); }
-      } else {
-        p.mil = Math.max(1, Math.round(p.mil * 0.7));
-        target.mil = Math.max(1, Math.round(target.mil * 0.92));
-        p.aprov = Math.max(0, p.aprov - 6);
-        target.aprov = Math.min(100, target.aprov + 4);
-        log(room, `🛡️ ${cname(target)} REPELIU o ataque de ${cname(p)}!`);
-      }
+      iniciarBatalha(room, p, target);
+      btEnviar(room);
       break;
     }
     case 'nuke': {
@@ -1658,6 +1630,54 @@ function route(conn, msg) {
       break;
     }
     case 'fim_turno': { const { room, player } = conn.meta || {}; if (!room || room.phase !== 'game' || player.id !== room.hostId) return; resolveTurn(room); break; }
+    // ---- batalha tática ----
+    case 'batalha_acao': {
+      const { room, player } = conn.meta || {};
+      if (!room) return;
+      const b = room.batalha;
+      if (!b || b.fim) return;
+      if (player.id !== (b.vez === 'atk' ? b.atk : b.def)) return err(conn, 'Não é sua vez.');
+      const u = b.unidades.find(x => x.uid === msg.uid && x.hp > 0);
+      const alvo = b.unidades.find(x => x.uid === msg.alvoUid && x.hp > 0);
+      if (!u || u.dono !== b.vez) return err(conn, 'Unidade inválida.');
+      if (!alvo || alvo.dono === u.dono) return err(conn, 'Alvo inválido.');
+      if (dist(u, alvo) > u.alc) return err(conn, `Fora de alcance (${u.alc}). Reposicione a unidade.`);
+      btAtacar(room, u, alvo);
+      b.proximaAcao = Date.now() + 1200;
+      if (b.fim) { setTimeout(() => btEncerrar(room), 6000); }
+      btEnviar(room);
+      break;
+    }
+    case 'batalha_mover': {
+      const { room, player } = conn.meta || {};
+      if (!room) return;
+      const b = room.batalha;
+      if (!b || b.fim) return;
+      if (player.id !== (b.vez === 'atk' ? b.atk : b.def)) return err(conn, 'Não é sua vez.');
+      const u = b.unidades.find(x => x.uid === msg.uid && x.hp > 0);
+      if (!u || u.dono !== b.vez) return err(conn, 'Unidade inválida.');
+      const dx = Math.max(-1, Math.min(1, Number(msg.dx) || 0));
+      const dy = Math.max(-1, Math.min(1, Number(msg.dy) || 0));
+      const antes = u.x + ',' + u.y;
+      btMover(room, u, dx, dy);
+      if (u.x + ',' + u.y === antes) return err(conn, 'Movimento impossível (fora do campo ou casa ocupada).');
+      b.proximaAcao = Date.now() + 1200;
+      btEnviar(room);
+      break;
+    }
+    case 'batalha_recuar': {
+      const { room, player } = conn.meta || {};
+      if (!room) return;
+      const b = room.batalha;
+      if (!b || b.fim) return;
+      const lado = player.id === b.atk ? 'atk' : (player.id === b.def ? 'def' : null);
+      if (!lado) return;
+      btLog(b, `🏳️ ${cname(player)} ordena a RETIRADA.`);
+      btFinalizar(room, lado === 'atk' ? 'atk' : 'def');
+      setTimeout(() => btEncerrar(room), 6000);
+      btEnviar(room);
+      break;
+    }
     case 'chat': {
       const { room, player } = conn.meta || {};
       if (!room) return;
@@ -1677,6 +1697,230 @@ function handleClient(conn) {
   };
   conn.onClose = () => handleDisconnect(conn);
 }
+
+
+/* ================= BATALHA TÁTICA POR TURNOS =================
+   Substitui a rolagem abstrata do ataque por um combate em grade:
+   cada lado posiciona suas unidades e, alternando turnos, escolhe
+   atacar, mover ou recuar. Quem fica sem unidades perde.
+   ============================================================ */
+const BT = {
+  infantaria:   { em:'🪖', nome:'Infantaria',    hp:10, atk:3, def:2, alc:1 },
+  blindados:    { em:'🛡️', nome:'Blindados',     hp:16, atk:5, def:4, alc:1 },
+  artilharia:   { em:'💥', nome:'Artilharia',    hp:8,  atk:6, def:1, alc:3 },
+  aviacao:      { em:'✈️', nome:'Aviação',       hp:10, atk:5, def:2, alc:4 },
+  frota:        { em:'⚓', nome:'Frota',          hp:20, atk:4, def:3, alc:2 },
+  submarinos:   { em:'🌊', nome:'Submarinos',    hp:12, atk:6, def:2, alc:2 },
+  porta_avioes: { em:'🛳️', nome:'Porta-aviões',  hp:25, atk:3, def:5, alc:3 },
+  milicia:      { em:'🔰', nome:'Milícia',       hp:8,  atk:2, def:1, alc:1 },
+};
+const BT_COLS = 7, BT_LINHAS = 6;
+const dist = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+
+function btLog(b, msg) { b.log.unshift(msg); if (b.log.length > 40) b.log.length = 40; }
+
+function montarExercito(p, lado) {
+  const tipos = [];
+  for (const t of Object.keys(BT)) {
+    if (t === 'milicia') continue;
+    const n = (p.units && p.units[t]) || 0;
+    for (let i = 0; i < n; i++) tipos.push(t);
+  }
+  // quem não tem forças treinadas luta com milícia proporcional ao poder militar
+  const nMil = Math.max(3, Math.min(8, Math.round((p.mil || 1) / 2)));
+  for (let i = 0; i < nMil; i++) tipos.push('milicia');
+  const bonus = 1 + (p.mil || 0) * 0.02;
+  const lista = tipos.slice(0, 10);
+  return lista.map((t, i) => {
+    const s = BT[t];
+    return {
+      uid: lado + '_' + i, dono: lado, tipo: t,
+      hp: Math.round(s.hp * bonus), hpMax: Math.round(s.hp * bonus),
+      atk: +(s.atk * bonus).toFixed(1), def: s.def, alc: s.alc,
+      x: i % BT_COLS,
+      y: lado === 'atk' ? (i < BT_COLS ? 1 : 0) : (i < BT_COLS ? BT_LINHAS - 2 : BT_LINHAS - 1),
+    };
+  });
+}
+
+function iniciarBatalha(room, atk, def) {
+  const b = {
+    atk: atk.id, def: def.id,
+    unidades: montarExercito(atk, 'atk').concat(montarExercito(def, 'def')),
+    vez: 'atk', round: 1,
+    deadline: Date.now() + 40000,
+    proximaAcao: Date.now() + 1500,
+    log: [], fim: null, resultado: null,
+  };
+  room.batalha = b;
+  btLog(b, `⚔️ BATALHA CAMPO ABERTO — ${cname(atk)} invade ${cname(def)}!`);
+  btLog(b, `Turno de ${cname(atk)}. Escolha uma unidade e uma ação.`);
+  log(room, `⚔️ ${cname(atk)} lançou uma OFENSIVA contra ${cname(def)} — batalha tática em curso!`);
+  return b;
+}
+
+function btVivos(b, lado) { return b.unidades.filter(u => u.dono === lado && u.hp > 0); }
+
+function btPassarVez(room) {
+  const b = room.batalha; if (!b || b.fim) return;
+  if (!btVivos(b, 'atk').length || !btVivos(b, 'def').length) return btFinalizar(room);
+  if (b.vez === 'atk') { b.vez = 'def'; }
+  else { b.vez = 'atk'; b.round++; }
+  // a ofensiva não pode ficar travada para sempre: após 30 rodadas decide por HP
+  if (b.round > 22) {
+    const hpA = btVivos(b, 'atk').reduce((s, u) => s + u.hp, 0);
+    const hpD = btVivos(b, 'def').reduce((s, u) => s + u.hp, 0);
+    btLog(b, `⏳ A ofensiva se arrasta por 22 rodadas — decidida por poder restante (${hpA} × ${hpD}).`);
+    return btFinalizar(room, hpA > hpD ? 'def' : 'atk');
+  }
+  b.deadline = Date.now() + 40000;
+  b.proximaAcao = Date.now() + 1200;
+  const dono = room.players.find(p => p.id === (b.vez === 'atk' ? b.atk : b.def));
+  btLog(b, `🔄 Rodada ${b.round} — vez de ${dono ? cname(dono) : '?'}.`);
+}
+
+function btAtacar(room, u, alvo) {
+  const b = room.batalha; if (!b || b.fim) return;
+  const dano = Math.max(1, Math.round(u.atk * (0.85 + Math.random() * 0.4) - alvo.def * 0.4));
+  alvo.hp -= dano;
+  const morto = alvo.hp <= 0;
+  if (morto) alvo.hp = 0;
+  btLog(b, `${BT[u.tipo].em} ${BT[u.tipo].nome} atinge ${BT[alvo.tipo].em} ${BT[alvo.tipo].nome}: -${dano} HP` +
+           (morto ? ' ☠️ DESTRUÍDO' : ` (${alvo.hp} restante)`));
+  btPassarVez(room);
+}
+
+function btMover(room, u, dx, dy) {
+  const b = room.batalha; if (!b || b.fim) return;
+  const nx = Math.max(0, Math.min(BT_COLS - 1, u.x + dx));
+  const ny = Math.max(0, Math.min(BT_LINHAS - 1, u.y + dy));
+  // cada lado fica no seu campo: atacante nas linhas 0-2, defensor nas 3-5
+  const limite = u.dono === 'atk' ? [0, 2] : [3, BT_LINHAS - 1];
+  if (ny < limite[0] || ny > limite[1]) return;
+  const ocupada = b.unidades.some(o => o !== u && o.hp > 0 && o.x === nx && o.y === ny);
+  if (ocupada) return;
+  u.x = nx; u.y = ny;
+  btLog(b, `${BT[u.tipo].em} ${BT[u.tipo].nome} reposiciona para (${nx + 1},${ny + 1}).`);
+  btPassarVez(room);
+}
+
+function btIA(room) {
+  const b = room.batalha; if (!b || b.fim) return;
+  const lado = b.vez;
+  const minhas = btVivos(b, lado);
+  const inimigos = b.unidades.filter(u => u.dono !== lado && u.hp > 0);
+  if (!minhas.length || !inimigos.length) return btFinalizar(room);
+  // ataca se houver alvo no alcance; prioriza o mais ferido
+  let u = null, alvo = null;
+  for (const m of minhas) {
+    const poss = inimigos.filter(i => dist(m, i) <= m.alc);
+    if (poss.length) { u = m; alvo = poss.sort((a, c) => a.hp - c.hp)[0]; break; }
+  }
+  if (u && alvo) return btAtacar(room, u, alvo);
+  // senão, a unidade mais avançada (mais perto do inimigo) continua avançando
+  const ordem = minhas.slice().sort((a, c) => (lado === 'atk' ? c.y - a.y : a.y - c.y));
+  for (const m of ordem) {
+    const antes = m.x + ',' + m.y;
+    btMover(room, m, 0, lado === 'atk' ? 1 : -1);
+    if (m.x + ',' + m.y !== antes) return;      // conseguiu mover
+  }
+  // nenhuma unidade pode avançar: ataca o que estiver no alcance, senão recua uma
+  for (const m of ordem) {
+    const poss = inimigos.filter(i => dist(m, i) <= m.alc);
+    if (poss.length) return btAtacar(room, m, poss[0]);
+  }
+  const ult = ordem[ordem.length - 1];
+  btMover(room, ult, 0, lado === 'atk' ? -1 : 1);
+  if (!b.fim) btPassarVez(room);
+}
+
+function btFinalizar(room, recuou) {
+  const b = room.batalha; if (!b || b.fim) return;
+  const atk = room.players.find(p => p.id === b.atk);
+  const def = room.players.find(p => p.id === b.def);
+  if (!atk || !def) { room.batalha = null; return; }
+  const vivosA = btVivos(b, 'atk').length, vivosD = btVivos(b, 'def').length;
+  const atkGanhou = recuou === 'def' ? true : recuou === 'atk' ? false : (vivosA > 0 && vivosD === 0);
+
+  // atrito: unidades destruídas são perdas permanentes (milícia não conta)
+  for (const u of b.unidades) {
+    if (u.hp > 0 || u.tipo === 'milicia') continue;
+    const dono = u.dono === 'atk' ? atk : def;
+    if (dono.units && dono.units[u.tipo] != null) dono.units[u.tipo] = Math.max(0, dono.units[u.tipo] - 1);
+  }
+
+  if (atkGanhou) {
+    const loot = Math.round(def.money * 0.25);
+    def.money -= loot; atk.money += loot;
+    def.mil = Math.max(1, Math.round(def.mil * 0.8));
+    atk.mil = Math.max(1, Math.round(atk.mil * 0.9));
+    def.aprov = Math.max(0, def.aprov - 8);
+    atk.aprov = Math.max(0, atk.aprov - 3);
+    atk.stats.vitorias++; atk.xp += 15;
+    const provs = ownProvinces(def);
+    let capturou = null;
+    if (provs.length) {
+      const pr = provs[Math.floor(Math.random() * provs.length)];
+      pr.owner = atk.id; capturou = pr.name;
+    }
+    b.resultado = { vencedor: 'atk', loot, provincia: capturou };
+    log(room, `⚔️ ${cname(atk)} VENCEU a batalha contra ${cname(def)}! Saque: $${loot}.` +
+              (capturou ? ` 🏴 Ocupou ${capturou}.` : ''));
+  } else {
+    atk.mil = Math.max(1, Math.round(atk.mil * 0.7));
+    def.mil = Math.max(1, Math.round(def.mil * 0.92));
+    atk.aprov = Math.max(0, atk.aprov - 6);
+    def.aprov = Math.min(100, def.aprov + 4);
+    b.resultado = { vencedor: 'def', loot: 0, provincia: null };
+    log(room, `🛡️ ${cname(def)} REPELIU a ofensiva de ${cname(atk)}!`);
+  }
+  b.fim = { atkGanhou, vivosA, vivosD, recuou: recuou || null };
+  b.resultado.algumTempo = Date.now();
+  checkEliminations(room); checkVictory(room);
+}
+
+function btSnapshot(room) {
+  const b = room.batalha; if (!b) return null;
+  const nomear = id => { const p = room.players.find(x => x.id === id); return p ? cname(p) : '?'; };
+  return {
+    t: 'batalha', atk: b.atk, def: b.def, vez: b.vez, round: b.round,
+    deadline: b.deadline, unidades: b.unidades, log: b.log.slice(0, 14),
+    cols: BT_COLS, linhas: BT_LINHAS,
+    nomes: { atk: nomear(b.atk), def: nomear(b.def) },
+    fim: b.fim, resultado: b.resultado,
+  };
+}
+function btEnviar(room) {
+  const base = btSnapshot(room); if (!base) return;
+  for (const id of [room.batalha.atk, room.batalha.def]) {
+    const p = room.players.find(x => x.id === id);
+    if (p && p.conn && p.connected) p.conn.send({ ...base, you: id, lado: id === base.atk ? 'atk' : 'def' });
+  }
+}
+function btEncerrar(room) {
+  if (!room.batalha) return;
+  btEnviar(room);
+  room.batalha = null;
+  broadcast(room);
+}
+
+// relógio da batalha: roda a IA quando é a vez dela, ou quando o humano demora
+setInterval(() => {
+  const agora = Date.now();
+  for (const room of rooms.values()) {
+    const b = room.batalha; if (!b || b.fim) continue;
+    if (agora < (b.proximaAcao || 0)) continue;
+    const j = room.players.find(p => p.id === (b.vez === 'atk' ? b.atk : b.def));
+    const humanoPode = j && !j.bot && j.connected;
+    if (!humanoPode || agora >= b.deadline) {
+      if (humanoPode && agora >= b.deadline) btLog(b, '⏱️ Tempo esgotado — o comando assume a jogada.');
+      btIA(room);
+      b.proximaAcao = agora + 900;
+      if (b.fim) { setTimeout(() => btEncerrar(room), 6000); }
+      btEnviar(room);
+    }
+  }
+}, 600);
 
 /* ---------------- HTTP ---------------- */
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
