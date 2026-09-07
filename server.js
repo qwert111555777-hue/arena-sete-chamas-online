@@ -23,70 +23,207 @@ const NUKE_MAX_LEVEL = 5;
 
 /* ---------------- Conteúdo (original) ---------------- */
 const COUNTRIES = [
-  { id:'br', name:'Brasil',         flag:'🇧🇷', eco:11, mil:9,  money:1100, provs:[['Amazônia',1],['São Paulo',2],['Nordeste',1]] },
-  { id:'us', name:'Estados Unidos', flag:'🇺🇸', eco:14, mil:14, money:1400, provs:[['Califórnia',2],['Texas',2],['Nova York',2]] },
-  { id:'ru', name:'Rússia',         flag:'🇷🇺', eco:10, mil:13, money:1000, provs:[['Moscou',2],['Sibéria',1],['Extremo Oriente',1]] },
-  { id:'cn', name:'China',          flag:'🇨🇳', eco:13, mil:12, money:1200, provs:[['Pequim',2],['Guangdong',2],['Xinjiang',1]] },
-  { id:'de', name:'Alemanha',       flag:'🇩🇪', eco:12, mil:8,  money:1200, provs:[['Baviera',2],['Renânia',2],['Saxônia',1]] },
-  { id:'fr', name:'França',         flag:'🇫🇷', eco:11, mil:9,  money:1100, provs:[['Île-de-France',2],['Provença',1],['Bretanha',1]] },
-  { id:'gb', name:'Reino Unido',    flag:'🇬🇧', eco:11, mil:10, money:1100, provs:[['Londres',2],['Escócia',1],['País de Gales',1]] },
-  { id:'in', name:'Índia',          flag:'🇮🇳', eco:9,  mil:10, money:900,  provs:[['Délhi',2],['Maharashtra',1],['Tamil Nadu',1]] },
-  { id:'jp', name:'Japão',          flag:'🇯🇵', eco:12, mil:7,  money:1200, provs:[['Tóquio',2],['Osaka',2],['Hokkaido',1]] },
-  { id:'mx', name:'México',         flag:'🇲🇽', eco:9,  mil:7,  money:900,  provs:[['Cidade do México',2],['Jalisco',1],['Yucatán',1]] },
-  { id:'ng', name:'Nigéria',        flag:'🇳🇬', eco:7,  mil:8,  money:800,  provs:[['Lagos',1],['Kano',1],['Delta do Níger',1]] },
-  { id:'ar', name:'Argentina',      flag:'🇦🇷', eco:8,  mil:6,  money:900,  provs:[['Buenos Aires',2],['Córdoba',1],['Patagônia',1]] },
-  { id:'ca', name:'Canadá',         flag:'🇨🇦', eco:10, mil:6,  money:1100, provs:[['Ontário',2],['Quebec',2],['Alberta',1]] },
-  { id:'es', name:'Espanha',        flag:'🇪🇸', eco:10, mil:7,  money:1000, provs:[['Madri',2],['Catalunha',1],['Andaluzia',1]] },
-  { id:'it', name:'Itália',         flag:'🇮🇹', eco:10, mil:8,  money:1000, provs:[['Lombardia',2],['Lácio',1],['Sicília',1]] },
-  { id:'tr', name:'Turquia',        flag:'🇹🇷', eco:9,  mil:9,  money:900,  provs:[['Anatólia',2],['Istambul',2],['Egeu',1]] },
-  { id:'sa', name:'Arábia Saudita', flag:'🇸🇦', eco:9,  mil:8,  money:1100, provs:[['Riade',2],['Hejaz',1],['Província Oriental',1]] },
-  { id:'ir', name:'Irã',            flag:'🇮🇷', eco:8,  mil:9,  money:900,  provs:[['Teerã',2],['Isfahan',1],['Fars',1]] },
-  { id:'eg', name:'Egito',          flag:'🇪🇬', eco:7,  mil:8,  money:800,  provs:[['Cairo',2],['Alexandria',1],['Alto Egito',1]] },
-  { id:'za', name:'África do Sul',  flag:'🇿🇦', eco:8,  mil:7,  money:900,  provs:[['Gauteng',2],['Cabo',1],['KwaZulu-Natal',1]] },
-  { id:'id', name:'Indonésia',      flag:'🇮🇩', eco:8,  mil:7,  money:900,  provs:[['Java',2],['Sumatra',1],['Bornéu',1]] },
-  { id:'kr', name:'Coreia do Sul',  flag:'🇰🇷', eco:11, mil:9,  money:1100, provs:[['Seul',2],['Busan',2],['Jeju',1]] },
-  { id:'pk', name:'Paquistão',      flag:'🇵🇰', eco:7,  mil:9,  money:800,  provs:[['Punjab',2],['Sindh',1],['Baluchistão',1]] },
-  { id:'pl', name:'Polônia',        flag:'🇵🇱', eco:9,  mil:8,  money:900,  provs:[['Mazóvia',2],['Pequena Polônia',1],['Silésia',1]] },
-  { id:'ua', name:'Ucrânia',        flag:'🇺🇦', eco:7,  mil:8,  money:800,  provs:[['Kiev',2],['Donbass',1],['Odessa',1]] },
-  { id:'se', name:'Suécia',         flag:'🇸🇪', eco:9,  mil:6,  money:1000, provs:[['Estocolmo',2],['Götaland',1],['Norrland',1]] },
-  { id:'co', name:'Colômbia',       flag:'🇨🇴', eco:7,  mil:6,  money:800,  provs:[['Bogotá',2],['Antioquia',1],['Valle',1]] },
-  { id:'cl', name:'Chile',          flag:'🇨🇱', eco:7,  mil:6,  money:800,  provs:[['Santiago',2],['Valparaíso',1],['Patagônia',1]] },
-  { id:'pt', name:'Portugal',       flag:'🇵🇹', eco:8,  mil:6,  money:900,  provs:[['Lisboa',2],['Porto',1],['Algarve',1]] },
-  { id:'au', name:'Austrália',      flag:'🇦🇺', eco:9,  mil:6,  money:1000, provs:[['Nova Gales do Sul',2],['Queensland',1],['Vitória',1]] },
-  { id:'nl', name:'Países Baixos', flag:'🇳🇱', eco:10, mil:4, money:1100, provs:[['Holanda do Norte',2],['Holanda do Sul',1],['Géldria',1]] },
-  { id:'be', name:'Bélgica', flag:'🇧🇪', eco:8, mil:4, money:950, provs:[['Flandres',2],['Valônia',1]] },
-  { id:'no', name:'Noruega', flag:'🇳🇴', eco:9, mil:4, money:1050, provs:[['Østlandet',2],['Vestlandet',1]] },
-  { id:'fi', name:'Finlândia', flag:'🇫🇮', eco:8, mil:4, money:950, provs:[['Uusimaa',2],['Lapônia',1]] },
-  { id:'dk', name:'Dinamarca', flag:'🇩🇰', eco:8, mil:3, money:950, provs:[['Zelândia',2],['Jutlândia',1]] },
-  { id:'gr', name:'Grécia', flag:'🇬🇷', eco:7, mil:4, money:850, provs:[['Ática',2],['Macedônia',1]] },
-  { id:'ie', name:'Irlanda', flag:'🇮🇪', eco:8, mil:2, money:950, provs:[['Leinster',2],['Munster',1]] },
-  { id:'cz', name:'Tchéquia', flag:'🇨🇿', eco:7, mil:4, money:850, provs:[['Boêmia',2],['Morávia',1]] },
-  { id:'ro', name:'Romênia', flag:'🇷🇴', eco:6, mil:5, money:800, provs:[['Valáquia',2],['Transilvânia',1]] },
-  { id:'hu', name:'Hungria', flag:'🇭🇺', eco:6, mil:4, money:800, provs:[['Hungria Central',2],['Grande Planície',1]] },
-  { id:'at', name:'Áustria', flag:'🇦🇹', eco:8, mil:3, money:950, provs:[['Viena',2],['Tirol',1]] },
-  { id:'ch', name:'Suíça', flag:'🇨🇭', eco:10, mil:3, money:1150, provs:[['Planalto Central',2],['Romandia',1]] },
-  { id:'il', name:'Israel', flag:'🇮🇱', eco:10, mil:8, money:1100, provs:[['Distrito Central',2],['Neguev',1]] },
-  { id:'iq', name:'Iraque', flag:'🇮🇶', eco:5, mil:7, money:800, provs:[['Bagdá',2],['Baçorá',1]] },
-  { id:'ma', name:'Marrocos', flag:'🇲🇦', eco:5, mil:4, money:750, provs:[['Casablanca',2],['Rabat',1]] },
-  { id:'dz', name:'Argélia', flag:'🇩🇿', eco:5, mil:6, money:800, provs:[['Argel',2],['Orã',1]] },
-  { id:'tn', name:'Tunísia', flag:'🇹🇳', eco:4, mil:3, money:700, provs:[['Túnis',2],['Sfax',1]] },
-  { id:'ly', name:'Líbia', flag:'🇱🇾', eco:4, mil:4, money:750, provs:[['Tripolitânia',2],['Cirenaica',1]] },
-  { id:'ke', name:'Quênia', flag:'🇰🇪', eco:4, mil:3, money:700, provs:[['Nairóbi',2],['Costa',1]] },
-  { id:'et', name:'Etiópia', flag:'🇪🇹', eco:3, mil:5, money:650, provs:[['Adis Abeba',2],['Oromia',1]] },
-  { id:'gh', name:'Gana', flag:'🇬🇭', eco:4, mil:3, money:700, provs:[['Grande Acra',2],['Axânti',1]] },
-  { id:'tz', name:'Tanzânia', flag:'🇹🇿', eco:3, mil:3, money:650, provs:[['Dar es Salaam',2],['Dodoma',1]] },
-  { id:'th', name:'Tailândia', flag:'🇹🇭', eco:6, mil:5, money:850, provs:[['Chao Phraya',2],['Isan',1]] },
-  { id:'vn', name:'Vietnã', flag:'🇻🇳', eco:5, mil:7, money:800, provs:[['Rio Vermelho',2],['Mekong',1]] },
-  { id:'ph', name:'Filipinas', flag:'🇵🇭', eco:5, mil:5, money:800, provs:[['Luzon',2],['Mindanau',1]] },
-  { id:'my', name:'Malásia', flag:'🇲🇾', eco:6, mil:4, money:850, provs:[['Península Malaia',2],['Malásia Oriental',1]] },
-  { id:'bd', name:'Bangladesh', flag:'🇧🇩', eco:4, mil:4, money:700, provs:[['Daca',2],['Chittagong',1]] },
-  { id:'kz', name:'Cazaquistão', flag:'🇰🇿', eco:5, mil:5, money:850, provs:[['Astana',2],['Almaty',1]] },
-  { id:'nz', name:'Nova Zelândia', flag:'🇳🇿', eco:8, mil:2, money:950, provs:[['Ilha do Norte',2],['Ilha do Sul',1]] },
-  { id:'np', name:'Nepal', flag:'🇳🇵', eco:2, mil:3, money:600, provs:[['Vale de Catmandu',2],['Terai',1]] },
+  { id:'br', name:'Brasil', flag:'🇧🇷', lat:-10, lon:-52 },
+  { id:'us', name:'Estados Unidos', flag:'🇺🇸', lat:39, lon:-98 },
+  { id:'ru', name:'Rússia', flag:'🇷🇺', lat:60, lon:90 },
+  { id:'cn', name:'China', flag:'🇨🇳', lat:35, lon:104 },
+  { id:'gb', name:'Reino Unido', flag:'🇬🇧', lat:53, lon:-2 },
+  { id:'fr', name:'França', flag:'🇫🇷', lat:46, lon:2 },
+  { id:'de', name:'Alemanha', flag:'🇩🇪', lat:51, lon:10 },
+  { id:'in', name:'Índia', flag:'🇮🇳', lat:22, lon:79 },
+  { id:'jp', name:'Japão', flag:'🇯🇵', lat:36, lon:138 },
+  { id:'mx', name:'México', flag:'🇲🇽', lat:23, lon:-102 },
+  { id:'ng', name:'Nigéria', flag:'🇳🇬', lat:9, lon:8 },
+  { id:'au', name:'Austrália', flag:'🇦🇺', lat:-25, lon:134 },
+  { id:'ar', name:'Argentina', flag:'🇦🇷', lat:-34, lon:-64 },
+  { id:'ca', name:'Canadá', flag:'🇨🇦', lat:56, lon:-106 },
+  { id:'es', name:'Espanha', flag:'🇪🇸', lat:40, lon:-4 },
+  { id:'it', name:'Itália', flag:'🇮🇹', lat:42, lon:12 },
+  { id:'tr', name:'Turquia', flag:'🇹🇷', lat:39, lon:35 },
+  { id:'sa', name:'Arábia Saudita', flag:'🇸🇦', lat:24, lon:45 },
+  { id:'ir', name:'Irã', flag:'🇮🇷', lat:32, lon:53 },
+  { id:'eg', name:'Egito', flag:'🇪🇬', lat:26, lon:30 },
+  { id:'za', name:'África do Sul', flag:'🇿🇦', lat:-29, lon:25 },
+  { id:'id', name:'Indonésia', flag:'🇮🇩', lat:-2, lon:118 },
+  { id:'kr', name:'Coreia do Sul', flag:'🇰🇷', lat:36, lon:128 },
+  { id:'pk', name:'Paquistão', flag:'🇵🇰', lat:30, lon:69 },
+  { id:'pl', name:'Polônia', flag:'🇵🇱', lat:52, lon:19 },
+  { id:'ua', name:'Ucrânia', flag:'🇺🇦', lat:49, lon:32 },
+  { id:'se', name:'Suécia', flag:'🇸🇪', lat:62, lon:15 },
+  { id:'co', name:'Colômbia', flag:'🇨🇴', lat:4, lon:-73 },
+  { id:'cl', name:'Chile', flag:'🇨🇱', lat:-35, lon:-71 },
+  { id:'pt', name:'Portugal', flag:'🇵🇹', lat:39, lon:-8 },
+  { id:'nl', name:'Países Baixos', flag:'🇳🇱', lat:52, lon:5 },
+  { id:'be', name:'Bélgica', flag:'🇧🇪', lat:51, lon:4 },
+  { id:'no', name:'Noruega', flag:'🇳🇴', lat:61, lon:9 },
+  { id:'fi', name:'Finlândia', flag:'🇫🇮', lat:64, lon:26 },
+  { id:'dk', name:'Dinamarca', flag:'🇩🇰', lat:56, lon:10 },
+  { id:'gr', name:'Grécia', flag:'🇬🇷', lat:39, lon:22 },
+  { id:'ie', name:'Irlanda', flag:'🇮🇪', lat:53, lon:-8 },
+  { id:'cz', name:'Tchéquia', flag:'🇨🇿', lat:50, lon:15 },
+  { id:'ro', name:'Romênia', flag:'🇷🇴', lat:46, lon:25 },
+  { id:'hu', name:'Hungria', flag:'🇭🇺', lat:47, lon:19 },
+  { id:'at', name:'Áustria', flag:'🇦🇹', lat:47, lon:14 },
+  { id:'ch', name:'Suíça', flag:'🇨🇭', lat:47, lon:8 },
+  { id:'il', name:'Israel', flag:'🇮🇱', lat:31, lon:35 },
+  { id:'iq', name:'Iraque', flag:'🇮🇶', lat:33, lon:44 },
+  { id:'ma', name:'Marrocos', flag:'🇲🇦', lat:32, lon:-6 },
+  { id:'dz', name:'Argélia', flag:'🇩🇿', lat:28, lon:3 },
+  { id:'tn', name:'Tunísia', flag:'🇹🇳', lat:34, lon:9 },
+  { id:'ly', name:'Líbia', flag:'🇱🇾', lat:27, lon:17 },
+  { id:'ke', name:'Quênia', flag:'🇰🇪', lat:0, lon:38 },
+  { id:'et', name:'Etiópia', flag:'🇪🇹', lat:9, lon:39 },
+  { id:'gh', name:'Gana', flag:'🇬🇭', lat:8, lon:-1 },
+  { id:'tz', name:'Tanzânia', flag:'🇹🇿', lat:-6, lon:35 },
+  { id:'th', name:'Tailândia', flag:'🇹🇭', lat:15, lon:101 },
+  { id:'vn', name:'Vietnã', flag:'🇻🇳', lat:16, lon:107 },
+  { id:'ph', name:'Filipinas', flag:'🇵🇭', lat:13, lon:122 },
+  { id:'my', name:'Malásia', flag:'🇲🇾', lat:4, lon:109 },
+  { id:'bd', name:'Bangladesh', flag:'🇧🇩', lat:24, lon:90 },
+  { id:'kz', name:'Cazaquistão', flag:'🇰🇿', lat:48, lon:67 },
+  { id:'nz', name:'Nova Zelândia', flag:'🇳🇿', lat:-41, lon:174 },
+  { id:'np', name:'Nepal', flag:'🇳🇵', lat:28, lon:84 },
+  { id:'al', name:'Albânia', flag:'🇦🇱', lat:41.3, lon:19.8 },
+  { id:'ad', name:'Andorra', flag:'🇦🇩', lat:42.5, lon:1.5 },
+  { id:'am', name:'Armênia', flag:'🇦🇲', lat:40.2, lon:44.5 },
+  { id:'az', name:'Azerbaijão', flag:'🇦🇿', lat:40.4, lon:49.9 },
+  { id:'by', name:'Belarus', flag:'🇧🇾', lat:53.9, lon:27.9 },
+  { id:'ba', name:'Bósnia e Herzegovina', flag:'🇧🇦', lat:43.9, lon:18.4 },
+  { id:'bg', name:'Bulgária', flag:'🇧🇬', lat:42.7, lon:25.5 },
+  { id:'hr', name:'Croácia', flag:'🇭🇷', lat:45.8, lon:16.0 },
+  { id:'cy', name:'Chipre', flag:'🇨🇾', lat:35.2, lon:33.4 },
+  { id:'ee', name:'Estônia', flag:'🇪🇪', lat:58.6, lon:25.0 },
+  { id:'ge', name:'Geórgia', flag:'🇬🇪', lat:41.7, lon:44.8 },
+  { id:'is', name:'Islândia', flag:'🇮🇸', lat:64.8, lon:-18.5 },
+  { id:'lv', name:'Letônia', flag:'🇱🇻', lat:56.9, lon:24.1 },
+  { id:'li', name:'Liechtenstein', flag:'🇱🇮', lat:47.1, lon:9.5 },
+  { id:'lt', name:'Lituânia', flag:'🇱🇹', lat:55.2, lon:24.0 },
+  { id:'lu', name:'Luxemburgo', flag:'🇱🇺', lat:49.8, lon:6.1 },
+  { id:'mt', name:'Malta', flag:'🇲🇹', lat:35.9, lon:14.4 },
+  { id:'md', name:'Moldávia', flag:'🇲🇩', lat:47.0, lon:28.9 },
+  { id:'mc', name:'Mônaco', flag:'🇲🇨', lat:43.7, lon:7.4 },
+  { id:'me', name:'Montenegro', flag:'🇲🇪', lat:42.7, lon:19.3 },
+  { id:'mk', name:'Macedônia do Norte', flag:'🇲🇰', lat:41.6, lon:21.7 },
+  { id:'sm', name:'San Marino', flag:'🇸🇲', lat:43.9, lon:12.5 },
+  { id:'rs', name:'Sérvia', flag:'🇷🇸', lat:44.0, lon:21.0 },
+  { id:'sk', name:'Eslováquia', flag:'🇸🇰', lat:48.7, lon:19.5 },
+  { id:'si', name:'Eslovênia', flag:'🇸🇮', lat:46.1, lon:14.8 },
+  { id:'va', name:'Vaticano', flag:'🇻🇦', lat:41.9, lon:12.45 },
+  { id:'xk', name:'Kosovo', flag:'🇽🇰', lat:42.6, lon:20.9 },
+  { id:'af', name:'Afeganistão', flag:'🇦🇫', lat:33.9, lon:66.0 },
+  { id:'bh', name:'Bahrein', flag:'🇧🇭', lat:26.0, lon:50.5 },
+  { id:'bt', name:'Butão', flag:'🇧🇹', lat:27.5, lon:90.4 },
+  { id:'bn', name:'Brunei', flag:'🇧🇳', lat:4.5, lon:114.7 },
+  { id:'kh', name:'Camboja', flag:'🇰🇭', lat:12.6, lon:105.0 },
+  { id:'tl', name:'Timor-Leste', flag:'🇹🇱', lat:-8.9, lon:125.7 },
+  { id:'jo', name:'Jordânia', flag:'🇯🇴', lat:31.3, lon:36.5 },
+  { id:'kw', name:'Kuwait', flag:'🇰🇼', lat:29.3, lon:47.6 },
+  { id:'kg', name:'Quirguistão', flag:'🇰🇬', lat:41.2, lon:74.8 },
+  { id:'la', name:'Laos', flag:'🇱🇦', lat:19.9, lon:102.5 },
+  { id:'lb', name:'Líbano', flag:'🇱🇧', lat:33.9, lon:35.9 },
+  { id:'mv', name:'Maldivas', flag:'🇲🇻', lat:3.2, lon:73.2 },
+  { id:'mn', name:'Mongólia', flag:'🇲🇳', lat:46.9, lon:103.8 },
+  { id:'mm', name:'Mianmar', flag:'🇲🇲', lat:21.9, lon:95.9 },
+  { id:'om', name:'Omã', flag:'🇴🇲', lat:21.5, lon:57.1 },
+  { id:'qa', name:'Catar', flag:'🇶🇦', lat:25.3, lon:51.2 },
+  { id:'sg', name:'Singapura', flag:'🇸🇬', lat:1.4, lon:103.8 },
+  { id:'lk', name:'Sri Lanka', flag:'🇱🇰', lat:7.9, lon:80.8 },
+  { id:'sy', name:'Síria', flag:'🇸🇾', lat:34.8, lon:38.9 },
+  { id:'tj', name:'Tajiquistão', flag:'🇹🇯', lat:38.9, lon:71.3 },
+  { id:'tm', name:'Turcomenistão', flag:'🇹🇲', lat:38.9, lon:59.6 },
+  { id:'ae', name:'Emirados Árabes Unidos', flag:'🇦🇪', lat:23.9, lon:54.5 },
+  { id:'uz', name:'Uzbequistão', flag:'🇺🇿', lat:41.4, lon:64.6 },
+  { id:'ye', name:'Iêmen', flag:'🇾🇪', lat:15.6, lon:48.5 },
+  { id:'ps', name:'Palestina', flag:'🇵🇸', lat:31.9, lon:35.3 },
+  { id:'ao', name:'Angola', flag:'🇦🇴', lat:-11.2, lon:17.9 },
+  { id:'bj', name:'Benim', flag:'🇧🇯', lat:9.3, lon:2.3 },
+  { id:'bw', name:'Botsuana', flag:'🇧🇼', lat:-22.3, lon:24.7 },
+  { id:'bf', name:'Burkina Faso', flag:'🇧🇫', lat:12.2, lon:-1.6 },
+  { id:'bi', name:'Burundi', flag:'🇧🇮', lat:-3.4, lon:29.9 },
+  { id:'cv', name:'Cabo Verde', flag:'🇨🇻', lat:16.0, lon:-24.0 },
+  { id:'cm', name:'Camarões', flag:'🇨🇲', lat:7.4, lon:12.4 },
+  { id:'cf', name:'República Centro-Africana', flag:'🇨🇫', lat:6.6, lon:20.9 },
+  { id:'td', name:'Chade', flag:'🇹🇩', lat:15.5, lon:18.7 },
+  { id:'km', name:'Comores', flag:'🇰🇲', lat:-11.9, lon:43.9 },
+  { id:'cg', name:'República do Congo', flag:'🇨🇬', lat:-0.2, lon:15.8 },
+  { id:'cd', name:'Rep. Dem. do Congo', flag:'🇨🇩', lat:-4.0, lon:21.8 },
+  { id:'ci', name:'Costa do Marfim', flag:'🇨🇮', lat:7.5, lon:-5.5 },
+  { id:'dj', name:'Djibuti', flag:'🇩🇯', lat:11.8, lon:42.6 },
+  { id:'gq', name:'Guiné Equatorial', flag:'🇬🇶', lat:1.7, lon:10.3 },
+  { id:'er', name:'Eritreia', flag:'🇪🇷', lat:15.2, lon:38.8 },
+  { id:'sz', name:'Essuatíni', flag:'🇸🇿', lat:-26.5, lon:31.5 },
+  { id:'ga', name:'Gabão', flag:'🇬🇦', lat:-0.8, lon:11.6 },
+  { id:'gm', name:'Gâmbia', flag:'🇬🇲', lat:13.4, lon:-15.3 },
+  { id:'gn', name:'Guiné', flag:'🇬🇳', lat:9.9, lon:-9.7 },
+  { id:'gw', name:'Guiné-Bissau', flag:'🇬🇼', lat:12.0, lon:-15.0 },
+  { id:'ls', name:'Lesoto', flag:'🇱🇸', lat:-29.6, lon:28.2 },
+  { id:'lr', name:'Libéria', flag:'🇱🇷', lat:6.4, lon:-9.4 },
+  { id:'mg', name:'Madagascar', flag:'🇲🇬', lat:-18.8, lon:46.9 },
+  { id:'mw', name:'Malawi', flag:'🇲🇼', lat:-13.3, lon:34.3 },
+  { id:'ml', name:'Mali', flag:'🇲🇱', lat:17.6, lon:-4.0 },
+  { id:'mr', name:'Mauritânia', flag:'🇲🇷', lat:20.3, lon:-10.3 },
+  { id:'mu', name:'Maurício', flag:'🇲🇺', lat:-20.3, lon:57.6 },
+  { id:'mz', name:'Moçambique', flag:'🇲🇿', lat:-18.7, lon:35.5 },
+  { id:'na', name:'Namíbia', flag:'🇳🇦', lat:-22.9, lon:17.1 },
+  { id:'ne', name:'Níger', flag:'🇳🇪', lat:17.6, lon:8.1 },
+  { id:'rw', name:'Ruanda', flag:'🇷🇼', lat:-2.0, lon:29.9 },
+  { id:'st', name:'São Tomé e Príncipe', flag:'🇸🇹', lat:0.2, lon:6.6 },
+  { id:'sn', name:'Senegal', flag:'🇸🇳', lat:14.5, lon:-14.5 },
+  { id:'sc', name:'Seicheles', flag:'🇸🇨', lat:-4.7, lon:55.5 },
+  { id:'sl', name:'Serra Leoa', flag:'🇸🇱', lat:8.6, lon:-11.8 },
+  { id:'so', name:'Somália', flag:'🇸🇴', lat:5.2, lon:46.2 },
+  { id:'ss', name:'Sudão do Sul', flag:'🇸🇸', lat:6.9, lon:31.3 },
+  { id:'sd', name:'Sudão', flag:'🇸🇩', lat:12.9, lon:30.2 },
+  { id:'tg', name:'Togo', flag:'🇹🇬', lat:8.6, lon:0.8 },
+  { id:'ug', name:'Uganda', flag:'🇺🇬', lat:1.4, lon:32.3 },
+  { id:'zm', name:'Zâmbia', flag:'🇿🇲', lat:-13.1, lon:27.8 },
+  { id:'zw', name:'Zimbábue', flag:'🇿🇼', lat:-19.0, lon:29.2 },
+  { id:'bs', name:'Bahamas', flag:'🇧🇸', lat:24.2, lon:-76.6 },
+  { id:'bb', name:'Barbados', flag:'🇧🇧', lat:13.2, lon:-59.5 },
+  { id:'bz', name:'Belize', flag:'🇧🇿', lat:17.2, lon:-88.5 },
+  { id:'cr', name:'Costa Rica', flag:'🇨🇷', lat:9.7, lon:-83.8 },
+  { id:'cu', name:'Cuba', flag:'🇨🇺', lat:21.5, lon:-79.0 },
+  { id:'dm', name:'Dominica', flag:'🇩🇲', lat:15.4, lon:-61.4 },
+  { id:'do', name:'República Dominicana', flag:'🇩🇴', lat:18.7, lon:-70.2 },
+  { id:'sv', name:'El Salvador', flag:'🇸🇻', lat:13.8, lon:-88.9 },
+  { id:'gd', name:'Granada', flag:'🇬🇩', lat:12.1, lon:-61.7 },
+  { id:'gt', name:'Guatemala', flag:'🇬🇹', lat:15.8, lon:-90.2 },
+  { id:'gy', name:'Guiana', flag:'🇬🇾', lat:4.9, lon:-59.0 },
+  { id:'ht', name:'Haiti', flag:'🇭🇹', lat:18.9, lon:-72.3 },
+  { id:'hn', name:'Honduras', flag:'🇭🇳', lat:15.2, lon:-86.5 },
+  { id:'jm', name:'Jamaica', flag:'🇯🇲', lat:18.1, lon:-77.3 },
+  { id:'ni', name:'Nicarágua', flag:'🇳🇮', lat:12.9, lon:-85.2 },
+  { id:'pa', name:'Panamá', flag:'🇵🇦', lat:8.5, lon:-80.8 },
+  { id:'kn', name:'São Cristóvão e Névis', flag:'🇰🇳', lat:17.3, lon:-62.7 },
+  { id:'lc', name:'Santa Lúcia', flag:'🇱🇨', lat:13.9, lon:-61.0 },
+  { id:'vc', name:'São Vicente e Granadinas', flag:'🇻🇨', lat:13.0, lon:-61.3 },
+  { id:'sr', name:'Suriname', flag:'🇸🇷', lat:3.9, lon:-56.0 },
+  { id:'tt', name:'Trinidad e Tobago', flag:'🇹🇹', lat:10.7, lon:-61.2 },
+  { id:'ag', name:'Antígua e Barbuda', flag:'🇦🇬', lat:17.1, lon:-61.8 },
+  { id:'ve', name:'Venezuela', flag:'🇻🇪', lat:6.4, lon:-66.6 },
+  { id:'bo', name:'Bolívia', flag:'🇧🇴', lat:-16.3, lon:-63.6 },
+  { id:'ec', name:'Equador', flag:'🇪🇨', lat:-1.8, lon:-78.2 },
+  { id:'pe', name:'Peru', flag:'🇵🇪', lat:-9.2, lon:-75.0 },
+  { id:'uy', name:'Uruguai', flag:'🇺🇾', lat:-32.5, lon:-55.8 },
+  { id:'py', name:'Paraguai', flag:'🇵🇾', lat:-23.4, lon:-58.4 },
+  { id:'fj', name:'Fiji', flag:'🇫🇯', lat:-17.9, lon:177.9 },
+  { id:'ki', name:'Kiribati', flag:'🇰🇮', lat:1.5, lon:173.0 },
+  { id:'mh', name:'Ilhas Marshall', flag:'🇲🇭', lat:7.1, lon:171.2 },
+  { id:'fm', name:'Micronésia', flag:'🇫🇲', lat:6.9, lon:158.2 },
+  { id:'nr', name:'Nauru', flag:'🇳🇷', lat:-0.5, lon:166.9 },
+  { id:'pw', name:'Palau', flag:'🇵🇼', lat:7.5, lon:134.6 },
+  { id:'pg', name:'Papua-Nova Guiné', flag:'🇵🇬', lat:-6.3, lon:144.0 },
+  { id:'ws', name:'Samoa', flag:'🇼🇸', lat:-13.8, lon:-172.1 },
+  { id:'sb', name:'Ilhas Salomão', flag:'🇸🇧', lat:-9.4, lon:160.2 },
+  { id:'to', name:'Tonga', flag:'🇹🇴', lat:-21.2, lon:-175.2 },
+  { id:'tv', name:'Tuvalu', flag:'🇹🇻', lat:-7.5, lon:177.6 },
+  { id:'vu', name:'Vanuatu', flag:'🇻🇺', lat:-16.3, lon:167.0 },
 ];
-const LATLON = { ar:[-34,-64], ca:[56,-106], es:[40,-4], it:[42,12], tr:[39,35], sa:[24,45], ir:[32,53], eg:[26,30], za:[-29,25], id:[-2,118], kr:[36,128], pk:[30,69], pl:[52,19], ua:[49,32], se:[62,15], co:[4,-73], cl:[-35,-71], pt:[39,-8], nl:[52,5], be:[51,4], no:[61,9], fi:[64,26], dk:[56,10], gr:[39,22], ie:[53,-8], cz:[50,15], ro:[46,25], hu:[47,19], at:[47,14], ch:[47,8], il:[31,35], iq:[33,44], ma:[32,-6], dz:[28,3], tn:[34,9], ly:[27,17], ke:[0,38], et:[9,39], gh:[8,-1], tz:[-6,35], th:[15,101], vn:[16,107], ph:[13,122], my:[4,109], bd:[24,90], kz:[48,67], nz:[-41,174], np:[28,84] };
+const NEWLANDS = [[12,-38],[28,-44],[-12,-25],[-33,-18],[2,-52],[33,-148],[8,-138],[-22,-112],[-42,-105],[42,-168],[-28,78],[6,66],[-36,92],[16,90],[-12,108],[8,28],[22,-28],[-48,-38],[52,-38],[65,-25],[28,-72],[-6,-92],[18,-158],[-30,-150],[0,95],[38,152],[-52,55],[70,60],[-60,-49],[35,-60]];
+const FLAGS_ALLOWED = ['🏳️','🦅','🐺','🦁','🐉','🐻','⭐','☀️','🌙','🔥','❄️','🌊','⚡','🛡️','⚔️','🌹','🌻','🍀','💎','🏴','🚩','👑','🕊️','🎌'];
 const COUNTRY_BY_ID = Object.fromEntries(COUNTRIES.map(c => [c.id, c]));
-const cname = p => { const c = COUNTRY_BY_ID[p.country]; return c ? c.flag + ' ' + c.name : p.name; };
+const DYNC = {};
+const cname = p => { const c = COUNTRY_BY_ID[p.country] || DYNC[p.country]; return c ? c.flag + ' ' + c.name : (p.customName || p.name); };
 
 const IDEOLOGIES = {
   democracia:    { name: 'Democracia',    desc: '+5% renda' },
@@ -205,6 +342,7 @@ function newRoom() {
     code: makeCode(), phase: 'lobby', turn: 0, timerEnd: 0, speed: 45,
     players: [], hostId: null, proposals: [], log: [], winner: null, timer: null,
     un: null, noWarUntil: 0, noArmsUntil: 0, embargo: null,
+    world: COUNTRIES.slice(), market: { comida: 8, minerio: 12, energia: 10 },
   };
   rooms.set(room.code, room);
   return room;
@@ -237,10 +375,12 @@ function snapshot(room) {
       provinces: p.provinces, sanctioning: p.sanctioning, sanctionedBy: p.sanctionedBy,
       taxRate: p.taxRate, debt: p.debt, ideology: p.ideology, religion: p.religion,
       ministers: p.ministers, techs: p.techs, sectors: p.sectors, space: p.space,
-      relations: p.relations, embassies: p.embassies, trades: p.trades,
+      relations: p.bot ? {} : p.relations, embassies: p.embassies, trades: p.trades,
       blockading: p.blockading, blockadedBy: p.blockadedBy,
       units: p.units, builds: p.builds, emergencyUntil: p.emergencyUntil, leis: p.leis,
+      pop: p.pop, rec: p.rec, bot: p.bot, customName: p.customName, customFlag: p.customFlag,
     })),
+    world: room.world, market: room.market,
   };
 }
 function broadcast(room) {
@@ -258,6 +398,7 @@ function addPlayer(room, conn, name, isHost) {
     nuclear: 0, influencia: 0, fe: 0, provinces: [], wars: [],
     sanctioning: [], sanctionedBy: [],
     taxRate: 1, debt: 0, ideology: null, religion: 'laico',
+    customName: null, customFlag: '🏳️', bot: false, pop: 0, rec: { comida: 0, minerio: 0, energia: 0 },
     ministers: { eco: null, def: null, dip: null },
     techs: [], sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
@@ -270,28 +411,53 @@ function addPlayer(room, conn, name, isHost) {
 }
 
 /* ---------------- Fluxo ---------------- */
+function makeAIBot(c) {
+  let h = 0; for (const ch of c.id + 'x') h = (h * 31 + ch.charCodeAt(0)) % 997;
+  return {
+    id: c.id, name: c.name, country: c.id, bot: true, conn: null, connected: true, color: 0,
+    customName: null, customFlag: null, isHost: false,
+    money: 10000, eco: 3 + (h % 4), mil: 3 + ((h >> 2) % 4), pop: 0, rec: { comida: 0, minerio: 0, energia: 0 },
+    aprov: 50, ap: AP_PER_TURN, alive: true, allies: [], eliminatedReason: null,
+    nuclear: 0, influencia: 0, fe: 0, wars: [],
+    provinces: [{ name: c.name, infra: 1, owner: c.id }],
+    sanctioning: [], sanctionedBy: [], taxRate: 1, debt: 0, ideology: null, religion: 'laico',
+    ministers: { eco: null, def: null, dip: null },
+    techs: [], sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0 },
+    space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
+    units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0 },
+    builds: [], emergencyUntil: 0, leis: [],
+  };
+}
+
 function startGame(room) {
-  const taken = new Set(room.players.map(p => p.country).filter(Boolean));
-  const free = COUNTRIES.filter(c => !taken.has(c.id));
-  for (const p of room.players) {
-    if (!p.country) { const i = Math.floor(Math.random() * free.length); p.country = free.splice(i, 1)[0].id; }
-    const c = COUNTRY_BY_ID[p.country];
-    p.money = c.money; p.eco = c.eco; p.mil = c.mil;
+  room.world = COUNTRIES.slice();
+  room.players.forEach((p, i) => {
+    const cid = 'n' + p.id;
+    const spot = NEWLANDS[i % NEWLANDS.length];
+    const nat = { id: cid, name: p.customName || (p.name + 'lândia'), flag: p.customFlag || '🏳️', lat: spot[0] + Math.floor(i / NEWLANDS.length) * 5, lon: spot[1] };
+    room.world.push(nat); DYNC[cid] = nat;
+    p.country = cid;
+    p.money = 10000; p.eco = 3; p.mil = 3; p.pop = 0; p.rec = { comida: 0, minerio: 0, energia: 0 };
     p.aprov = 50; p.ap = AP_PER_TURN; p.alive = true;
     p.allies = []; p.eliminatedReason = null; p.nuclear = 0; p.influencia = 0; p.fe = 0; p.wars = [];
-    p.provinces = c.provs.map(([name, infra]) => ({ name, infra, owner: p.id }));
+    p.provinces = [{ name: 'Capital de ' + nat.name, infra: 1, owner: p.id }];
     p.sanctioning = []; p.sanctionedBy = [];
     p.taxRate = 1; p.debt = 0; p.ideology = null; p.religion = 'laico';
     p.ministers = { eco: null, def: null, dip: null };
     p.techs = []; p.sectors = { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0 };
     p.space = 0; p.relations = {}; p.embassies = []; p.trades = []; p.blockading = []; p.blockadedBy = [];
     p.units = { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0 }; p.builds = []; p.emergencyUntil = 0; p.leis = [];
-    for (const o of room.players) if (o !== p) { p.relations[o.id] = 50; o.relations[p.id] = 50; }
+  });
+  for (let i = 0; i < room.players.length; i++) for (let j = i + 1; j < room.players.length; j++) {
+    room.players[i].relations[room.players[j].id] = 50; room.players[j].relations[room.players[i].id] = 50;
   }
+  for (const c of COUNTRIES) room.players.push(makeAIBot(c));
+  room.players.forEach((p, i) => { if (p.bot) p.color = i % 60; });
   room.phase = 'game'; room.turn = 1; room.proposals = [];
   room.un = null; room.noWarUntil = 0; room.noArmsUntil = 0; room.embargo = null;
   room.timerEnd = Date.now() + room.speed * 1000;
-  log(room, '🏛️ Mandato iniciado! Governem com sabedoria (ou não).');
+  log(room, '🏳️ Cada jogador fundou sua própria nação: $10.000, 0 habitantes, tudo por construir.');
+  log(room, `🤖 As ${COUNTRIES.length} nações do mundo estão sob controle da IA. É vocês contra elas!`);
   if (!room.timer) {
     room.timer = setInterval(() => {
       if (room.phase !== 'game') return;
@@ -353,7 +519,7 @@ const LEIS = {
 
 function incomeOf(room, p) {
   const prov = ownProvinces(p).reduce((s, pr) => s + pr.infra, 0) * PROV_INCOME;
-  let base = p.eco * 10 + prov
+  let base = p.eco * 10 + prov + Math.floor(p.pop / 8)
     + p.allies.length * 25
     + p.trades.length * 20
     + (p.space >= 3 ? 30 : 0)
@@ -409,6 +575,12 @@ function openUN(room) {
   if (type.id === 'embargo' || type.id === 'condenar') target = alive[Math.floor(Math.random() * alive.length)];
   room.un = { type: type.id, desc: type.desc.replace('{T}', target ? cname(target) : ''), target: target ? target.id : null, votes: {}, deadline: Date.now() + 20000 };
   log(room, `🇺🇳 Sessão da ONU: ${room.un.desc}. Votação aberta!`);
+  for (const b of room.players) if (b.bot && b.alive) {
+    if (room.un.target) {
+      const tp = room.players.find(x => x.id === room.un.target);
+      room.un.votes[b.id] = tp ? relBetween(b, tp) < 50 : Math.random() < 0.5;
+    } else room.un.votes[b.id] = Math.random() < 0.5;
+  }
 }
 
 function resolveTurn(room) {
@@ -440,6 +612,19 @@ function resolveTurn(room) {
     if (p.techs.includes('midia')) p.influencia += 1;
     p.ap = AP_PER_TURN;
   }
+  // população, produção de recursos e oscilação do mercado
+  for (const p of room.players) if (p.alive) {
+    const infra = ownProvinces(p).reduce((sx, x) => sx + x.infra, 0);
+    p.rec.comida += 4 + infra * 3;
+    p.rec.minerio += 2 + Math.round(p.eco * 0.8);
+    p.rec.energia += 3 + infra * 2;
+    const need = Math.ceil(p.pop / 10);
+    let g = 4 + infra * 2;
+    if (p.rec.comida >= need) p.rec.comida -= need; else { p.rec.comida = 0; g = Math.max(1, Math.floor(g / 3)); }
+    p.pop += g;
+  }
+  for (const k of Object.keys(room.market)) room.market[k] = Math.max(3, Math.min(40, Math.round(room.market[k] * (0.88 + Math.random() * 0.3))));
+
   // relações: decaimento + embaixadas
   const alive = room.players.filter(p => p.alive);
   for (let i = 0; i < alive.length; i++) for (let j = i + 1; j < alive.length; j++) {
@@ -455,10 +640,91 @@ function resolveTurn(room) {
   }
   randomEvent(room);
   if (room.turn % 4 === 0 && !room.un) openUN(room);
+  aiTurn(room);
   checkEliminations(room);
   checkVictory(room);
   if (room.phase === 'game') room.timerEnd = Date.now() + room.speed * 1000;
   broadcast(room);
+}
+
+const UNIT_COSTS = { blindados: 300, aviacao: 400, frota: 500, infantaria: 200, artilharia: 350, submarinos: 450 };
+
+function botAttack(room, a, d) {
+  let aM = 1, dM = 1;
+  if (a.ideology === 'autoritarismo') aM += 0.15;
+  if (a.techs.includes('exercito')) aM += 0.15;
+  aM += 0.05 * a.units.blindados + 0.02 * a.units.aviacao + 0.04 * a.units.artilharia + 0.02 * a.units.submarinos;
+  dM += 0.05 * d.units.aviacao + 0.03 * d.units.frota + 0.04 * d.units.infantaria + 0.02 * d.units.submarinos;
+  if (a.leis.includes('servico_militar')) aM += 0.05;
+  if (d.leis.includes('guarda_nacional')) dM += 0.05;
+  const aP = a.mil * aM * (0.85 + Math.random() * 0.45);
+  const dP = d.mil * dM * (0.9 + Math.random() * 0.45) * 1.08;
+  if (aP > dP) {
+    const loot = Math.round(d.money * 0.25);
+    d.money -= loot; a.money += loot;
+    d.mil = Math.max(1, Math.round(d.mil * 0.8)); a.mil = Math.max(1, Math.round(a.mil * 0.9));
+    d.aprov = Math.max(0, d.aprov - 8);
+    log(room, `🤖⚔️ ${cname(a)} atacou ${cname(d)} e VENCEU! Saque: $${loot}.`);
+    const provs = ownProvinces(d);
+    if (provs.length) { const pr = provs[Math.floor(Math.random() * provs.length)]; pr.owner = a.id; log(room, `🏴 ${cname(a)} OCUPA a província de ${pr.name}!`); }
+  } else {
+    a.mil = Math.max(1, Math.round(a.mil * 0.7)); d.mil = Math.max(1, Math.round(d.mil * 0.92));
+    log(room, `🛡️ ${cname(d)} repeliu o ataque da IA ${cname(a)}!`);
+  }
+}
+
+function aiTurn(room) {
+  if (room.phase !== 'game') return;
+  const humans = room.players.filter(p => p.alive && !p.bot);
+  const botsAlive = room.players.filter(p => p.alive && p.bot).length || 1;
+  for (const b of room.players) {
+    if (!b.alive || !b.bot) continue;
+    const need = Math.ceil(b.pop / 10) + 10;
+    if (b.rec.comida > need + 20) { const q = Math.floor((b.rec.comida - need) / 2); b.rec.comida -= q; b.money += q * room.market.comida; }
+    if (b.money > 500 && b.builds.length < 2) {
+      const pr = ownProvinces(b).find(x => x.infra < 5);
+      if (pr) { b.money -= 200; b.builds.push({ kind: 'infra', prov: b.provinces.indexOf(pr), until: room.turn + 1 }); }
+    }
+    if (b.money > 900) {
+      const ks = ['infantaria', 'blindados', 'artilharia', 'aviacao'];
+      const k = ks[room.turn % ks.length];
+      if (b.units[k] < 3) { b.money -= UNIT_COSTS[k]; b.units[k]++; }
+    }
+    for (const pr of room.proposals.filter(x => x.to === b.id)) {
+      const from = room.players.find(x => x.id === pr.from);
+      if (!from) continue;
+      const rel = relBetween(b, from);
+      const kind = pr.kind || 'alianca';
+      const acc = kind === 'comercial' ? (rel >= 40 || b.money < 3000)
+        : kind === 'alianca' ? rel >= 60
+        : (b.mil <= from.mil || rel > 35);
+      respondProposal(room, b, pr.from, acc, kind);
+    }
+    if (b.money > 4000 && room.turn % 3 === 0) {
+      const em = humans.find(h => h.emergencyUntil > room.turn && relBetween(b, h) >= 45);
+      if (em) {
+        b.money -= 200; em.money += 200; em.emergencyUntil = 0;
+        bumpRel(b, em, 15); b.aprov = Math.min(100, b.aprov + 2); em.aprov = Math.min(100, em.aprov + 2);
+        log(room, `🤝 A IA ${cname(b)} enviou ajuda humanitária para ${cname(em)} (+$200).`);
+      }
+    }
+    if (room.turn > 12 && humans.length && b.mil >= 4 && Math.random() * botsAlive < 0.3 && room.turn >= room.noWarUntil) {
+      const ts = humans.filter(h => !b.allies.includes(h.id) && !b.wars.includes(h.id));
+      if (ts.length) {
+        const h = ts[Math.floor(Math.random() * ts.length)];
+        b.wars.push(h.id); h.wars.push(b.id);
+        log(room, `🤖⚔️ ${cname(b)} declarou GUERRA a ${cname(h)}!`);
+        if (Math.random() < 0.6) botAttack(room, b, h);
+      }
+    }
+    if (humans.length && b.trades.length < 3 && Math.random() * botsAlive < 0.2) {
+      const h = humans[Math.floor(Math.random() * humans.length)];
+      if (!b.trades.includes(h.id) && !b.wars.includes(h.id) && !room.proposals.some(x => x.from === b.id && x.to === h.id)) {
+        room.proposals.push({ from: b.id, to: h.id, kind: 'comercial' });
+        log(room, `🤖💼 ${cname(b)} propõe um ACORDO COMERCIAL a ${cname(h)}.`);
+      }
+    }
+  }
 }
 
 function randomEvent(room) {
@@ -644,6 +910,7 @@ function performAction(room, p, msg) {
       if (p.wars.includes(target.id)) { err(p.conn, 'Em guerra não há comércio.'); return; }
       if (room.proposals.some(pr => pr.from === p.id && pr.to === target.id && pr.kind === 'comercial')) return;
       room.proposals.push({ from: p.id, to: target.id, kind: 'comercial' });
+      if (target.bot) { const acc = relBetween(target, p) >= 40 || Math.random() < 0.3; respondProposal(room, target, p.id, acc, 'comercial'); return; }
       info(target.conn, `💼 ${cname(p)} propôs um ACORDO COMERCIAL!`);
       break;
     }
@@ -654,6 +921,7 @@ function performAction(room, p, msg) {
       if (p.allies.length >= 3 || target.allies.length >= 3) { err(p.conn, 'Limite de 3 alianças.'); return; }
       if (room.proposals.some(pr => pr.from === p.id && pr.to === target.id && pr.kind === 'alianca')) return;
       room.proposals.push({ from: p.id, to: target.id, kind: 'alianca' });
+      if (target.bot) { const acc = relBetween(target, p) >= 60; respondProposal(room, target, p.id, acc, 'alianca'); return; }
       info(target.conn, `🤝 ${cname(p)} propôs uma ALIANÇA com você!`);
       break;
     }
@@ -674,6 +942,7 @@ function performAction(room, p, msg) {
       if (!target || target === p || !target.alive || !p.wars.includes(target.id)) return;
       if (room.proposals.some(pr => pr.from === p.id && pr.to === target.id && pr.kind === 'paz')) return;
       room.proposals.push({ from: p.id, to: target.id, kind: 'paz' });
+      if (target.bot) { const acc = (target.mil <= p.mil || relBetween(target, p) > 35); respondProposal(room, target, p.id, acc, 'paz'); return; }
       info(target.conn, `🕊️ ${cname(p)} propôs um tratado de PAZ!`);
       break;
     }
@@ -742,6 +1011,20 @@ function performAction(room, p, msg) {
       const hits = shield ? 1 : 2;
       for (let i = 0; i < hits && provs.length; i++) { const pr = provs[Math.floor(Math.random() * provs.length)]; pr.infra = Math.max(0, pr.infra - 2); }
       log(room, `☢️💥 ${cname(p)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(target)}!${shield ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`);
+      break;
+    }
+    case 'comprar': {
+      const q = Math.max(1, Math.min(100, msg.qty | 0));
+      if (room.market[msg.res] == null) return;
+      const cost = room.market[msg.res] * q;
+      if (p.money < cost) { err(p.conn, 'Dinheiro insuficiente.'); return; }
+      p.money -= cost; p.rec[msg.res] += q;
+      break;
+    }
+    case 'vender': {
+      const q = Math.max(1, Math.min(100, msg.qty | 0));
+      if (room.market[msg.res] == null || p.rec[msg.res] < q) return;
+      p.rec[msg.res] -= q; p.money += room.market[msg.res] * q;
       break;
     }
     default: return;
@@ -827,6 +1110,14 @@ function route(conn, msg) {
       if (room.players.some(p => p.country === cid && p !== player)) return err(conn, 'Esse país já foi escolhido.');
       player.country = player.country === cid ? null : cid;
       broadcast(room); break;
+    }
+    case 'fundar': {
+      const { room, player } = conn.meta || {};
+      if (!room || room.phase !== 'lobby') return;
+      player.customName = sanitizeName(msg.name).slice(0, 24) || player.name;
+      player.customFlag = FLAGS_ALLOWED.includes(msg.flag) ? msg.flag : '🏳️';
+      broadcast(room);
+      break;
     }
     case 'velocidade': { const { room, player } = conn.meta || {}; if (!room || room.phase !== 'lobby' || player.id !== room.hostId) return; room.speed = msg.speed === 15 ? 15 : 45; broadcast(room); break; }
     case 'start': { const { room, player } = conn.meta || {}; if (!room || room.phase !== 'lobby' || player.id !== room.hostId) return; startGame(room); break; }

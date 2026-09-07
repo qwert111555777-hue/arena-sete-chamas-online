@@ -288,9 +288,9 @@
   </div>
 
   <div class="panel" style="background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:20px;">
-    <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); margin-bottom:12px;">Jogadores na sala (<span id="lob-count">0</span>/60)</h3>
+    <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); margin-bottom:12px;">Jogadores na sala (<span id="lob-count">0</span>)</h3>
     <div class="players-strip" id="lob-players"></div>
-    <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); margin:20px 0 0;">Escolha sua nação</h3>
+    <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); margin:20px 0 0;">Funde sua nação</h3>
     <div class="country-grid" id="lob-countries"></div>
   </div>
 
@@ -312,6 +312,8 @@
     <div class="res">🏭 <b id="m-eco">0</b></div>
     <div class="res">🪖 <b id="m-mil">0</b></div>
     <div class="res">❤️ <b id="m-aprov">50%</b></div>
+    <div class="res">👥 <b id="m-pop">0</b></div>
+    <div class="res">🌾 <b id="m-comida">0</b></div>
     <div class="spacer"></div>
     <span class="timer-big" id="g-timer">--:--</span>
     <span class="date-badge" id="g-code" title="Código da sala">----</span>
@@ -398,9 +400,11 @@
       <div class="side-tools">
         <button class="tool-btn" id="btn-snd" title="Som liga/desliga">🔊</button>
         <button class="tool-btn" id="btn-rank" title="Ranking das nações">📊</button>
+        <button class="tool-btn" id="btn-market" title="Mercado de recursos">🛒</button>
         <button class="tool-btn" id="btn-help" title="Como jogar">❓</button>
       </div>
       <div class="rank-panel hidden" id="rank-panel"></div>
+      <div class="rank-panel hidden" id="market-panel"></div>
       <div class="rank-panel hidden" id="help-panel">
         <h3>❓ Como jogar</h3>
         <div style="font-size:11.5px; line-height:1.55; color:var(--text);">
@@ -465,68 +469,204 @@
 'use strict';
 /* ================= dados compartilhados com o servidor ================= */
 const COUNTRIES = [
-  { id:'br', name:'Brasil',        flag:'🇧🇷', lat:-10, lon:-52 },
-  { id:'us', name:'Estados Unidos',flag:'🇺🇸', lat:39,  lon:-98 },
-  { id:'ru', name:'Rússia',        flag:'🇷🇺', lat:58,  lon:80  },
-  { id:'cn', name:'China',         flag:'🇨🇳', lat:35,  lon:104 },
-  { id:'de', name:'Alemanha',      flag:'🇩🇪', lat:51,  lon:10  },
-  { id:'fr', name:'França',        flag:'🇫🇷', lat:46,  lon:2   },
-  { id:'gb', name:'Reino Unido',   flag:'🇬🇧', lat:54,  lon:-2  },
-  { id:'in', name:'Índia',         flag:'🇮🇳', lat:21,  lon:78  },
-  { id:'jp', name:'Japão',         flag:'🇯🇵', lat:36,  lon:138 },
-  { id:'mx', name:'México',        flag:'🇲🇽', lat:23,  lon:-102},
-  { id:'ng', name:'Nigéria',       flag:'🇳🇬', lat:9,   lon:8   },
-  { id:'ar', name:'Argentina',     flag:'🇦🇷', lat:-34, lon:-64 },
-  { id:'ca', name:'Canadá',        flag:'🇨🇦', lat:56,  lon:-106 },
-  { id:'es', name:'Espanha',       flag:'🇪🇸', lat:40,  lon:-4 },
-  { id:'it', name:'Itália',        flag:'🇮🇹', lat:42,  lon:12 },
-  { id:'tr', name:'Turquia',       flag:'🇹🇷', lat:39,  lon:35 },
-  { id:'sa', name:'Arábia Saudita',flag:'🇸🇦', lat:24,  lon:45 },
-  { id:'ir', name:'Irã',           flag:'🇮🇷', lat:32,  lon:53 },
-  { id:'eg', name:'Egito',         flag:'🇪🇬', lat:26,  lon:30 },
-  { id:'za', name:'África do Sul', flag:'🇿🇦', lat:-29, lon:25 },
-  { id:'id', name:'Indonésia',     flag:'🇮🇩', lat:-2,  lon:118 },
-  { id:'kr', name:'Coreia do Sul', flag:'🇰🇷', lat:36,  lon:128 },
-  { id:'pk', name:'Paquistão',     flag:'🇵🇰', lat:30,  lon:69 },
-  { id:'pl', name:'Polônia',       flag:'🇵🇱', lat:52,  lon:19 },
-  { id:'ua', name:'Ucrânia',       flag:'🇺🇦', lat:49,  lon:32 },
-  { id:'se', name:'Suécia',        flag:'🇸🇪', lat:62,  lon:15 },
-  { id:'co', name:'Colômbia',      flag:'🇨🇴', lat:4,   lon:-73 },
-  { id:'cl', name:'Chile',         flag:'🇨🇱', lat:-35, lon:-71 },
-  { id:'pt', name:'Portugal',      flag:'🇵🇹', lat:39,  lon:-8 },
-  { id:'au', name:'Austrália',     flag:'🇦🇺', lat:-25, lon:134 },
-  { id:'nl', name:'Países Baixos', flag:'🇳🇱', lat:52, lon:5 },
-  { id:'be', name:'Bélgica', flag:'🇧🇪', lat:51, lon:4 },
-  { id:'no', name:'Noruega', flag:'🇳🇴', lat:61, lon:9 },
-  { id:'fi', name:'Finlândia', flag:'🇫🇮', lat:64, lon:26 },
-  { id:'dk', name:'Dinamarca', flag:'🇩🇰', lat:56, lon:10 },
-  { id:'gr', name:'Grécia', flag:'🇬🇷', lat:39, lon:22 },
-  { id:'ie', name:'Irlanda', flag:'🇮🇪', lat:53, lon:-8 },
-  { id:'cz', name:'Tchéquia', flag:'🇨🇿', lat:50, lon:15 },
-  { id:'ro', name:'Romênia', flag:'🇷🇴', lat:46, lon:25 },
-  { id:'hu', name:'Hungria', flag:'🇭🇺', lat:47, lon:19 },
-  { id:'at', name:'Áustria', flag:'🇦🇹', lat:47, lon:14 },
-  { id:'ch', name:'Suíça', flag:'🇨🇭', lat:47, lon:8 },
-  { id:'il', name:'Israel', flag:'🇮🇱', lat:31, lon:35 },
-  { id:'iq', name:'Iraque', flag:'🇮🇶', lat:33, lon:44 },
-  { id:'ma', name:'Marrocos', flag:'🇲🇦', lat:32, lon:-6 },
-  { id:'dz', name:'Argélia', flag:'🇩🇿', lat:28, lon:3 },
-  { id:'tn', name:'Tunísia', flag:'🇹🇳', lat:34, lon:9 },
-  { id:'ly', name:'Líbia', flag:'🇱🇾', lat:27, lon:17 },
-  { id:'ke', name:'Quênia', flag:'🇰🇪', lat:0, lon:38 },
-  { id:'et', name:'Etiópia', flag:'🇪🇹', lat:9, lon:39 },
-  { id:'gh', name:'Gana', flag:'🇬🇭', lat:8, lon:-1 },
-  { id:'tz', name:'Tanzânia', flag:'🇹🇿', lat:-6, lon:35 },
-  { id:'th', name:'Tailândia', flag:'🇹🇭', lat:15, lon:101 },
-  { id:'vn', name:'Vietnã', flag:'🇻🇳', lat:16, lon:107 },
-  { id:'ph', name:'Filipinas', flag:'🇵🇭', lat:13, lon:122 },
-  { id:'my', name:'Malásia', flag:'🇲🇾', lat:4, lon:109 },
-  { id:'bd', name:'Bangladesh', flag:'🇧🇩', lat:24, lon:90 },
-  { id:'kz', name:'Cazaquistão', flag:'🇰🇿', lat:48, lon:67 },
-  { id:'nz', name:'Nova Zelândia', flag:'🇳🇿', lat:-41, lon:174 },
-  { id:'np', name:'Nepal', flag:'🇳🇵', lat:28, lon:84 },
+  { id:'br Brasil', name:'', flag:'🇧🇷🆥🇇🇷🇦🇸🇮🇱', lat:-10, lon:-52 },
+  { id:'us Estados Unidos', name:'', flag:'🇺🇸🆥🇊🇸🇹🇦🇩🇴🇸🆥🇚🇳🇮🇩🇴🇸', lat:39, lon:-98 },
+  { id:'ru Rússia', name:'', flag:'🇷🇺🆥🇗🉿🇸🇸🇮🇦', lat:60, lon:90 },
+  { id:'cn China', name:'', flag:'🇨🇳🆥🇈🇭🇮🇳🇦', lat:35, lon:104 },
+  { id:'gb Reino Unido', name:'', flag:'🇬🇧🆥🇗🇪🇮🇳🇴🆥🇚🇳🇮🇩🇴', lat:53, lon:-2 },
+  { id:'fr França', name:'', flag:'🇫🇷🆥🇋🇷🇦🇳🉬🇦', lat:46, lon:2 },
+  { id:'de Alemanha', name:'', flag:'🇩🇪🆥🇆🇱🇪🇲🇦🇳🇭🇦', lat:51, lon:10 },
+  { id:'in Índia', name:'', flag:'🇮🇳🆥🉒🇳🇩🇮🇦', lat:22, lon:79 },
+  { id:'jp Japão', name:'', flag:'🇯🇵🆥🇏🇦🇵🉨🇴', lat:36, lon:138 },
+  { id:'mx México', name:'', flag:'🇲🇽🆥🇒🉮🇽🇮🇨🇴', lat:23, lon:-102 },
+  { id:'ng Nigéria', name:'', flag:'🇳🇬🆥🇓🇮🇬🉮🇷🇮🇦', lat:9, lon:8 },
+  { id:'au Austrália', name:'', flag:'🇦🇺🆥🇆🇺🇸🇹🇷🉦🇱🇮🇦', lat:-25, lon:134 },
+  { id:'ar Argentina', name:'', flag:'🇦🇷🆥🇆🇷🇬🇪🇳🇹🇮🇳🇦', lat:-34, lon:-64 },
+  { id:'ca Canadá', name:'', flag:'🇨🇦🆥🇈🇦🇳🇦🇩🉦', lat:56, lon:-106 },
+  { id:'es Espanha', name:'', flag:'🇪🇸🆥🇊🇸🇵🇦🇳🇭🇦', lat:40, lon:-4 },
+  { id:'it Itália', name:'', flag:'🇮🇹🆥🇎🇹🉦🇱🇮🇦', lat:42, lon:12 },
+  { id:'tr Turquia', name:'', flag:'🇹🇷🆥🇙🇺🇷🇶🇺🇮🇦', lat:39, lon:35 },
+  { id:'sa Arábia Saudita', name:'', flag:'🇸🇦🆥🇆🇷🉦🇧🇮🇦🆥🇘🇦🇺🇩🇮🇹🇦', lat:24, lon:45 },
+  { id:'ir Irã', name:'', flag:'🇮🇷🆥🇎🇷🉨', lat:32, lon:53 },
+  { id:'eg Egito', name:'', flag:'🇪🇬🆥🇊🇬🇮🇹🇴', lat:26, lon:30 },
+  { id:'za África do Sul', name:'', flag:'🇿🇦🆥🉆🇫🇷🇮🇨🇦🆥🇩🇴🆥🇘🇺🇱', lat:-29, lon:25 },
+  { id:'id Indonésia', name:'', flag:'🇮🇩🆥🇎🇳🇩🇴🇳🉮🇸🇮🇦', lat:-2, lon:118 },
+  { id:'kr Coreia do Sul', name:'', flag:'🇰🇷🆥🇈🇴🇷🇪🇮🇦🆥🇩🇴🆥🇘🇺🇱', lat:36, lon:128 },
+  { id:'pk Paquistão', name:'', flag:'🇵🇰🆥🇕🇦🇶🇺🇮🇸🇹🉨🇴', lat:30, lon:69 },
+  { id:'pl Polônia', name:'', flag:'🇵🇱🆥🇕🇴🇱🉹🇳🇮🇦', lat:52, lon:19 },
+  { id:'ua Ucrânia', name:'', flag:'🇺🇦🆥🇚🇨🇷🉧🇳🇮🇦', lat:49, lon:32 },
+  { id:'se Suécia', name:'', flag:'🇸🇪🆥🇘🇺🉮🇨🇮🇦', lat:62, lon:15 },
+  { id:'co Colômbia', name:'', flag:'🇨🇴🆥🇈🇴🇱🉹🇲🇧🇮🇦', lat:4, lon:-73 },
+  { id:'cl Chile', name:'', flag:'🇨🇱🆥🇈🇭🇮🇱🇪', lat:-35, lon:-71 },
+  { id:'pt Portugal', name:'', flag:'🇵🇹🆥🇕🇴🇷🇹🇺🇬🇦🇱', lat:39, lon:-8 },
+  { id:'nl Países Baixos', name:'', flag:'🇳🇱🆥🇕🇦🉲🇸🇪🇸🆥🇇🇦🇮🇽🇴🇸', lat:52, lon:5 },
+  { id:'be Bélgica', name:'', flag:'🇧🇪🆥🇇🉮🇱🇬🇮🇨🇦', lat:51, lon:4 },
+  { id:'no Noruega', name:'', flag:'🇳🇴🆥🇓🇴🇷🇺🇪🇬🇦', lat:61, lon:9 },
+  { id:'fi Finlândia', name:'', flag:'🇫🇮🆥🇋🇮🇳🇱🉧🇳🇩🇮🇦', lat:64, lon:26 },
+  { id:'dk Dinamarca', name:'', flag:'🇩🇰🆥🇉🇮🇳🇦🇲🇦🇷🇨🇦', lat:56, lon:10 },
+  { id:'gr Grécia', name:'', flag:'🇬🇷🆥🇌🇷🉮🇨🇮🇦', lat:39, lon:22 },
+  { id:'ie Irlanda', name:'', flag:'🇮🇪🆥🇎🇷🇱🇦🇳🇩🇦', lat:53, lon:-8 },
+  { id:'cz Tchéquia', name:'', flag:'🇨🇿🆥🇙🇨🇭🉮🇶🇺🇮🇦', lat:50, lon:15 },
+  { id:'ro Romênia', name:'', flag:'🇷🇴🆥🇗🇴🇲🉯🇳🇮🇦', lat:46, lon:25 },
+  { id:'hu Hungria', name:'', flag:'🇭🇺🆥🇍🇺🇳🇬🇷🇮🇦', lat:47, lon:19 },
+  { id:'at Áustria', name:'', flag:'🇦🇹🆥🉆🇺🇸🇹🇷🇮🇦', lat:47, lon:14 },
+  { id:'ch Suíça', name:'', flag:'🇨🇭🆥🇘🇺🉲🉬🇦', lat:47, lon:8 },
+  { id:'il Israel', name:'', flag:'🇮🇱🆥🇎🇸🇷🇦🇪🇱', lat:31, lon:35 },
+  { id:'iq Iraque', name:'', flag:'🇮🇶🆥🇎🇷🇦🇶🇺🇪', lat:33, lon:44 },
+  { id:'ma Marrocos', name:'', flag:'🇲🇦🆥🇒🇦🇷🇷🇴🇨🇴🇸', lat:32, lon:-6 },
+  { id:'dz Argélia', name:'', flag:'🇩🇿🆥🇆🇷🇬🉮🇱🇮🇦', lat:28, lon:3 },
+  { id:'tn Tunísia', name:'', flag:'🇹🇳🆥🇙🇺🇳🉲🇸🇮🇦', lat:34, lon:9 },
+  { id:'ly Líbia', name:'', flag:'🇱🇾🆥🇑🉲🇧🇮🇦', lat:27, lon:17 },
+  { id:'ke Quênia', name:'', flag:'🇰🇪🆥🇖🇺🉯🇳🇮🇦', lat:0, lon:38 },
+  { id:'et Etiópia', name:'', flag:'🇪🇹🆥🇊🇹🇮🉸🇵🇮🇦', lat:9, lon:39 },
+  { id:'gh Gana', name:'', flag:'🇬🇭🆥🇌🇦🇳🇦', lat:8, lon:-1 },
+  { id:'tz Tanzânia', name:'', flag:'🇹🇿🆥🇙🇦🇳🇿🉧🇳🇮🇦', lat:-6, lon:35 },
+  { id:'th Tailândia', name:'', flag:'🇹🇭🆥🇙🇦🇮🇱🉧🇳🇩🇮🇦', lat:15, lon:101 },
+  { id:'vn Vietnã', name:'', flag:'🇻🇳🆥🇛🇮🇪🇹🇳🉨', lat:16, lon:107 },
+  { id:'ph Filipinas', name:'', flag:'🇵🇭🆥🇋🇮🇱🇮🇵🇮🇳🇦🇸', lat:13, lon:122 },
+  { id:'my Malásia', name:'', flag:'🇲🇾🆥🇒🇦🇱🉦🇸🇮🇦', lat:4, lon:109 },
+  { id:'bd Bangladesh', name:'', flag:'🇧🇩🆥🇇🇦🇳🇬🇱🇦🇩🇪🇸🇭', lat:24, lon:90 },
+  { id:'kz Cazaquistão', name:'', flag:'🇰🇿🆥🇈🇦🇿🇦🇶🇺🇮🇸🇹🉨🇴', lat:48, lon:67 },
+  { id:'nz Nova Zelândia', name:'', flag:'🇳🇿🆥🇓🇴🇻🇦🆥🇟🇪🇱🉧🇳🇩🇮🇦', lat:-41, lon:174 },
+  { id:'np Nepal', name:'', flag:'🇳🇵🆥🇓🇪🇵🇦🇱', lat:28, lon:84 },
+  { id:'al Albânia', name:'', flag:'🇦🇱🆥🇆🇱🇧🉧🇳🇮🇦', lat:41.3, lon:19.8 },
+  { id:'ad Andorra', name:'', flag:'🇦🇩🆥🇆🇳🇩🇴🇷🇷🇦', lat:42.5, lon:1.5 },
+  { id:'am Armênia', name:'', flag:'🇦🇲🆥🇆🇷🇲🉯🇳🇮🇦', lat:40.2, lon:44.5 },
+  { id:'az Azerbaijão', name:'', flag:'🇦🇿🆥🇆🇿🇪🇷🇧🇦🇮🇯🉨🇴', lat:40.4, lon:49.9 },
+  { id:'by Belarus', name:'', flag:'🇧🇾🆥🇇🇪🇱🇦🇷🇺🇸', lat:53.9, lon:27.9 },
+  { id:'ba Bósnia e Herzegovina', name:'', flag:'🇧🇦🆥🇇🉸🇸🇳🇮🇦🆥🇪🆥🇍🇪🇷🇿🇪🇬🇴🇻🇮🇳🇦', lat:43.9, lon:18.4 },
+  { id:'bg Bulgária', name:'', flag:'🇧🇬🆥🇇🇺🇱🇬🉦🇷🇮🇦', lat:42.7, lon:25.5 },
+  { id:'hr Croácia', name:'', flag:'🇭🇷🆥🇈🇷🇴🉦🇨🇮🇦', lat:45.8, lon:16.0 },
+  { id:'cy Chipre', name:'', flag:'🇨🇾🆥🇈🇭🇮🇵🇷🇪', lat:35.2, lon:33.4 },
+  { id:'ee Estônia', name:'', flag:'🇪🇪🆥🇊🇸🇹🉹🇳🇮🇦', lat:58.6, lon:25.0 },
+  { id:'ge Geórgia', name:'', flag:'🇬🇪🆥🇌🇪🉸🇷🇬🇮🇦', lat:41.7, lon:44.8 },
+  { id:'is Islândia', name:'', flag:'🇮🇸🆥🇎🇸🇱🉧🇳🇩🇮🇦', lat:64.8, lon:-18.5 },
+  { id:'lv Letônia', name:'', flag:'🇱🇻🆥🇑🇪🇹🉹🇳🇮🇦', lat:56.9, lon:24.1 },
+  { id:'li Liechtenstein', name:'', flag:'🇱🇮🆥🇑🇮🇪🇨🇭🇹🇪🇳🇸🇹🇪🇮🇳', lat:47.1, lon:9.5 },
+  { id:'lt Lituânia', name:'', flag:'🇱🇹🆥🇑🇮🇹🇺🉧🇳🇮🇦', lat:55.2, lon:24.0 },
+  { id:'lu Luxemburgo', name:'', flag:'🇱🇺🆥🇑🇺🇽🇪🇲🇧🇺🇷🇬🇴', lat:49.8, lon:6.1 },
+  { id:'mt Malta', name:'', flag:'🇲🇹🆥🇒🇦🇱🇹🇦', lat:35.9, lon:14.4 },
+  { id:'md Moldávia', name:'', flag:'🇲🇩🆥🇒🇴🇱🇩🉦🇻🇮🇦', lat:47.0, lon:28.9 },
+  { id:'mc Mônaco', name:'', flag:'🇲🇨🆥🇒🉹🇳🇦🇨🇴', lat:43.7, lon:7.4 },
+  { id:'me Montenegro', name:'', flag:'🇲🇪🆥🇒🇴🇳🇹🇪🇳🇪🇬🇷🇴', lat:42.7, lon:19.3 },
+  { id:'mk Macedônia do Norte', name:'', flag:'🇲🇰🆥🇒🇦🇨🇪🇩🉹🇳🇮🇦🆥🇩🇴🆥🇓🇴🇷🇹🇪', lat:41.6, lon:21.7 },
+  { id:'sm San Marino', name:'', flag:'🇸🇲🆥🇘🇦🇳🆥🇒🇦🇷🇮🇳🇴', lat:43.9, lon:12.5 },
+  { id:'rs Sérvia', name:'', flag:'🇷🇸🆥🇘🉮🇷🇻🇮🇦', lat:44.0, lon:21.0 },
+  { id:'sk Eslováquia', name:'', flag:'🇸🇰🆥🇊🇸🇱🇴🇻🉦🇶🇺🇮🇦', lat:48.7, lon:19.5 },
+  { id:'si Eslovênia', name:'', flag:'🇸🇮🆥🇊🇸🇱🇴🇻🉯🇳🇮🇦', lat:46.1, lon:14.8 },
+  { id:'va Vaticano', name:'', flag:'🇻🇦🆥🇛🇦🇹🇮🇨🇦🇳🇴', lat:41.9, lon:12.45 },
+  { id:'xk Kosovo', name:'', flag:'🇽🇰🆥🇐🇴🇸🇴🇻🇴', lat:42.6, lon:20.9 },
+  { id:'af Afeganistão', name:'', flag:'🇦🇫🆥🇆🇫🇪🇬🇦🇳🇮🇸🇹🉨🇴', lat:33.9, lon:66.0 },
+  { id:'bh Bahrein', name:'', flag:'🇧🇭🆥🇇🇦🇭🇷🇪🇮🇳', lat:26.0, lon:50.5 },
+  { id:'bt Butão', name:'', flag:'🇧🇹🆥🇇🇺🇹🉨🇴', lat:27.5, lon:90.4 },
+  { id:'bn Brunei', name:'', flag:'🇧🇳🆥🇇🇷🇺🇳🇪🇮', lat:4.5, lon:114.7 },
+  { id:'kh Camboja', name:'', flag:'🇰🇭🆥🇈🇦🇲🇧🇴🇯🇦', lat:12.6, lon:105.0 },
+  { id:'tl Timor-Leste', name:'', flag:'🇹🇱🆥🇙🇮🇲🇴🇷🆲🇑🇪🇸🇹🇪', lat:-8.9, lon:125.7 },
+  { id:'jo Jordânia', name:'', flag:'🇯🇴🆥🇏🇴🇷🇩🉧🇳🇮🇦', lat:31.3, lon:36.5 },
+  { id:'kw Kuwait', name:'', flag:'🇰🇼🆥🇐🇺🇼🇦🇮🇹', lat:29.3, lon:47.6 },
+  { id:'kg Quirguistão', name:'', flag:'🇰🇬🆥🇖🇺🇮🇷🇬🇺🇮🇸🇹🉨🇴', lat:41.2, lon:74.8 },
+  { id:'la Laos', name:'', flag:'🇱🇦🆥🇑🇦🇴🇸', lat:19.9, lon:102.5 },
+  { id:'lb Líbano', name:'', flag:'🇱🇧🆥🇑🉲🇧🇦🇳🇴', lat:33.9, lon:35.9 },
+  { id:'mv Maldivas', name:'', flag:'🇲🇻🆥🇒🇦🇱🇩🇮🇻🇦🇸', lat:3.2, lon:73.2 },
+  { id:'mn Mongólia', name:'', flag:'🇲🇳🆥🇒🇴🇳🇬🉸🇱🇮🇦', lat:46.9, lon:103.8 },
+  { id:'mm Mianmar', name:'', flag:'🇲🇲🆥🇒🇮🇦🇳🇲🇦🇷', lat:21.9, lon:95.9 },
+  { id:'om Omã', name:'', flag:'🇴🇲🆥🇔🇲🉨', lat:21.5, lon:57.1 },
+  { id:'qa Catar', name:'', flag:'🇶🇦🆥🇈🇦🇹🇦🇷', lat:25.3, lon:51.2 },
+  { id:'sg Singapura', name:'', flag:'🇸🇬🆥🇘🇮🇳🇬🇦🇵🇺🇷🇦', lat:1.4, lon:103.8 },
+  { id:'lk Sri Lanka', name:'', flag:'🇱🇰🆥🇘🇷🇮🆥🇑🇦🇳🇰🇦', lat:7.9, lon:80.8 },
+  { id:'sy Síria', name:'', flag:'🇸🇾🆥🇘🉲🇷🇮🇦', lat:34.8, lon:38.9 },
+  { id:'tj Tajiquistão', name:'', flag:'🇹🇯🆥🇙🇦🇯🇮🇶🇺🇮🇸🇹🉨🇴', lat:38.9, lon:71.3 },
+  { id:'tm Turcomenistão', name:'', flag:'🇹🇲🆥🇙🇺🇷🇨🇴🇲🇪🇳🇮🇸🇹🉨🇴', lat:38.9, lon:59.6 },
+  { id:'ae Emirados Árabes Unidos', name:'', flag:'🇦🇪🆥🇊🇲🇮🇷🇦🇩🇴🇸🆥🉆🇷🇦🇧🇪🇸🆥🇚🇳🇮🇩🇴🇸', lat:23.9, lon:54.5 },
+  { id:'uz Uzbequistão', name:'', flag:'🇺🇿🆥🇚🇿🇧🇪🇶🇺🇮🇸🇹🉨🇴', lat:41.4, lon:64.6 },
+  { id:'ye Iêmen', name:'', flag:'🇾🇪🆥🇎🉯🇲🇪🇳', lat:15.6, lon:48.5 },
+  { id:'ps Palestina', name:'', flag:'🇵🇸🆥🇕🇦🇱🇪🇸🇹🇮🇳🇦', lat:31.9, lon:35.3 },
+  { id:'ao Angola', name:'', flag:'🇦🇴🆥🇆🇳🇬🇴🇱🇦', lat:-11.2, lon:17.9 },
+  { id:'bj Benim', name:'', flag:'🇧🇯🆥🇇🇪🇳🇮🇲', lat:9.3, lon:2.3 },
+  { id:'bw Botsuana', name:'', flag:'🇧🇼🆥🇇🇴🇹🇸🇺🇦🇳🇦', lat:-22.3, lon:24.7 },
+  { id:'bf Burkina Faso', name:'', flag:'🇧🇫🆥🇇🇺🇷🇰🇮🇳🇦🆥🇋🇦🇸🇴', lat:12.2, lon:-1.6 },
+  { id:'bi Burundi', name:'', flag:'🇧🇮🆥🇇🇺🇷🇺🇳🇩🇮', lat:-3.4, lon:29.9 },
+  { id:'cv Cabo Verde', name:'', flag:'🇨🇻🆥🇈🇦🇧🇴🆥🇛🇪🇷🇩🇪', lat:16.0, lon:-24.0 },
+  { id:'cm Camarões', name:'', flag:'🇨🇲🆥🇈🇦🇲🇦🇷🉺🇪🇸', lat:7.4, lon:12.4 },
+  { id:'cf República Centro-Africana', name:'', flag:'🇨🇫🆥🇗🇪🇵🉿🇧🇱🇮🇨🇦🆥🇈🇪🇳🇹🇷🇴🆲🇆🇫🇷🇮🇨🇦🇳🇦', lat:6.6, lon:20.9 },
+  { id:'td Chade', name:'', flag:'🇹🇩🆥🇈🇭🇦🇩🇪', lat:15.5, lon:18.7 },
+  { id:'km Comores', name:'', flag:'🇰🇲🆥🇈🇴🇲🇴🇷🇪🇸', lat:-11.9, lon:43.9 },
+  { id:'cg República do Congo', name:'', flag:'🇨🇬🆥🇗🇪🇵🉿🇧🇱🇮🇨🇦🆥🇩🇴🆥🇈🇴🇳🇬🇴', lat:-0.2, lon:15.8 },
+  { id:'cd Rep. Dem. do Congo', name:'', flag:'🇨🇩🆥🇗🇪🇵🆳🆥🇉🇪🇲🆳🆥🇩🇴🆥🇈🇴🇳🇬🇴', lat:-4.0, lon:21.8 },
+  { id:'ci Costa do Marfim', name:'', flag:'🇨🇮🆥🇈🇴🇸🇹🇦🆥🇩🇴🆥🇒🇦🇷🇫🇮🇲', lat:7.5, lon:-5.5 },
+  { id:'dj Djibuti', name:'', flag:'🇩🇯🆥🇉🇯🇮🇧🇺🇹🇮', lat:11.8, lon:42.6 },
+  { id:'gq Guiné Equatorial', name:'', flag:'🇬🇶🆥🇌🇺🇮🇳🉮🆥🇊🇶🇺🇦🇹🇴🇷🇮🇦🇱', lat:1.7, lon:10.3 },
+  { id:'er Eritreia', name:'', flag:'🇪🇷🆥🇊🇷🇮🇹🇷🇪🇮🇦', lat:15.2, lon:38.8 },
+  { id:'sz Essuatíni', name:'', flag:'🇸🇿🆥🇊🇸🇸🇺🇦🇹🉲🇳🇮', lat:-26.5, lon:31.5 },
+  { id:'ga Gabão', name:'', flag:'🇬🇦🆥🇌🇦🇧🉨🇴', lat:-0.8, lon:11.6 },
+  { id:'gm Gâmbia', name:'', flag:'🇬🇲🆥🇌🉧🇲🇧🇮🇦', lat:13.4, lon:-15.3 },
+  { id:'gn Guiné', name:'', flag:'🇬🇳🆥🇌🇺🇮🇳🉮', lat:9.9, lon:-9.7 },
+  { id:'gw Guiné-Bissau', name:'', flag:'🇬🇼🆥🇌🇺🇮🇳🉮🆲🇇🇮🇸🇸🇦🇺', lat:12.0, lon:-15.0 },
+  { id:'ls Lesoto', name:'', flag:'🇱🇸🆥🇑🇪🇸🇴🇹🇴', lat:-29.6, lon:28.2 },
+  { id:'lr Libéria', name:'', flag:'🇱🇷🆥🇑🇮🇧🉮🇷🇮🇦', lat:6.4, lon:-9.4 },
+  { id:'mg Madagascar', name:'', flag:'🇲🇬🆥🇒🇦🇩🇦🇬🇦🇸🇨🇦🇷', lat:-18.8, lon:46.9 },
+  { id:'mw Malawi', name:'', flag:'🇲🇼🆥🇒🇦🇱🇦🇼🇮', lat:-13.3, lon:34.3 },
+  { id:'ml Mali', name:'', flag:'🇲🇱🆥🇒🇦🇱🇮', lat:17.6, lon:-4.0 },
+  { id:'mr Mauritânia', name:'', flag:'🇲🇷🆥🇒🇦🇺🇷🇮🇹🉧🇳🇮🇦', lat:20.3, lon:-10.3 },
+  { id:'mu Maurício', name:'', flag:'🇲🇺🆥🇒🇦🇺🇷🉲🇨🇮🇴', lat:-20.3, lon:57.6 },
+  { id:'mz Moçambique', name:'', flag:'🇲🇿🆥🇒🇴🉬🇦🇲🇧🇮🇶🇺🇪', lat:-18.7, lon:35.5 },
+  { id:'na Namíbia', name:'', flag:'🇳🇦🆥🇓🇦🇲🉲🇧🇮🇦', lat:-22.9, lon:17.1 },
+  { id:'ne Níger', name:'', flag:'🇳🇪🆥🇓🉲🇬🇪🇷', lat:17.6, lon:8.1 },
+  { id:'rw Ruanda', name:'', flag:'🇷🇼🆥🇗🇺🇦🇳🇩🇦', lat:-2.0, lon:29.9 },
+  { id:'st São Tomé e Príncipe', name:'', flag:'🇸🇹🆥🇘🉨🇴🆥🇙🇴🇲🉮🆥🇪🆥🇕🇷🉲🇳🇨🇮🇵🇪', lat:0.2, lon:6.6 },
+  { id:'sn Senegal', name:'', flag:'🇸🇳🆥🇘🇪🇳🇪🇬🇦🇱', lat:14.5, lon:-14.5 },
+  { id:'sc Seicheles', name:'', flag:'🇸🇨🆥🇘🇪🇮🇨🇭🇪🇱🇪🇸', lat:-4.7, lon:55.5 },
+  { id:'sl Serra Leoa', name:'', flag:'🇸🇱🆥🇘🇪🇷🇷🇦🆥🇑🇪🇴🇦', lat:8.6, lon:-11.8 },
+  { id:'so Somália', name:'', flag:'🇸🇴🆥🇘🇴🇲🉦🇱🇮🇦', lat:5.2, lon:46.2 },
+  { id:'ss Sudão do Sul', name:'', flag:'🇸🇸🆥🇘🇺🇩🉨🇴🆥🇩🇴🆥🇘🇺🇱', lat:6.9, lon:31.3 },
+  { id:'sd Sudão', name:'', flag:'🇸🇩🆥🇘🇺🇩🉨🇴', lat:12.9, lon:30.2 },
+  { id:'tg Togo', name:'', flag:'🇹🇬🆥🇙🇴🇬🇴', lat:8.6, lon:0.8 },
+  { id:'ug Uganda', name:'', flag:'🇺🇬🆥🇚🇬🇦🇳🇩🇦', lat:1.4, lon:32.3 },
+  { id:'zm Zâmbia', name:'', flag:'🇿🇲🆥🇟🉧🇲🇧🇮🇦', lat:-13.1, lon:27.8 },
+  { id:'zw Zimbábue', name:'', flag:'🇿🇼🆥🇟🇮🇲🇧🉦🇧🇺🇪', lat:-19.0, lon:29.2 },
+  { id:'bs Bahamas', name:'', flag:'🇧🇸🆥🇇🇦🇭🇦🇲🇦🇸', lat:24.2, lon:-76.6 },
+  { id:'bb Barbados', name:'', flag:'🇧🇧🆥🇇🇦🇷🇧🇦🇩🇴🇸', lat:13.2, lon:-59.5 },
+  { id:'bz Belize', name:'', flag:'🇧🇿🆥🇇🇪🇱🇮🇿🇪', lat:17.2, lon:-88.5 },
+  { id:'cr Costa Rica', name:'', flag:'🇨🇷🆥🇈🇴🇸🇹🇦🆥🇗🇮🇨🇦', lat:9.7, lon:-83.8 },
+  { id:'cu Cuba', name:'', flag:'🇨🇺🆥🇈🇺🇧🇦', lat:21.5, lon:-79.0 },
+  { id:'dm Dominica', name:'', flag:'🇩🇲🆥🇉🇴🇲🇮🇳🇮🇨🇦', lat:15.4, lon:-61.4 },
+  { id:'do República Dominicana', name:'', flag:'🇩🇴🆥🇗🇪🇵🉿🇧🇱🇮🇨🇦🆥🇉🇴🇲🇮🇳🇮🇨🇦🇳🇦', lat:18.7, lon:-70.2 },
+  { id:'sv El Salvador', name:'', flag:'🇸🇻🆥🇊🇱🆥🇘🇦🇱🇻🇦🇩🇴🇷', lat:13.8, lon:-88.9 },
+  { id:'gd Granada', name:'', flag:'🇬🇩🆥🇌🇷🇦🇳🇦🇩🇦', lat:12.1, lon:-61.7 },
+  { id:'gt Guatemala', name:'', flag:'🇬🇹🆥🇌🇺🇦🇹🇪🇲🇦🇱🇦', lat:15.8, lon:-90.2 },
+  { id:'gy Guiana', name:'', flag:'🇬🇾🆥🇌🇺🇮🇦🇳🇦', lat:4.9, lon:-59.0 },
+  { id:'ht Haiti', name:'', flag:'🇭🇹🆥🇍🇦🇮🇹🇮', lat:18.9, lon:-72.3 },
+  { id:'hn Honduras', name:'', flag:'🇭🇳🆥🇍🇴🇳🇩🇺🇷🇦🇸', lat:15.2, lon:-86.5 },
+  { id:'jm Jamaica', name:'', flag:'🇯🇲🆥🇏🇦🇲🇦🇮🇨🇦', lat:18.1, lon:-77.3 },
+  { id:'ni Nicarágua', name:'', flag:'🇳🇮🆥🇓🇮🇨🇦🇷🉦🇬🇺🇦', lat:12.9, lon:-85.2 },
+  { id:'pa Panamá', name:'', flag:'🇵🇦🆥🇕🇦🇳🇦🇲🉦', lat:8.5, lon:-80.8 },
+  { id:'kn São Cristóvão e Névis', name:'', flag:'🇰🇳🆥🇘🉨🇴🆥🇈🇷🇮🇸🇹🉸🇻🉨🇴🆥🇪🆥🇓🉮🇻🇮🇸', lat:17.3, lon:-62.7 },
+  { id:'lc Santa Lúcia', name:'', flag:'🇱🇨🆥🇘🇦🇳🇹🇦🆥🇑🉿🇨🇮🇦', lat:13.9, lon:-61.0 },
+  { id:'vc São Vicente e Granadinas', name:'', flag:'🇻🇨🆥🇘🉨🇴🆥🇛🇮🇨🇪🇳🇹🇪🆥🇪🆥🇌🇷🇦🇳🇦🇩🇮🇳🇦🇸', lat:13.0, lon:-61.3 },
+  { id:'sr Suriname', name:'', flag:'🇸🇷🆥🇘🇺🇷🇮🇳🇦🇲🇪', lat:3.9, lon:-56.0 },
+  { id:'tt Trinidad e Tobago', name:'', flag:'🇹🇹🆥🇙🇷🇮🇳🇮🇩🇦🇩🆥🇪🆥🇙🇴🇧🇦🇬🇴', lat:10.7, lon:-61.2 },
+  { id:'ag Antígua e Barbuda', name:'', flag:'🇦🇬🆥🇆🇳🇹🉲🇬🇺🇦🆥🇪🆥🇇🇦🇷🇧🇺🇩🇦', lat:17.1, lon:-61.8 },
+  { id:'ve Venezuela', name:'', flag:'🇻🇪🆥🇛🇪🇳🇪🇿🇺🇪🇱🇦', lat:6.4, lon:-66.6 },
+  { id:'bo Bolívia', name:'', flag:'🇧🇴🆥🇇🇴🇱🉲🇻🇮🇦', lat:-16.3, lon:-63.6 },
+  { id:'ec Equador', name:'', flag:'🇪🇨🆥🇊🇶🇺🇦🇩🇴🇷', lat:-1.8, lon:-78.2 },
+  { id:'pe Peru', name:'', flag:'🇵🇪🆥🇕🇪🇷🇺', lat:-9.2, lon:-75.0 },
+  { id:'uy Uruguai', name:'', flag:'🇺🇾🆥🇚🇷🇺🇬🇺🇦🇮', lat:-32.5, lon:-55.8 },
+  { id:'py Paraguai', name:'', flag:'🇵🇾🆥🇕🇦🇷🇦🇬🇺🇦🇮', lat:-23.4, lon:-58.4 },
+  { id:'fj Fiji', name:'', flag:'🇫🇯🆥🇋🇮🇯🇮', lat:-17.9, lon:177.9 },
+  { id:'ki Kiribati', name:'', flag:'🇰🇮🆥🇐🇮🇷🇮🇧🇦🇹🇮', lat:1.5, lon:173.0 },
+  { id:'mh Ilhas Marshall', name:'', flag:'🇲🇭🆥🇎🇱🇭🇦🇸🆥🇒🇦🇷🇸🇭🇦🇱🇱', lat:7.1, lon:171.2 },
+  { id:'fm Micronésia', name:'', flag:'🇫🇲🆥🇒🇮🇨🇷🇴🇳🉮🇸🇮🇦', lat:6.9, lon:158.2 },
+  { id:'nr Nauru', name:'', flag:'🇳🇷🆥🇓🇦🇺🇷🇺', lat:-0.5, lon:166.9 },
+  { id:'pw Palau', name:'', flag:'🇵🇼🆥🇕🇦🇱🇦🇺', lat:7.5, lon:134.6 },
+  { id:'pg Papua-Nova Guiné', name:'', flag:'🇵🇬🆥🇕🇦🇵🇺🇦🆲🇓🇴🇻🇦🆥🇌🇺🇮🇳🉮', lat:-6.3, lon:144.0 },
+  { id:'ws Samoa', name:'', flag:'🇼🇸🆥🇘🇦🇲🇴🇦', lat:-13.8, lon:-172.1 },
+  { id:'sb Ilhas Salomão', name:'', flag:'🇸🇧🆥🇎🇱🇭🇦🇸🆥🇘🇦🇱🇴🇲🉨🇴', lat:-9.4, lon:160.2 },
+  { id:'to Tonga', name:'', flag:'🇹🇴🆥🇙🇴🇳🇬🇦', lat:-21.2, lon:-175.2 },
+  { id:'tv Tuvalu', name:'', flag:'🇹🇻🆥🇙🇺🇻🇦🇱🇺', lat:-7.5, lon:177.6 },
+  { id:'vu Vanuatu', name:'', flag:'🇻🇺🆥🇛🇦🇳🇺🇦🇹🇺', lat:-16.3, lon:167.0 },
 ];
 const CBYID = Object.fromEntries(COUNTRIES.map(c=>[c.id,c]));
+function cbid(id){ if (state && state.world){ const w = state.world.find(x=>x.id===id); if (w) return w; } return CBYID[id]; }
 const IDEOLOGIES = { democracia:'Democracia +5% renda', autoritarismo:'Autoritarismo +15% atq', comunismo:'Comunismo setores baratos', fascismo:'Fascismo recrutar barato', monarquia:'Monarquia dip barata', republica:'República tech barata' };
 const RELIGIONS = { laico:'Laico', cristao:'Cristã', muculmano:'Islâmica', budista:'Budista', hindu:'Hindu' };
 const MINISTERS = { eco:{tec:'Tecocrata +10% renda', pop:'Populista +1❤️'}, def:{fal:'Falcão +10% atq', estr:'Estrategista +10% def'}, dip:{neg:'Negociador dip -50%', inf:'Influenciador +1⚖️'} };
@@ -553,14 +693,15 @@ const PROV_POS = {
 };
 function terrFor(id){
   if (TERRITORIES[id]) return TERRITORIES[id];
-  const c = CBYID[id]; if (!c) return null;
+  const c = cbid(id); if (!c) return null;
   const q = proj(c); const pts = [];
-  for (let a=0;a<6;a++){ const ang = Math.PI/3*a - Math.PI/6; pts.push([Math.round(q.x+26*Math.cos(ang)), Math.round(q.y+20*Math.sin(ang))]); }
+  const sc = (state && state.world && state.world.length > 100) ? 0.55 : 1;
+  for (let a=0;a<6;a++){ const ang = Math.PI/3*a - Math.PI/6; pts.push([Math.round(q.x+26*sc*Math.cos(ang)), Math.round(q.y+20*sc*Math.sin(ang))]); }
   return pts;
 }
 function provSpotsFor(id){
   if (PROV_POS[id]) return PROV_POS[id];
-  const c = CBYID[id]; if (!c) return [];
+  const c = cbid(id); if (!c) return [];
   const q = proj(c); return [[q.x,q.y-10],[q.x-11,q.y+8],[q.x+11,q.y+8]];
 }
 const TERRITORIES = {
@@ -639,7 +780,7 @@ function floatAt(pid, text, color){
   const pl = state.players.find(p=>p.id===pid);
   if (!pl || !pl.country) return;
   const g = document.getElementById('map-fx'); if (!g) return;
-  const pos = proj(CBYID[pl.country]);
+  const pos = proj(cbid(pl.country) || {lat:0,lon:0});
   const t = document.createElementNS('http://www.w3.org/2000/svg','text');
   t.setAttribute('x', pos.x); t.setAttribute('y', pos.y - 22);
   t.setAttribute('text-anchor','middle'); t.setAttribute('font-size','12');
@@ -690,8 +831,8 @@ function handle(m){
 
 /* ================= render ================= */
 function me(){ return state ? state.players.find(p=>p.id===myId) : null; }
-function cflag(p){ const c = CBYID[p.country]; return c ? c.flag : '🏳️'; }
-function cname(p){ const c = CBYID[p.country]; return c ? c.flag+' '+c.name : '—'; }
+function cflag(p){ const c = cbid(p.country); return c ? c.flag : (p.customFlag || '🏳️'); }
+function cname(p){ const c = cbid(p.country); return c ? c.flag+' '+c.name : (p.customFlag||'🏳️')+' '+(p.customName||p.name); }
 function gameDate(turn){
   const d = new Date(2024, 6, 1);
   d.setMonth(d.getMonth() + Math.max(0, turn-1));
@@ -704,7 +845,7 @@ function showScreen(id){
 function render(){
   if (!state) return;
   if (state.phase === 'lobby'){ showScreen('scr-lobby'); renderLobby(); }
-  else { showScreen('scr-game'); renderGame(); renderOverlay(); }
+  else { showScreen('scr-game'); renderGame(); renderOverlay(); renderMarket(); }
 }
 
 /* ---------- lobby ---------- */
@@ -724,25 +865,34 @@ function renderLobby(){
   const strip = $('lob-players'); strip.innerHTML = '';
   state.players.forEach(p => {
     const chip = document.createElement('span'); chip.className = 'pchip';
-    chip.textContent = cflag(p) + ' ' + p.name + (p.isHost ? ' 👑' : '');
+    chip.textContent = (p.customName ? (p.customFlag||'🏳️') + ' ' + p.customName : '⏳ ' + p.name + ' (não fundou)') + (p.isHost ? ' 👑' : '');
     strip.appendChild(chip);
   });
 
   const grid = $('lob-countries'); grid.innerHTML = '';
-  const takenBy = {};
-  state.players.forEach(p => { if (p.country) takenBy[p.country] = p; });
-  COUNTRIES.forEach(c => {
-    const taken = takenBy[c.id];
-    const mine = me() && me().country === c.id;
-    const div = document.createElement('div');
-    div.className = 'c-country' + (mine ? ' mine' : '') + (taken && !mine ? ' taken' : '');
-    div.innerHTML = (PORTRAITS[c.id] ? `<img class="flimg" src="${PORTRAITS[c.id]}" alt="">` : `<div class="fl">${c.flag}</div>`) + `<div class="nm">${c.name}</div>`;
-    const who = document.createElement('div'); who.className='who';
-    who.textContent = taken ? (taken.id===myId ? '✓ você' : taken.name) : 'livre';
-    div.appendChild(who);
-    if (!taken || mine) div.onclick = () => send({t:'pick', country:c.id});
-    grid.appendChild(div);
+  const mine = me();
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'padding:14px; display:flex; flex-direction:column; gap:10px;';
+  wrap.innerHTML = '<div style="color:var(--muted); font-size:12px; line-height:1.6;">🏳️ Aqui você <b style="color:var(--gold2)">FUNDA a sua própria nação</b>. As <b>' + (state.world ? state.world.length : 195) + ' nações do mundo real</b> ficam sob controle da 🤖 IA — é vocês contra elas! Todos começam iguais: <b>$10.000</b>, <b>0 habitantes</b> e um único território escasso.</div>';
+  const inp = document.createElement('input');
+  inp.value = (mine && mine.customName) || ''; inp.placeholder = 'Nome da sua nação (ex.: Nova Aurora)'; inp.maxLength = 24;
+  inp.style.cssText = 'padding:10px; border-radius:8px; border:1px solid var(--border); background:#0c1324; color:#fff; font-size:14px;';
+  wrap.appendChild(inp);
+  const fl = document.createElement('div'); fl.style.cssText = 'display:flex; flex-wrap:wrap; gap:6px;';
+  const FLAGS = ['🏳️','🦅','🐺','🦁','🐉','🐻','⭐','☀️','🌙','🔥','❄️','🌊','⚡','🛡️','⚔️','🌹','🌻','🍀','💎','🏴','🚩','👑','🕊️','🎌'];
+  const selFlag = (mine && mine.customFlag) || '🏳️';
+  FLAGS.forEach(f => {
+    const b = document.createElement('button'); b.textContent = f;
+    b.style.cssText = 'font-size:20px; padding:4px 8px; border-radius:6px; border:1px solid ' + (f===selFlag?'var(--gold2)':'var(--border)') + '; background:' + (f===selFlag?'#243050':'#0c1324') + '; cursor:pointer;';
+    b.onclick = () => send({t:'fundar', name: inp.value || (mine?mine.name:''), flag: f});
+    fl.appendChild(b);
   });
+  wrap.appendChild(fl);
+  const fbtn = document.createElement('button'); fbtn.className = 'primary'; fbtn.textContent = '🏳️ Fundar minha nação';
+  fbtn.onclick = () => send({t:'fundar', name: inp.value || (mine?mine.name:''), flag: selFlag});
+  wrap.appendChild(fbtn);
+  if (mine && mine.customName){ const okd = document.createElement('div'); okd.style.cssText = 'color:#39d98a; font-size:13px; font-weight:700;'; okd.textContent = '✅ Nação fundada: ' + (mine.customFlag||'🏳️') + ' ' + mine.customName; wrap.appendChild(okd); }
+  grid.appendChild(wrap);
 }
 
 /* ---------- jogo / mapa ---------- */
@@ -764,6 +914,8 @@ function renderGame(){
   $('g-code').textContent = state.code;
   $('btn-endturn').classList.toggle('hidden', !m.isHost || state.phase!=='game');
   $('m-money').textContent = fmt(m.money);
+  $('m-pop').textContent = m.pop;
+  $('m-comida').textContent = m.rec ? m.rec.comida : 0;
   $('m-eco').textContent = m.eco;
   $('m-mil').textContent = m.mil;
   $('m-aprov').textContent = m.aprov + '%';
@@ -874,11 +1026,11 @@ function renderMap(){
 
   // linhas de aliança entre mim e meus aliados
   if (m && m.country){
-    const a = proj(CBYID[m.country]);
+    const a = proj(cbid(m.country) || {lat:0,lon:0});
     m.allies.forEach(aid => {
       const ally = state.players.find(p=>p.id===aid);
       if (ally && ally.country && ally.alive){
-        const b = proj(CBYID[ally.country]);
+        const b = proj(cbid(ally.country) || {lat:0,lon:0});
         const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
         ln.setAttribute('x1',a.x); ln.setAttribute('y1',a.y);
         ln.setAttribute('x2',b.x); ln.setAttribute('y2',b.y);
@@ -956,18 +1108,20 @@ function renderPanel(){
   const p = state.players.find(x=>x.id===selectedId);
   if (!p){ np.classList.add('hidden'); return; }
   np.classList.remove('hidden');
-  const c = CBYID[p.country];
+  const c = cbid(p.country) || {flag:p.customFlag||'🏳️', name:p.customName||p.name};
   if (PORTRAITS[p.country]) $('np-flag').innerHTML = `<img class="flimg" src="${PORTRAITS[p.country]}" alt="">`;
   else $('np-flag').textContent = c.flag;
   $('np-name').textContent = c.name + (p.nuclear>=3 ? ' ☢️' : '');
-  $('np-leader').textContent = p.name + (p.isHost ? ' 👑' : '') + (!p.connected ? ' 📴' : '') + (p.ideology ? ' · ' + IDEOLOGIES[p.ideology].split(' ')[0] : '');
+  $('np-leader').textContent = p.name + (p.bot ? ' · 🤖 controlado pela IA' : '') + (p.isHost ? ' 👑' : '') + (!p.connected && !p.bot ? ' 📴' : '') + (p.ideology ? ' · ' + IDEOLOGIES[p.ideology].split(' ')[0] : '');
   $('np-stats').innerHTML =
     `<div class="ms"><span>💰 Caixa</span><b>${fmt(p.money)}</b></div>` +
     `<div class="ms"><span>🏭 Economia</span><b>${p.eco}</b></div>` +
     `<div class="ms"><span>🪖 Militar</span><b>${p.mil}</b></div>` +
     `<div class="ms"><span>❤️ Aprovação</span><b>${p.aprov}%</b></div>` +
     `<div class="ms"><span>☢️ Nuclear</span><b>${p.nuclear}/5</b></div>` +
-    `<div class="ms"><span>⚖️ · 🕌</span><b>${p.influencia} · ${p.fe}</b></div>`;
+    `<div class="ms"><span>⚖️ · 🕌</span><b>${p.influencia} · ${p.fe}</b></div>` +
+    `<div class="ms"><span>👥 População</span><b>${p.pop}</b></div>` +
+    (p.rec ? `<div class="ms"><span>🌾 · ⛏️ · ⚡</span><b>${p.rec.comida} · ${p.rec.minerio} · ${p.rec.energia}</b></div>` : '');
 
   // províncias
   const provsEl = $('np-provs'); provsEl.innerHTML = '';
@@ -1169,7 +1323,7 @@ function renderRanking(){
     const div = document.createElement('div'); div.className='rank-row';
     const dot=document.createElement('span'); dot.className='dot'; dot.style.background=PALETTE[p.color%PALETTE.length];
     const rk=document.createElement('span'); rk.className='rk'; rk.textContent=(i+1)+'.';
-    const rn=document.createElement('span'); rn.className='rn'; rn.textContent=cflag(p)+' '+CBYID[p.country].name+(p.alive?'':' 💀');
+    const rn=document.createElement('span'); rn.className='rn'; rn.textContent=cflag(p)+' '+((cbid(p.country)||{}).name||p.name)+(p.bot?' 🤖':'')+(p.alive?'':' 💀');
     const rs=document.createElement('span'); rs.className='rs'; rs.textContent=`🏭${p.eco} 🪖${p.mil} ❤️${p.aprov} ☢️${p.nuclear}`;
     div.append(dot,rk,rn,rs); panel.appendChild(div);
   });
@@ -1233,9 +1387,35 @@ $('chat-send').onclick = sendChat;
 $('chat-inp').addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
 $('inp-code').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-join').click(); });
 $('inp-name').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-create').click(); });
+function renderMarket(){
+  const panel = $('market-panel');
+  if (panel.classList.contains('hidden') || !state || !state.market) return;
+  const m = me(); if (!m) return;
+  const names = { comida:'🌾 Comida', minerio:'⛏️ Minério', energia:'⚡ Energia' };
+  panel.innerHTML = '<h3>🛒 Mercado global de recursos</h3><div style="color:var(--muted);font-size:11px;margin-bottom:8px;line-height:1.5;">Os preços oscilam a cada turno. Suas províncias produzem recursos todo turno: comida alimenta a população (sem comida, ela cresce 3x mais devagar); minério e energia podem ser vendidos por lucro.</div>';
+  Object.keys(state.market).forEach(k => {
+    const row = document.createElement('div'); row.className = 'rank-row'; row.style.gap = '6px';
+    const rn = document.createElement('span'); rn.className = 'rn'; rn.textContent = names[k];
+    const rs = document.createElement('span'); rs.className = 'rs'; rs.textContent = '$' + state.market[k] + '/un · estoque: ' + (m.rec ? m.rec[k] : 0);
+    const b = document.createElement('button'); b.textContent = 'Comprar 10'; b.disabled = m.money < state.market[k]*10;
+    b.onclick = () => send({t:'action', action:'comprar', res:k, qty:10});
+    const v = document.createElement('button'); v.textContent = 'Vender 10'; v.disabled = !m.rec || m.rec[k] < 10;
+    v.onclick = () => send({t:'action', action:'vender', res:k, qty:10});
+    row.append(rn, rs, b, v); panel.appendChild(row);
+  });
+}
+$('btn-market').onclick = () => {
+  $('market-panel').classList.toggle('hidden');
+  $('rank-panel').classList.add('hidden');
+  $('help-panel').classList.add('hidden');
+  $('btn-market').classList.toggle('active', !$('market-panel').classList.contains('hidden'));
+  renderMarket();
+};
 $('btn-rank').onclick = () => {
   $('rank-panel').classList.toggle('hidden');
   $('help-panel').classList.add('hidden');
+  $('market-panel').classList.add('hidden');
+  $('btn-market').classList.remove('active');
   $('btn-rank').classList.toggle('active', !$('rank-panel').classList.contains('hidden'));
   $('btn-help').classList.remove('active');
   renderRanking();
