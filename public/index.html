@@ -110,6 +110,20 @@
   #advisor img{width:64px;height:64px;border-radius:50%;border:3px solid #d9a93c;box-shadow:0 3px 10px rgba(0,0,0,.6);background:#e8d9b0;}
   #advisor-bubble{max-width:300px;background:linear-gradient(#fdf6e3,#ecd9a8);color:#3a2f14;border:2px solid #8a6a1f;border-radius:12px;padding:8px 12px;font-size:12px;font-weight:600;box-shadow:0 3px 10px rgba(0,0,0,.5);position:relative;margin-top:8px;}
   #advisor-bubble:before{content:'';position:absolute;left:-11px;top:20px;border:6px solid transparent;border-right-color:#8a6a1f;}
+  .nation-panel{background:linear-gradient(#f6eed8,#ead9b4)!important;color:#2b2416!important;border:2px solid #8a6a1f!important;box-shadow:0 8px 30px rgba(0,0,0,.6)!important;}
+  .nation-panel .np-head .nm{color:#2b2416;} .nation-panel .np-head .nm small{color:#6b5a33;}
+  .nation-panel .ms{background:#fff8e6!important;border-color:#c9b98b!important;} .nation-panel .ms span{color:#4a3d20!important;} .nation-panel .ms b{color:#7a5a10!important;}
+  .nation-panel .xrow{background:#fff8e6;border:1px solid #d9c795;border-radius:6px;margin:3px 0;padding:4px 6px;} .nation-panel .xn{color:#2b2416;}
+  .nation-panel .np-note{color:#4a3d20;} .nation-panel button{background:linear-gradient(#fdf6e3,#e2cd96);color:#3a2a05;border:1px solid #8a6a1f;border-radius:6px;}
+  .sidebar{background:linear-gradient(#f2e8cf,#e6d5ae)!important;color:#2b2416!important;border-left:2px solid #8a6a1f!important;}
+  .sidebar h3{color:#6b5a33!important;} .sidebar .feed-item{background:#fff8e6!important;border:1px solid #d9c795!important;color:#2b2416!important;}
+  .sidebar input{background:#fff8e6!important;color:#2b2416!important;border:1px solid #b7a578!important;}
+  #np-banner{height:70px;display:flex;align-items:center;justify-content:center;font-size:50px;background:linear-gradient(120deg,#e8f0f8,#fbf7ea,#e8f0f8);border:2px solid #8a6a1f;border-radius:8px;margin-bottom:8px;overflow:hidden;}
+  #np-banner span{display:inline-block;animation:wave 2.4s ease-in-out infinite;transform-origin:bottom center;filter:drop-shadow(0 4px 6px rgba(0,0,0,.35));}
+  @keyframes wave{0%,100%{transform:rotate(-5deg) skewY(-3deg)}50%{transform:rotate(5deg) skewY(3deg)}}
+  .ugrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0;}
+  .ucard{background:#fff8e6;border:1px solid #b7a578;border-radius:6px;text-align:center;padding:6px 2px;cursor:pointer;}
+  .ucard b{font-size:17px;display:block;color:#7a5a10;} .ucard small{font-size:9px;color:#4a3d20;display:block;}
   #newspaper{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:98;display:flex;align-items:center;justify-content:center;}
   #newspaper .paper{width:min(860px,92vw);max-height:84vh;overflow:auto;background:#f3ead1;color:#2b2416;border:1px solid #b7a578;box-shadow:0 10px 40px rgba(0,0,0,.7);padding:22px 26px;font-family:Georgia,'Times New Roman',serif;}
   #newspaper h1{text-align:center;font-size:30px;letter-spacing:4px;border-bottom:3px double #2b2416;margin:0 0 6px;}
@@ -335,6 +349,8 @@
     <button id="btn-tax" title="Impostos (4 sliders, estilo MA3)">🧾</button>
     <button id="btn-stats" title="Estatísticas do país">📈</button>
     <button id="btn-miss" title="Missões do presidente">🎯</button>
+    <button id="btn-orc" title="Orçamento dos ministérios">🏛️</button>
+    <button id="btn-rel" title="Religiões do mundo">🕌</button>
     <button id="btn-speed2" title="Alternar velocidade do turno (anfitrião)">⏱️</button>
   </div>
 
@@ -411,6 +427,7 @@
       </div>
 
       <div class="nation-panel hidden" id="np">
+        <div id="np-banner"><span id="np-banner-flag">🏳️</span></div>
         <div class="np-head">
           <span class="fl" id="np-flag">🏳️</span>
           <div class="nm"><span id="np-name">—</span><small id="np-leader">—</small></div>
@@ -1141,6 +1158,7 @@ function renderPanel(){
   const c = cbid(p.country) || {flag:p.customFlag||'🏳️', name:p.customName||p.name};
   if (PORTRAITS[p.country]) $('np-flag').innerHTML = `<img class="flimg" src="${PORTRAITS[p.country]}" alt="">`;
   else $('np-flag').textContent = c.flag;
+  $('np-banner-flag').textContent = c.flag;
   $('np-name').textContent = c.name + (p.nuclear>=3 ? ' ☢️' : '');
   $('np-leader').textContent = p.name + (p.bot ? ' · 🤖 controlado pela IA' : '') + (p.isHost ? ' 👑' : '') + (!p.connected && !p.bot ? ' 📴' : '') + (p.ideology ? ' · ' + IDEOLOGIES[p.ideology].split(' ')[0] : '');
   $('np-stats').innerHTML =
@@ -1268,15 +1286,14 @@ function renderPanel(){
     });
     // forças armadas
     sub2('🎖️ Unidades (1⚡ + 4⚙️ terras raras cada)');
-    [['infantaria','Infantaria +4% def',200],['blindados','Blindados +5% atq',300],['artilharia','Artilharia +4% atq',350],['aviacao','Aviação +5% def',400],['submarinos','Submarinos +2% atq/def',450],['frota','Frota (bloqueios)',500],['porta_avioes','✈️ Porta-aviões +4% def +2% atq',700]].forEach(([k,lb,cost])=>{
-      const r=document.createElement('div'); r.className='xrow';
-      const n=document.createElement('span'); n.className='xn'; n.textContent=lb; r.appendChild(n);
-      const pp=document.createElement('span'); pp.className='pips';
-      pp.textContent='▪'.repeat(p.units[k])+'▫'.repeat(3-p.units[k]); r.appendChild(pp);
-      const b=document.createElement('button'); b.textContent='$'+cost;
-      b.disabled=p.units[k]>=3||m.ap<1||m.money<cost||((m.rec&&m.rec.terras_raras||0)<4);
+    const ug=document.createElement('div'); ug.className='ugrid'; extra.appendChild(ug);
+    [['infantaria','🪖','Infantaria',200],['blindados','🛡️','Blindados',300],['artilharia','💥','Artilharia',350],['aviacao','✈️','Aviação',400],['submarinos','🌊','Submarinos',450],['frota','⚓','Frota',500],['porta_avioes','🛳️','Porta-aviões',700]].forEach(([k,em,lb,cost])=>{
+      const r=document.createElement('div'); r.className='ucard'; r.title=lb+' — 1⚡ + 4⚙️ terras raras';
+      r.innerHTML='<span style="font-size:20px">'+em+'</span><b>'+(p.units[k]||0)+'</b><small>'+lb+' '+ '▪'.repeat(p.units[k]||0)+'▫'.repeat(3-(p.units[k]||0))+'</small>';
+      const b=document.createElement('button'); b.textContent='+ $'+cost;
+      b.disabled=(p.units[k]||0)>=3||m.ap<1||m.money<cost||((m.rec&&m.rec.terras_raras||0)<4);
       b.onclick=()=>send({t:'action',action:k}); r.appendChild(b);
-      extra.appendChild(r);
+      ug.appendChild(r);
     });
     // construções produtivas
     sub2('🏗️ Construções (1⚡) — obras avançadas exigem 🧱 concreto');
@@ -1533,6 +1550,40 @@ $('btn-rank').onclick = () => {
   $('btn-rank').classList.toggle('active', !$('rank-panel').classList.contains('hidden'));
   $('btn-help').classList.remove('active');
   renderRanking();
+};
+$('btn-orc').onclick = () => {
+  const m = me(); if (!m) return;
+  const b = m.budget || {exe:1,int:1,tra:1,edu:1,ambm:1};
+  const DEF = [['exe','⚔️ Exército','-$40/dia por nível, +segurança'],['int','🚔 Interior','+1 ❤️/turno no nível 2+'],['tra','🛣️ Transporte','+3% renda por nível'],['edu','🎓 Educação','+2% renda por nível'],['ambm','🌳 Meio Ambiente','+1 ❤️/turno no nível 2+']];
+  const ov = document.createElement('div'); ov.id='newspaper';
+  ov.innerHTML = '<div class="paper" style="width:min(560px,92vw)"><h1 style="font-size:22px">🏛️ ORÇAMENTO DOS MINISTÉRIOS</h1>'
+    + DEF.map(([k,lb,ef])=>`<div style="display:flex;align-items:center;gap:10px;margin:9px 0"><span style="width:190px;font-weight:700">${lb}</span><button data-k="${k}" data-d="-1" style="width:30px;cursor:pointer">−</button><b id="bv-${k}" style="width:20px;text-align:center">${b[k]}</b><button data-k="${k}" data-d="1" style="width:30px;cursor:pointer">+</button><small style="color:#6b5a33">${ef}</small></div>`).join('')
+    + '<div style="text-align:center;margin-top:10px"><button id="bo-ok" style="padding:6px 22px;cursor:pointer">Aplicar</button> <button id="bo-x" style="padding:6px 14px;cursor:pointer">Fechar</button></div></div>';
+  document.body.appendChild(ov);
+  ov.querySelectorAll('button[data-k]').forEach(bt => bt.onclick = () => {
+    const k = bt.dataset.k; const el = document.getElementById('bv-'+k);
+    el.textContent = Math.max(0, Math.min(3, (+el.textContent) + (+bt.dataset.d)));
+  });
+  ov.onclick = e => { if (e.target===ov || e.target.id==='bo-x') ov.remove(); };
+  ov.querySelector('#bo-ok').onclick = () => {
+    const g = k => +document.getElementById('bv-'+k).textContent;
+    send({t:'orcamento', budget:{exe:g('exe'), int:g('int'), tra:g('tra'), edu:g('edu'), ambm:g('ambm')}});
+    ov.remove();
+  };
+};
+$('btn-rel').onclick = () => {
+  if (!state) return;
+  const m = me();
+  const counts = {};
+  state.players.filter(p=>p.alive&&p.religion&&p.religion!=='laico').forEach(p=>{ counts[p.religion]=(counts[p.religion]||0)+1; });
+  const tot = Object.values(counts).reduce((a,b)=>a+b,0)||1;
+  const R = {islamismo:'🕌 Islamismo', cristianismo:'✝️ Cristianismo', budismo:'☸️ Budismo', hinduismo:'🕉️ Hinduísmo', judaismo:'✡️ Judaísmo'};
+  const ov = document.createElement('div'); ov.id='newspaper';
+  ov.innerHTML = '<div class="paper" style="width:min(560px,92vw)"><h1 style="font-size:22px">🕌 FÉ NO MUNDO</h1><div style="font-size:12px;margin:6px 0">Sua religião de Estado: <b>' + (m && m.religion!=='laico' ? (R[m.religion]||m.religion) : '️ Laico') + '</b> · hegemonia com 60 🕌</div>'
+    + Object.entries(counts).sort((a,b2)=>b2[1]-a[1]).map(([r,n])=>`<div style="margin:7px 0"><div style="display:flex;justify-content:space-between;font-size:13px"><b>${R[r]||r}</b><span>${n} nações · ${Math.round(n/tot*100)}%</span></div><div style="height:10px;background:#d9c795;border-radius:5px"><div style="height:10px;width:${Math.round(n/tot*100)}%;background:${m&&m.religion===r?'#2e7d32':'#8a6a1f'};border-radius:5px"></div></div></div>`).join('')
+    + '<div style="text-align:center;margin-top:10px"><button id="rl-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
+  document.body.appendChild(ov);
+  ov.onclick = e => { if (e.target===ov || e.target.id==='rl-x') ov.remove(); };
 };
 $('btn-tax').onclick = () => {
   const m = me(); if (!m) return;

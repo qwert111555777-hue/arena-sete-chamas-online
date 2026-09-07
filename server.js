@@ -383,7 +383,7 @@ function snapshot(room) {
       isHost: p.id === room.hostId, reason: p.eliminatedReason,
       nuclear: p.nuclear, influencia: p.influencia, fe: p.fe, wars: p.wars,
       provinces: p.provinces, sanctioning: p.sanctioning, sanctionedBy: p.sanctionedBy,
-      taxRate: p.taxRate, taxes: p.taxes || {corp:10, rend:10, prod:10, amb:5}, debt: p.debt, ideology: p.ideology, religion: p.religion,
+      taxRate: p.taxRate, taxes: p.taxes || {corp:10, rend:10, prod:10, amb:5}, budget: p.budget || {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: p.debt, ideology: p.ideology, religion: p.religion,
       ministers: p.ministers, techs: p.techs, sectors: p.sectors, space: p.space,
       relations: p.bot ? {} : p.relations, embassies: p.embassies, trades: p.trades,
       blockading: p.blockading, blockadedBy: p.blockadedBy,
@@ -410,7 +410,7 @@ function addPlayer(room, conn, name, isHost) {
     allies: [], connected: true, eliminatedReason: null,
     nuclear: 0, influencia: 0, fe: 0, provinces: [], wars: [],
     sanctioning: [], sanctionedBy: [],
-    taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, debt: 0, ideology: null, religion: 'laico',
+    taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, budget: {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: 0, ideology: null, religion: 'laico',
     customName: null, customFlag: '🏳️', bot: false, pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 0, madeira: 0, terras_raras: 12, uranio: 0 },
     xp: 0, blackout: false, depositos: [], upgrades: {}, pacts: {},
     buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0 }, famine: false,
@@ -435,7 +435,7 @@ function makeAIBot(c) {
     aprov: 50, ap: AP_PER_TURN, alive: true, allies: [], eliminatedReason: null,
     nuclear: 0, influencia: 0, fe: 0, wars: [],
     provinces: [{ name: c.name, infra: 1, owner: c.id }],
-    sanctioning: [], sanctionedBy: [], taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, debt: 0, ideology: null, religion: 'laico',
+    sanctioning: [], sanctionedBy: [], taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, budget: {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: 0, ideology: null, religion: 'laico',
     ministers: { eco: null, def: null, dip: null },
     techs: [], sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
@@ -461,7 +461,7 @@ function startGame(room) {
     p.allies = []; p.eliminatedReason = null; p.nuclear = 0; p.influencia = 0; p.fe = 0; p.wars = [];
     p.provinces = [{ name: 'Capital de ' + nat.name, infra: 1, owner: p.id }];
     p.sanctioning = []; p.sanctionedBy = [];
-    p.taxRate = 1; p.taxes = {corp:10, rend:10, prod:10, amb:5}; p.debt = 0; p.ideology = null; p.religion = 'laico';
+    p.taxRate = 1; p.taxes = {corp:10, rend:10, prod:10, amb:5}; p.budget = {exe:1, int:1, tra:1, edu:1, ambm:1}; p.debt = 0; p.ideology = null; p.religion = 'laico';
     p.ministers = { eco: null, def: null, dip: null };
     p.techs = []; p.sectors = { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 };
     p.space = 0; p.relations = {}; p.embassies = []; p.trades = []; p.blockading = []; p.blockadedBy = [];
@@ -553,6 +553,7 @@ function incomeOf(room, p) {
   if (p.techs.includes('livrecomercio')) base += 20;
   if (p.leis.includes('reforma_agraria')) base += 10;
   if (p.leis.includes('abertura_comercial')) base += 10;
+  if (p.budget){ base *= 1 + (p.budget.tra-1)*0.03 + (p.budget.edu-1)*0.02; }
   let mult = 1;
   if (p.ideology === 'democracia') mult += 0.05;
   if (p.ideology === 'comunismo') mult -= 0.10;
@@ -564,7 +565,7 @@ function incomeOf(room, p) {
   if (p.blockadedBy.length) mult *= p.units.frota >= 1 ? 0.9 : 0.75;
   if (room.turn < p.emergencyUntil) mult *= 0.8;
   base *= mult;
-  const costs = Math.round(p.mil * 2)
+  const costs = Math.round(p.mil * 2) + (p.budget ? (p.budget.exe-1)*40+(p.budget.int-1)*30+(p.budget.tra-1)*30+(p.budget.edu-1)*30+(p.budget.ambm-1)*20 : 0)
     + p.sanctionedBy.length * 50
     + p.sanctioning.length * 20
     + p.blockading.length * 15
@@ -634,6 +635,7 @@ function resolveTurn(room) {
     if (p.taxRate === 0) dAprov += 1;
     if (p.taxRate === 2) dAprov -= 2;
     if (p.taxes && p.taxes.amb >= 12) dAprov += 1;
+    if (p.budget){ if (p.budget.int>=2) dAprov += 1; if (p.budget.ambm>=2) dAprov += 1; if (p.budget.edu===0) dAprov -= 1; }
     p.aprov = Math.max(0, Math.min(100, p.aprov + dAprov));
     // fé / influência passivos
     if (p.religion && p.religion !== 'laico') p.fe += 1;
@@ -932,6 +934,12 @@ function performAction(room, p, msg) {
       const avg = (p.taxes.corp + p.taxes.rend + p.taxes.prod) / 3;
       p.taxRate = avg < 8 ? 0 : avg > 15 ? 2 : 1;
       log(room, `🧾 ${cname(p)} redefine impostos: empresas ${p.taxes.corp}%, renda ${p.taxes.rend}%, produção ${p.taxes.prod}%, ambiental ${p.taxes.amb}%.`);
+      break;
+    }
+    case 'orcamento': {
+      const b = msg.budget || {}; const cl = v => Math.max(0, Math.min(3, v|0));
+      p.budget = { exe: cl(b.exe ?? 1), int: cl(b.int ?? 1), tra: cl(b.tra ?? 1), edu: cl(b.edu ?? 1), ambm: cl(b.ambm ?? 1) };
+      log(room, `🏛️ ${cname(p)} reorganiza o orçamento dos ministérios.`);
       break;
     }
     case 'emprestimo': p.money += 600; p.debt += 720; log(room, `🏦 ${cname(p)} contrai empréstimo de $600 (dívida $${p.debt}).`); break;
