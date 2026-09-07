@@ -320,6 +320,7 @@
     <span class="date-badge" id="g-code" title="Código da sala">----</span>
     <button id="btn-endturn" title="Encerrar turno agora (só o anfitrião)">⏭</button>
     <button id="btn-pause" title="Pausar/retomar (anfitrião)">⏸️</button>
+    <button id="btn-rank" title="Ranking mundial (renda, militar, população, indústria)">📊</button>
     <button id="btn-speed2" title="Alternar velocidade do turno (anfitrião)">⏱️</button>
   </div>
 
@@ -1357,6 +1358,7 @@ function renderPanel(){
     acts.appendChild(mkBtn('🇺🇳','Propor resolução contra (1⚡, $300)', ()=>send({t:'action',action:'propor_resolucao',target:p.id}), m.ap<1||m.money<300||!!state.un));
     acts.appendChild(mkBtn('⚖️','Espalhar ideologia (1⚡, $300)', ()=>send({t:'action',action:'espalhar_ideologia',target:p.id}), m.ap<1||m.money<300||!m.ideology));
     acts.appendChild(mkBtn('🛐','Espalhar religião (1⚡, $300)', ()=>send({t:'action',action:'espalhar_religiao',target:p.id}), m.ap<1||m.money<300||!m.religion||m.religion==='laico'));
+    if (p.bot) acts.appendChild(mkBtn('🏴','Exigir ANEXAÇÃO pacífica (2⚡, $300, rel. 60+)', ()=>send({t:'action',action:'anexar',target:p.id}), m.ap<2||m.money<300||atWar||rel<60));
     // relação bilateral
     const rel = m.relations[p.id] != null ? m.relations[p.id] : 50;
     note.textContent = `📈 Relação bilateral: ${rel}/100` + (ally?' · 🤝 aliados':'') + (atWar?' · ⚔️ EM GUERRA':'') + ((m.pacts&&m.pacts[p.id]>state.turn)?' · ✍️ pacto de não-agressão':'') + (state.turn < p.emergencyUntil?' · 🆘 em emergência':'');
@@ -1433,6 +1435,28 @@ $('btn-speed').onclick = () => send({t:'velocidade', speed: (state.speed===45) ?
 $('btn-start').onclick = () => send({t:'start'});
 $('btn-endturn').onclick = () => send({t:'fim_turno'});
 $('btn-pause').onclick = () => send({t:'pausar'});
+$('btn-rank').onclick = () => {
+  if (!state || state.phase !== 'game') return;
+  const ps = state.players.filter(p => p.alive);
+  const renda = p => p.eco*10 + Math.floor(p.pop/8) + (p.buildings.petroleo||0)*15 + (p.buildings.mina_ouro||0)*25 + (p.buildings.estrada||0)*5 + p.trades.length*20;
+  const poder = p => p.mil*10 + Object.values(p.units).reduce((a,b)=>a+b,0)*15 + p.nuclear*20;
+  const inds  = p => Object.values(p.buildings).reduce((a,b)=>a+b,0) + p.eco;
+  const cats = [['💰 Renda', renda, v=>'$'+v], ['⚔️ Poder militar', poder, v=>v], ['👥 População', p=>p.pop, v=>v], ['🏭 Indústria', inds, v=>v]];
+  let html = '<h3 style="margin-top:0">📊 Ranking Mundial</h3>';
+  cats.forEach(([nm, fn, fm]) => {
+    const top = ps.slice().sort((a,b)=>fn(b)-fn(a)).slice(0,8);
+    html += '<div style="margin:8px 0"><b>'+nm+'</b><ol style="margin:4px 0 0 18px;padding:0">';
+    top.forEach(p => { html += '<li'+(p.id===myId?' style="color:#ffd76a;font-weight:bold"':'')+'>'+cname(p)+' — '+fm(fn(p))+'</li>'; });
+    html += '</ol></div>';
+  });
+  html += '<button id="rank-close" style="margin-top:6px">Fechar</button>';
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99;display:flex;align-items:center;justify-content:center';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#101826;border:1px solid #2c3e5d;border-radius:10px;padding:16px;max-width:420px;max-height:80vh;overflow:auto;color:#dfe8f5';
+  box.innerHTML = html; ov.appendChild(box); document.body.appendChild(ov);
+  ov.onclick = e => { if (e.target === ov || e.target.id === 'rank-close') ov.remove(); };
+};
 $('btn-speed2').onclick = () => send({t:'velocidade', speed: state.speed === 15 ? 45 : 15});
 document.querySelectorAll('.round-btn').forEach(b => b.onclick = () => { sfx('click'); send({t:'action', action:b.dataset.act}); });
 $('btn-snd').onclick = () => { muted = !muted; $('btn-snd').textContent = muted ? '🔇' : '🔊'; $('btn-snd').classList.toggle('active', !muted); };

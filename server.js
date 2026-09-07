@@ -1193,6 +1193,30 @@ function performAction(room, p, msg) {
       log(room, `🏋️ ${cname(p)} treina suas forças armadas (poder militar +1).`);
       break;
     }
+    case 'anexar': {
+      if (!target || target === p || !target.alive) return;
+      if (!target.bot) { err(p.conn, 'Só é possível exigir anexação de nações controladas pela IA.'); return; }
+      if (p.wars.includes(target.id)) { err(p.conn, 'Em guerra, a anexação vem pela conquista militar.'); return; }
+      const rel = relBetween(p, target);
+      if (rel < 60) { err(p.conn, 'Relações muito baixas (mínimo 60) para exigir anexação.'); return; }
+      if (!spend(p, 2, 300)) return;
+      let prob = 0.3 + (rel - 60) * 0.02;
+      if (p.religion !== 'laico' && p.religion === target.religion) prob += 0.15;
+      if (p.ideology && p.ideology === target.ideology) prob += 0.15;
+      if (p.mil >= target.mil * 2) prob += 0.2;
+      if (rel >= 85) prob = 1;
+      if (Math.random() < Math.min(0.95, prob)) {
+        for (const pr of target.provinces) pr.owner = p.id;
+        p.provinces = p.provinces.concat(target.provinces); target.provinces = [];
+        target.alive = false; target.eliminatedReason = `Anexada por acordo diplomático por ${cname(p)}`;
+        p.xp += 15;
+        log(room, `🏴 ${cname(p)} ANEXOU ${cname(target)} por acordo diplomático! O território foi incorporado pacificamente.`);
+      } else {
+        bumpRel(p, target, -10);
+        log(room, `🏴❌ ${cname(target)} RECUSOU a anexação exigida por ${cname(p)} (-10 relações).`);
+      }
+      break;
+    }
     case 'pacto': {
       if (!target || target === p || !target.alive) return;
       if (p.wars.includes(target.id)) { err(p.conn, 'Impossível assinar pacto em meio à guerra.'); return; }
