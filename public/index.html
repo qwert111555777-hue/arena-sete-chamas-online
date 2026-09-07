@@ -139,6 +139,13 @@
   .np-provs .prov button{padding:2px 7px; font-size:12px; border-radius:6px;}
   .np-provs .prov .owner{font-size:10px; color:var(--muted);}
   .np-sub{font-size:10px; text-transform:uppercase; letter-spacing:1.2px; color:var(--muted); margin:8px 0 6px;}
+  .nation-panel{max-height:82%; overflow-y:auto;}
+  .chip{padding:4px 8px; font-size:10.5px; border-radius:99px; margin:0 4px 4px 0;}
+  .chip.on{border-color:var(--gold); background:#241f0a; color:var(--gold2);}
+  .xrow{display:flex; align-items:center; gap:6px; font-size:11px; background:#0c1324; border:1px solid #1a2440; border-radius:8px; padding:5px 8px; margin-bottom:5px;}
+  .xrow .xn{flex:1;}
+  .xrow button{padding:2px 8px; font-size:11px; border-radius:6px;}
+  .xrow .pips{letter-spacing:1px; color:var(--gold2);}
 
   /* barra circular inferior (estilo MA3) */
   .bottom-bar{
@@ -417,6 +424,7 @@
         <div class="np-provs" id="np-provs"></div>
         <div class="np-actions" id="np-actions"></div>
         <div class="np-note" id="np-note"></div>
+        <div id="np-extra"></div>
       </div>
 
       <div class="bottom-bar">
@@ -471,6 +479,12 @@ const COUNTRIES = [
   { id:'au', name:'Austrália',     flag:'🇦🇺', lat:-25, lon:134 },
 ];
 const CBYID = Object.fromEntries(COUNTRIES.map(c=>[c.id,c]));
+const IDEOLOGIES = { democracia:'Democracia +5% renda', autoritarismo:'Autoritarismo +15% atq', comunismo:'Comunismo setores baratos', fascismo:'Fascismo recrutar barato', monarquia:'Monarquia dip barata', republica:'República tech barata' };
+const RELIGIONS = { laico:'Laico', cristao:'Cristã', muculmano:'Islâmica', budista:'Budista', hindu:'Hindu' };
+const MINISTERS = { eco:{tec:'Tecocrata +10% renda', pop:'Populista +1❤️'}, def:{fal:'Falcão +10% atq', estr:'Estrategista +10% def'}, dip:{neg:'Negociador dip -50%', inf:'Influenciador +1⚖️'} };
+const TECHS = { livrecomercio:['Livre Comércio',500], automacao:['Automação',600], exercito:['Exército Prof.',600], antiaerea:['Def. Antiaérea',600], bemestar:['Bem-Estar',500], midia:['Mídia Global',500] };
+const SECTORS_UI = [['educacao','Educação'],['saude','Saúde'],['cultura','Cultura'],['esportes','Esportes'],['habitacao','Habitação'],['justica','Justiça']];
+const SPACE_COSTS = [500,800,1200];
 const PORTRAITS = { br:'portraits/br.jpg', us:'portraits/us.jpg', ru:'portraits/ru.jpg', cn:'portraits/cn.jpg', gb:'portraits/gb.jpg', fr:'portraits/fr.jpg', de:'portraits/de.jpg', in:'portraits/in.jpg', jp:'portraits/jp.jpg', mx:'portraits/mx.jpg', ng:'portraits/ng.jpg', au:'portraits/au.jpg' };
 const proj = c => ({ x:(c.lon+180)/360*1000, y:(90-c.lat)/180*520 });
 const PALETTE = ['#e8b93c','#4da3ff','#ff5c5c','#39d98a','#c77dff','#ff9f43','#4dd0e1','#f06292','#aed581','#ffd54f','#90a4ae','#ba68c8'];
@@ -707,17 +721,28 @@ function renderGame(){
   state.proposals.filter(pr => pr.to === myId).forEach(pr => {
     const from = state.players.find(p=>p.id===pr.from);
     if (!from) return;
-    const isPaz = pr.kind === 'paz';
+    const K = { paz:['🕊️','propôs um tratado de PAZ','resp_paz'], comercial:['💼','propôs um ACORDO COMERCIAL','resp_comercial'], alianca:['🤝','propôs aliança','resp_alianca'] }[pr.kind||'alianca'];
     const div = document.createElement('div'); div.className = 'propose';
     const txt = document.createElement('span');
-    txt.textContent = isPaz ? `🕊️ ${cname(from)} propôs um tratado de PAZ` : `🤝 ${cname(from)} propôs aliança`;
+    txt.textContent = `${K[0]} ${cname(from)} ${K[1]}`;
     const ok = document.createElement('button'); ok.className='primary'; ok.textContent='Aceitar';
-    ok.onclick = () => send({t: isPaz?'resp_paz':'resp_alianca', from:pr.from, accept:true});
+    ok.onclick = () => send({t:K[2], from:pr.from, accept:true});
     const no = document.createElement('button'); no.textContent='Recusar';
-    no.onclick = () => send({t: isPaz?'resp_paz':'resp_alianca', from:pr.from, accept:false});
+    no.onclick = () => send({t:K[2], from:pr.from, accept:false});
     div.appendChild(txt); div.appendChild(ok); div.appendChild(no);
     bar.appendChild(div);
   });
+
+  if (state.un && m.alive && state.un.votes[myId] == null){
+    const div = document.createElement('div'); div.className = 'propose';
+    const txt = document.createElement('span'); txt.textContent = '🇺 ONU: ' + state.un.desc;
+    const sim = document.createElement('button'); sim.className='primary'; sim.textContent='A favor';
+    sim.onclick = () => send({t:'voto_un', accept:true});
+    const nao = document.createElement('button'); nao.textContent='Contra';
+    nao.onclick = () => send({t:'voto_un', accept:false});
+    div.appendChild(txt); div.appendChild(sim); div.appendChild(nao);
+    bar.appendChild(div);
+  }
 
   renderMap();
   renderPanel();
@@ -863,7 +888,7 @@ function renderPanel(){
   if (PORTRAITS[p.country]) $('np-flag').innerHTML = `<img class="flimg" src="${PORTRAITS[p.country]}" alt="">`;
   else $('np-flag').textContent = c.flag;
   $('np-name').textContent = c.name + (p.nuclear>=3 ? ' ☢️' : '');
-  $('np-leader').textContent = p.name + (p.isHost ? ' 👑' : '') + (!p.connected ? ' 📴' : '');
+  $('np-leader').textContent = p.name + (p.isHost ? ' 👑' : '') + (!p.connected ? ' 📴' : '') + (p.ideology ? ' · ' + IDEOLOGIES[p.ideology].split(' ')[0] : '');
   $('np-stats').innerHTML =
     `<div class="ms"><span>💰 Caixa</span><b>${fmt(p.money)}</b></div>` +
     `<div class="ms"><span>🏭 Economia</span><b>${p.eco}</b></div>` +
@@ -872,29 +897,28 @@ function renderPanel(){
     `<div class="ms"><span>☢️ Nuclear</span><b>${p.nuclear}/5</b></div>` +
     `<div class="ms"><span>⚖️ · 🕌</span><b>${p.influencia} · ${p.fe}</b></div>`;
 
-  // províncias (de qualquer país selecionado)
+  // províncias
   const provsEl = $('np-provs'); provsEl.innerHTML = '';
   const sub = document.createElement('div'); sub.className='np-sub';
-  sub.textContent = p.id===myId ? '🗺️ Suas províncias (🏗️ = +1 infra, $200 · 1⚡)' : '🗺️ Províncias';
+  sub.textContent = p.id===myId ? '🗺️ Suas províncias (🏗️ $200 · 1⚡)' : '🗺️ Províncias';
   provsEl.appendChild(sub);
-  p.provinces.forEach((pr, i) => {
+  p.provinces.forEach((prv, i) => {
     const row = document.createElement('div'); row.className='prov';
-    const name = document.createElement('span'); name.className='pname';
-    name.textContent = pr.name;
+    const name = document.createElement('span'); name.className='pname'; name.textContent = prv.name;
     row.appendChild(name);
-    if (pr.owner !== p.id){
-      const ow = state.players.find(x=>x.id===pr.owner);
+    if (prv.owner !== p.id){
+      const ow = state.players.find(x=>x.id===prv.owner);
       const o = document.createElement('span'); o.className='owner';
       o.textContent = '⤷ ' + (ow ? CBYID[ow.country].flag : '❓') + ' ocupada';
       row.appendChild(o);
     }
     const pips = document.createElement('span'); pips.className='pips';
-    pips.textContent = '▪'.repeat(pr.infra) + '▫'.repeat(Math.max(0,5-pr.infra));
+    pips.textContent = '▪'.repeat(prv.infra) + '▫'.repeat(Math.max(0,5-prv.infra));
     row.appendChild(pips);
     if (p.id === myId && m && m.alive && state.phase==='game'){
       const b = document.createElement('button');
-      b.textContent = '🏗️'; b.title = 'Desenvolver ' + pr.name + ' (+1 infra)';
-      b.disabled = pr.infra>=5 || pr.owner!==myId || m.ap<1 || m.money<200;
+      b.textContent = '🏗️'; b.title = 'Desenvolver ' + prv.name;
+      b.disabled = prv.infra>=5 || prv.owner!==myId || m.ap<1 || m.money<200;
       b.onclick = () => send({t:'action', action:'infra', prov:i});
       row.appendChild(b);
     }
@@ -903,33 +927,112 @@ function renderPanel(){
 
   const acts = $('np-actions'); acts.innerHTML = '';
   const note = $('np-note'); note.textContent = '';
+  const extra = $('np-extra'); extra.innerHTML = '';
   const canAct = m && m.alive && state.phase === 'game' && p.alive;
-  if (p.id === myId){
-    note.textContent = '🫵 Sua nação — ações internas nos botões redondos abaixo.';
+  const mkBtn = (emoji, title, fn, dis) => { const b = document.createElement('button'); b.textContent = emoji; b.title = title; b.disabled = !!dis; b.onclick = fn; return b; };
+
+  if (p.id === myId && canAct){
+    note.textContent = '🫵 Sua nação — ações internas nos botões redondos e abaixo.';
+    const sub2 = t => { const d=document.createElement('div'); d.className='np-sub'; d.textContent=t; extra.appendChild(d); };
+    // economia: impostos + dívida
+    sub2('🧾 Impostos · 🏦 Dívida ' + fmt(p.debt));
+    const r1 = document.createElement('div'); r1.className='xrow';
+    ['Baixa','Média','Alta'].forEach((lb,i)=>{
+      const b=document.createElement('button'); b.textContent=lb;
+      b.className = p.taxRate===i ? 'on' : ''; if (p.taxRate===i) b.style.borderColor='var(--gold)';
+      b.onclick=()=>send({t:'action',action:'imposto',value:i}); r1.appendChild(b);
+    });
+    const bEmp=document.createElement('button'); bEmp.textContent='+$600'; bEmp.title='Contrair empréstimo (devolve $720)';
+    bEmp.onclick=()=>send({t:'action',action:'emprestimo'}); r1.appendChild(bEmp);
+    const bPag=document.createElement('button'); bPag.textContent='Pagar'; bPag.disabled=p.debt<=0||p.money<=0;
+    bPag.onclick=()=>send({t:'action',action:'pagar'}); r1.appendChild(bPag);
+    extra.appendChild(r1);
+    // ideologia
+    sub2('⚖️ Ideologia de Estado');
+    const r2=document.createElement('div'); r2.className='xrow';
+    Object.keys(IDEOLOGIES).forEach(k=>{
+      const b=document.createElement('button'); b.className='chip'+(p.ideology===k?' on':'');
+      b.textContent=IDEOLOGIES[k].split(' ')[0]; b.title=IDEOLOGIES[k];
+      b.onclick=()=>send({t:'action',action:'ideologia',value:k}); r2.appendChild(b);
+    });
+    extra.appendChild(r2);
+    // religião
+    sub2('🛐 Religião de Estado (+1 fé/turno, exceto laico)');
+    const r3=document.createElement('div'); r3.className='xrow';
+    Object.keys(RELIGIONS).forEach(k=>{
+      const b=document.createElement('button'); b.className='chip'+(p.religion===k?' on':'');
+      b.textContent=RELIGIONS[k];
+      b.onclick=()=>send({t:'action',action:'religiao',value:k}); r3.appendChild(b);
+    });
+    extra.appendChild(r3);
+    // ministros
+    sub2('💼 Gabinete ($100 · 1⚡)');
+    Object.keys(MINISTERS).forEach(post=>{
+      const r=document.createElement('div'); r.className='xrow';
+      const n=document.createElement('span'); n.className='xn';
+      n.textContent = post==='eco'?'Economia':post==='def'?'Defesa':'Diplomacia';
+      r.appendChild(n);
+      Object.keys(MINISTERS[post]).forEach(v=>{
+        const b=document.createElement('button'); b.className='chip'+(p.ministers[post]===v?' on':'');
+        b.textContent=MINISTERS[post][v].split(' ')[0]; b.title=MINISTERS[post][v];
+        b.onclick=()=>send({t:'action',action:'ministro',post,value:v}); r.appendChild(b);
+      });
+      extra.appendChild(r);
+    });
+    // tecnologias
+    sub2('🔬 Tecnologias (1⚡)');
+    Object.keys(TECHS).forEach(k=>{
+      const r=document.createElement('div'); r.className='xrow';
+      const n=document.createElement('span'); n.className='xn';
+      n.textContent = TECHS[k][0] + (p.techs.includes(k)?' ✅':'');
+      r.appendChild(n);
+      const b=document.createElement('button'); b.textContent='$'+TECHS[k][1];
+      b.disabled = p.techs.includes(k)||m.ap<1||m.money<TECHS[k][1];
+      b.onclick=()=>send({t:'action',action:'tech',value:k}); r.appendChild(b);
+      extra.appendChild(r);
+    });
+    // setores
+    sub2('🏙️ Setores sociais (1⚡ · $150)');
+    SECTORS_UI.forEach(([k,nm])=>{
+      const r=document.createElement('div'); r.className='xrow';
+      const n=document.createElement('span'); n.className='xn'; n.textContent=nm; r.appendChild(n);
+      const pp=document.createElement('span'); pp.className='pips';
+      pp.textContent='▪'.repeat(p.sectors[k])+'▫'.repeat(5-p.sectors[k]); r.appendChild(pp);
+      const b=document.createElement('button'); b.textContent='+';
+      b.disabled=p.sectors[k]>=5||m.ap<1||m.money<150;
+      b.onclick=()=>send({t:'action',action:'setor',value:k}); r.appendChild(b);
+      extra.appendChild(r);
+    });
+    // espaço
+    sub2('🚀 Programa espacial (2⚡)');
+    const r4=document.createElement('div'); r4.className='xrow';
+    const n4=document.createElement('span'); n4.className='xn';
+    n4.textContent = p.space>=3 ? 'CONCLUÍDO 🌙 (+$30/turno)' : 'Nível ' + p.space + '/3';
+    r4.appendChild(n4);
+    const b4=document.createElement('button'); b4.textContent = p.space>=3?'—':'$'+SPACE_COSTS[p.space];
+    b4.disabled=p.space>=3||m.ap<2||m.money<SPACE_COSTS[p.space];
+    b4.onclick=()=>send({t:'action',action:'espacial'}); r4.appendChild(b4);
+    extra.appendChild(r4);
   } else if (!p.alive){
     note.textContent = '☠️ ' + (p.reason || 'Eliminado');
   } else if (canAct){
     const ally = m.allies.includes(p.id);
-    const pending = state.proposals.some(pr => pr.from===myId && pr.to===p.id);
-    const sancAtiva = m.sanctioning.includes(p.id);
-    const mkBtn = (emoji, title, fn, dis) => {
-      const b = document.createElement('button');
-      b.textContent = emoji; b.title = title; b.disabled = !!dis; b.onclick = fn;
-      return b;
-    };
     const atWar = m.wars.includes(p.id);
-    acts.appendChild(mkBtn('🕵️','Espionar ($100 · 1⚡)', ()=>send({t:'action',action:'espionar',target:p.id}), m.ap<1||m.money<100));
+    const pending = state.proposals.some(pr => pr.from===myId && pr.to===p.id);
+    acts.appendChild(mkBtn('🕵️','Espionar (1⚡)', ()=>send({t:'action',action:'espionar',target:p.id}), m.ap<1));
     acts.appendChild(mkBtn('⚠️','Declarar GUERRA (1⚡)', ()=>send({t:'action',action:'guerra',target:p.id}), m.ap<1||atWar||ally));
-    acts.appendChild(mkBtn('⚔️','Atacar — ocupa 1 província (2⚡, requer guerra)', ()=>send({t:'action',action:'atacar',target:p.id}), m.ap<2||ally||!atWar));
-    acts.appendChild(mkBtn('☢️','Lançar míssil nuclear (3⚡, nível 3+ e guerra)', ()=>send({t:'action',action:'nuke',target:p.id}), m.ap<3||m.nuclear<3||ally||!atWar));
-    acts.appendChild(mkBtn('🕊️','Propor tratado de PAZ', ()=>send({t:'action',action:'paz',target:p.id}), !atWar));
-    acts.appendChild(mkBtn('🧨','Sabotagem — destrói infraestrutura (1⚡, $150)', ()=>send({t:'action',action:'sabotagem',target:p.id}), m.ap<1||m.money<150));
-    acts.appendChild(mkBtn(sancAtiva?'🕊️':'🚫', sancAtiva?'SUSPENDER sanções':'Impor SANÇÕES econômicas (1⚡)', ()=>send({t:'action',action:'sancao',target:p.id}), !sancAtiva && (m.ap<1||m.sanctioning.length>=3)));
-    acts.appendChild(mkBtn('💸','Ajudar $200 (+2 ❤️ ambos, 1⚡)', ()=>send({t:'action',action:'ajudar',target:p.id}), m.ap<1||m.money<200));
+    acts.appendChild(mkBtn('⚔️','Atacar (2⚡, requer guerra)', ()=>send({t:'action',action:'atacar',target:p.id}), m.ap<2||ally||!atWar));
+    acts.appendChild(mkBtn('☢️','Míssil nuclear (3⚡, nível 3+ e guerra)', ()=>send({t:'action',action:'nuke',target:p.id}), m.ap<3||m.nuclear<3||ally||!atWar));
+    acts.appendChild(mkBtn('⛴️', m.blockading.includes(p.id)?'Suspender BLOQUEIO naval':'Impor BLOQUEIO naval (1⚡, requer guerra)', ()=>send({t:'action',action:'bloqueio',target:p.id}), !atWar||m.ap<1));
+    acts.appendChild(mkBtn('🕊️','Propor PAZ', ()=>send({t:'action',action:'paz',target:p.id}), !atWar));
     acts.appendChild(mkBtn('🤝','Propor aliança', ()=>send({t:'action',action:'alianca',target:p.id}), ally||pending||m.allies.length>=3));
-    if (ally) note.textContent = '🤝 Nações aliadas — não podem se atacar.';
-    else if (atWar) note.textContent = '⚔️ EM GUERRA — ataques e mísseis liberados; proponha 🕊️ para negociar.';
-    else if (pending) note.textContent = '⏳ Proposta de aliança aguardando resposta…';
+    acts.appendChild(mkBtn('💼', m.trades.includes(p.id)?'Acordo comercial ativo':'Propor ACORDO COMERCIAL', ()=>send({t:'action',action:'comercial',target:p.id}), m.trades.includes(p.id)||atWar));
+    acts.appendChild(mkBtn('🏛️', m.embassies.includes(p.id)?'Embaixada aberta':'Abrir EMBAIXADA (1⚡)', ()=>send({t:'action',action:'embaixada',target:p.id}), m.embassies.includes(p.id)||m.ap<1));
+    acts.appendChild(mkBtn('🚫', m.sanctioning.includes(p.id)?'Suspender sanções':'Impor SANÇÕES (1⚡)', ()=>send({t:'action',action:'sancao',target:p.id}), !m.sanctioning.includes(p.id)&&(m.ap<1||m.sanctioning.length>=3)));
+    acts.appendChild(mkBtn('💸','Ajudar $200 (+relações)', ()=>send({t:'action',action:'ajudar',target:p.id}), m.ap<1||m.money<200));
+    // relação bilateral
+    const rel = m.relations[p.id] != null ? m.relations[p.id] : 50;
+    note.textContent = `📈 Relação bilateral: ${rel}/100` + (ally?' · 🤝 aliados':'') + (atWar?' · ⚔️ EM GUERRA':'');
   }
   if (p.alive && p.sanctionedBy.length){
     const names = p.sanctionedBy.map(id => { const x = state.players.find(q=>q.id===id); return x ? x.name : '?'; }).join(', ');
