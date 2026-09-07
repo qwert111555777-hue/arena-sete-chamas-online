@@ -160,6 +160,29 @@
     padding:8px 14px; font-size:15px; letter-spacing:3px; color:var(--gold2); align-self:center;
   }
 
+  .side-tools{position:absolute; right:10px; top:10px; display:flex; flex-direction:column; gap:8px; z-index:4;}
+  .tool-btn{
+    width:42px; height:42px; border-radius:10px; border:1px solid var(--border);
+    background:rgba(14,21,38,.92); font-size:18px; padding:0;
+    box-shadow:0 6px 16px rgba(0,0,0,.45);
+  }
+  .tool-btn:hover{border-color:var(--gold);}
+  .tool-btn.active{border-color:var(--gold); background:#241f0a;}
+  .rank-panel{
+    position:absolute; right:10px; top:60px; width:290px; max-height:70%;
+    overflow-y:auto; background:rgba(14,21,38,.96); border:1px solid var(--border);
+    border-radius:12px; padding:12px; z-index:5; box-shadow:0 12px 32px rgba(0,0,0,.5);
+  }
+  .rank-panel h3{font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); margin-bottom:10px;}
+  .rank-row{
+    display:flex; align-items:center; gap:7px; font-size:12px;
+    background:#0c1324; border:1px solid #1a2440; border-radius:8px; padding:6px 8px; margin-bottom:5px;
+  }
+  .rank-row .dot{width:10px; height:10px; border-radius:3px; flex:none;}
+  .rank-row .rk{width:16px; color:var(--muted); font-weight:700; flex:none;}
+  .rank-row .rn{flex:1; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .rank-row .rs{color:var(--muted); font-size:10.5px; white-space:nowrap;}
+
   /* barra lateral feed/chat */
   .sidebar{
     width:300px; background:var(--panel); border-left:1px solid var(--border);
@@ -327,11 +350,31 @@
           <!-- Nova Zelândia -->
           <path d="M942,384 Q950,378 956,386 Q954,396 946,400 Q940,394 942,384 Z"/>
         </g>
+        <g id="map-terr"></g>
         <g id="map-lines"></g>
         <g id="map-markers"></g>
       </svg>
 
       <div id="propose-bar"></div>
+
+      <div class="side-tools">
+        <button class="tool-btn" id="btn-rank" title="Ranking das nações">📊</button>
+        <button class="tool-btn" id="btn-help" title="Como jogar">❓</button>
+      </div>
+      <div class="rank-panel hidden" id="rank-panel"></div>
+      <div class="rank-panel hidden" id="help-panel">
+        <h3>❓ Como jogar</h3>
+        <div style="font-size:11.5px; line-height:1.55; color:var(--text);">
+          🎯 <b>Vitórias:</b> conquista (última nação / todas as províncias), econômica (🏭 60+), ideológica (⚖️ 60+) ou religiosa (🕌 60+).<br>
+          ⚡ 4 pontos de ação por turno · turnos de 45s (1 mês no calendário).<br>
+          ❤️ Aprovação ≤ 5% = deposto pelo povo.<br>
+          🏗️ Províncias geram $6/turno por ponto de infra; vencer guerras ocupa províncias.<br>
+          ☢️ Nível nuclear 3+ libera míssil (3⚡) — devastador, mas o mundo te condena.<br>
+          🚫 Sanções drenam $50/turno do alvo e $20/turno de quem aplica.<br>
+          🤝 Aliados não se atacam e rendem +$25/turno cada.<br>
+          🗺️ Clique num país no mapa para ver dados e agir sobre ele.
+        </div>
+      </div>
 
       <div class="nation-panel hidden" id="np">
         <div class="np-head">
@@ -397,6 +440,22 @@ const COUNTRIES = [
 ];
 const CBYID = Object.fromEntries(COUNTRIES.map(c=>[c.id,c]));
 const proj = c => ({ x:(c.lon+180)/360*1000, y:(90-c.lat)/180*520 });
+const PALETTE = ['#e8b93c','#4da3ff','#ff5c5c','#39d98a','#c77dff','#ff9f43','#4dd0e1','#f06292','#aed581','#ffd54f','#90a4ae','#ba68c8'];
+/* territórios estilizados (mesma projeção do mapa) */
+const TERRITORIES = {
+  us: [[155,132],[200,120],[262,118],[305,128],[308,150],[288,170],[272,188],[240,200],[210,196],[178,170],[156,152]],
+  mx: [[196,202],[240,206],[262,208],[276,222],[268,238],[246,232],[220,222],[202,212]],
+  br: [[298,252],[336,246],[372,258],[402,280],[398,308],[382,336],[362,352],[336,358],[314,344],[300,312],[292,280]],
+  gb: [[486,96],[498,90],[502,102],[496,114],[486,112]],
+  fr: [[474,124],[494,118],[502,132],[494,146],[478,142]],
+  de: [[506,106],[524,104],[530,118],[518,128],[506,122]],
+  ru: [[614,104],[646,84],[700,72],[780,64],[860,64],[944,76],[946,96],[900,106],[820,108],[740,112],[664,116],[620,116]],
+  cn: [[788,140],[836,130],[868,144],[864,168],[838,182],[806,178],[786,162]],
+  in: [[690,196],[718,192],[728,212],[718,236],[704,238],[692,216]],
+  jp: [[872,144],[886,138],[892,152],[886,168],[874,164]],
+  ng: [[508,228],[532,224],[538,244],[524,256],[508,250]],
+  au: [[816,330],[852,320],[892,324],[916,340],[918,360],[900,374],[860,378],[828,370],[814,352]],
+};
 const $ = id => document.getElementById(id);
 const fmt = n => '$' + Math.round(n).toLocaleString('pt-BR');
 const myName = () => localStorage.getItem('po_name') || '';
@@ -547,6 +606,7 @@ function renderGame(){
 
   renderMap();
   renderPanel();
+  renderRanking();
 
   // feed
   const feed = $('feed'); feed.innerHTML = '';
@@ -560,9 +620,24 @@ function renderGame(){
 
 function renderMap(){
   const m = me();
+  const gT = document.getElementById('map-terr');
   const gLines = document.getElementById('map-lines');
   const g = document.getElementById('map-markers');
-  gLines.innerHTML = ''; g.innerHTML = '';
+  gT.innerHTML = ''; gLines.innerHTML = ''; g.innerHTML = '';
+
+  state.players.forEach(pl => {
+    const poly = TERRITORIES[pl.country];
+    if (!poly) return;
+    const el = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    el.setAttribute('points', poly.map(pt=>pt.join(',')).join(' '));
+    const col = pl.alive ? PALETTE[pl.color % PALETTE.length] : '#3a4356';
+    el.setAttribute('fill', col);
+    el.setAttribute('fill-opacity', pl.alive ? '0.32' : '0.12');
+    el.setAttribute('stroke', col);
+    el.setAttribute('stroke-opacity', pl.alive ? '0.85' : '0.3');
+    el.setAttribute('stroke-width', '1.6');
+    gT.appendChild(el);
+  });
 
   // linhas de aliança entre mim e meus aliados
   if (m && m.country){
@@ -604,7 +679,8 @@ function renderMap(){
     const ring = document.createElementNS('http://www.w3.org/2000/svg','circle');
     ring.setAttribute('class','ring');
     ring.setAttribute('r', r);
-    ring.setAttribute('fill', '#0c1324');
+    ring.setAttribute('fill', PALETTE[p.color % PALETTE.length]);
+    ring.setAttribute('fill-opacity', '0.3');
     ring.setAttribute('stroke', ringColor);
     ring.setAttribute('stroke-width', p.id===selectedId ? '3.5' : '2.5');
     mk.appendChild(ring);
@@ -713,6 +789,23 @@ function renderPanel(){
   }
 }
 
+/* ---------- ranking / toolbar ---------- */
+function renderRanking(){
+  const panel = $('rank-panel');
+  if (panel.classList.contains('hidden') || !state) return;
+  const score = p => p.eco*10 + p.mil*3 + p.aprov + p.nuclear*10 + p.influencia + p.fe;
+  const rows = [...state.players].sort((a,b)=>score(b)-score(a));
+  panel.innerHTML = '<h3>📊 Ranking das nações</h3>';
+  rows.forEach((p,i) => {
+    const div = document.createElement('div'); div.className='rank-row';
+    const dot=document.createElement('span'); dot.className='dot'; dot.style.background=PALETTE[p.color%PALETTE.length];
+    const rk=document.createElement('span'); rk.className='rk'; rk.textContent=(i+1)+'.';
+    const rn=document.createElement('span'); rn.className='rn'; rn.textContent=cflag(p)+' '+CBYID[p.country].name+(p.alive?'':' 💀');
+    const rs=document.createElement('span'); rs.className='rs'; rs.textContent=`🏭${p.eco} 🪖${p.mil} ❤️${p.aprov} ☢️${p.nuclear}`;
+    div.append(dot,rk,rn,rs); panel.appendChild(div);
+  });
+}
+
 /* ---------- overlay ---------- */
 function renderOverlay(){
   const ov = $('overlay');
@@ -769,6 +862,19 @@ $('chat-send').onclick = sendChat;
 $('chat-inp').addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
 $('inp-code').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-join').click(); });
 $('inp-name').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-create').click(); });
+$('btn-rank').onclick = () => {
+  $('rank-panel').classList.toggle('hidden');
+  $('help-panel').classList.add('hidden');
+  $('btn-rank').classList.toggle('active', !$('rank-panel').classList.contains('hidden'));
+  $('btn-help').classList.remove('active');
+  renderRanking();
+};
+$('btn-help').onclick = () => {
+  $('help-panel').classList.toggle('hidden');
+  $('rank-panel').classList.add('hidden');
+  $('btn-help').classList.toggle('active', !$('help-panel').classList.contains('hidden'));
+  $('btn-rank').classList.remove('active');
+};
 $('ov-btn').onclick = () => {
   if (state && state.phase === 'over') location.reload();
   else { deadShown = true; $('overlay').classList.add('hidden'); }

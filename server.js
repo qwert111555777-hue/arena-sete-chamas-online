@@ -185,6 +185,7 @@ function snapshot(room) {
       aprov: p.aprov, ap: p.ap, alive: p.alive,
       allies: p.allies, connected: p.connected,
       isHost: p.id === room.hostId, reason: p.eliminatedReason,
+      color: p.color,
       nuclear: p.nuclear, influencia: p.influencia, fe: p.fe,
       provinces: p.provinces, sanctioning: p.sanctioning, sanctionedBy: p.sanctionedBy,
     })),
@@ -205,6 +206,7 @@ function addPlayer(room, conn, name, isHost) {
   const p = {
     id: 'p' + (playerSeq++),
     conn, name, country: null,
+    color: (playerSeq + 5) % 12,
     money: 0, eco: 0, mil: 0, aprov: 50, ap: AP_PER_TURN,
     alive: true, allies: [], connected: true,
     eliminatedReason: null,
