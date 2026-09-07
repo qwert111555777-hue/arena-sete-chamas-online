@@ -260,7 +260,7 @@
   </div>
 
   <div class="features">
-    <span class="feat">👥 Até 12 jogadores</span>
+    <span class="feat">👥 Até 30 jogadores</span>
     <span class="feat">🗺️ Mapa-múndi interativo</span>
     <span class="feat">⚔️ Guerras e saques</span>
     <span class="feat">🤝 Alianças e diplomacia</span>
@@ -288,7 +288,7 @@
   </div>
 
   <div class="panel" style="background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:20px;">
-    <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); margin-bottom:12px;">Jogadores na sala (<span id="lob-count">0</span>/12)</h3>
+    <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); margin-bottom:12px;">Jogadores na sala (<span id="lob-count">0</span>/30)</h3>
     <div class="players-strip" id="lob-players"></div>
     <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); margin:20px 0 0;">Escolha sua nação</h3>
     <div class="country-grid" id="lob-countries"></div>
@@ -476,6 +476,24 @@ const COUNTRIES = [
   { id:'jp', name:'Japão',         flag:'🇯🇵', lat:36,  lon:138 },
   { id:'mx', name:'México',        flag:'🇲🇽', lat:23,  lon:-102},
   { id:'ng', name:'Nigéria',       flag:'🇳🇬', lat:9,   lon:8   },
+  { id:'ar', name:'Argentina',     flag:'🇦🇷', lat:-34, lon:-64 },
+  { id:'ca', name:'Canadá',        flag:'🇨🇦', lat:56,  lon:-106 },
+  { id:'es', name:'Espanha',       flag:'🇪🇸', lat:40,  lon:-4 },
+  { id:'it', name:'Itália',        flag:'🇮🇹', lat:42,  lon:12 },
+  { id:'tr', name:'Turquia',       flag:'🇹🇷', lat:39,  lon:35 },
+  { id:'sa', name:'Arábia Saudita',flag:'🇸🇦', lat:24,  lon:45 },
+  { id:'ir', name:'Irã',           flag:'🇮🇷', lat:32,  lon:53 },
+  { id:'eg', name:'Egito',         flag:'🇪🇬', lat:26,  lon:30 },
+  { id:'za', name:'África do Sul', flag:'🇿🇦', lat:-29, lon:25 },
+  { id:'id', name:'Indonésia',     flag:'🇮🇩', lat:-2,  lon:118 },
+  { id:'kr', name:'Coreia do Sul', flag:'🇰🇷', lat:36,  lon:128 },
+  { id:'pk', name:'Paquistão',     flag:'🇵🇰', lat:30,  lon:69 },
+  { id:'pl', name:'Polônia',       flag:'🇵🇱', lat:52,  lon:19 },
+  { id:'ua', name:'Ucrânia',       flag:'🇺🇦', lat:49,  lon:32 },
+  { id:'se', name:'Suécia',        flag:'🇸🇪', lat:62,  lon:15 },
+  { id:'co', name:'Colômbia',      flag:'🇨🇴', lat:4,   lon:-73 },
+  { id:'cl', name:'Chile',         flag:'🇨🇱', lat:-35, lon:-71 },
+  { id:'pt', name:'Portugal',      flag:'🇵🇹', lat:39,  lon:-8 },
   { id:'au', name:'Austrália',     flag:'🇦🇺', lat:-25, lon:134 },
 ];
 const CBYID = Object.fromEntries(COUNTRIES.map(c=>[c.id,c]));
@@ -487,7 +505,7 @@ const SECTORS_UI = [['educacao','Educação'],['saude','Saúde'],['cultura','Cul
 const SPACE_COSTS = [500,800,1200];
 const PORTRAITS = { br:'portraits/br.jpg', us:'portraits/us.jpg', ru:'portraits/ru.jpg', cn:'portraits/cn.jpg', gb:'portraits/gb.jpg', fr:'portraits/fr.jpg', de:'portraits/de.jpg', in:'portraits/in.jpg', jp:'portraits/jp.jpg', mx:'portraits/mx.jpg', ng:'portraits/ng.jpg', au:'portraits/au.jpg' };
 const proj = c => ({ x:(c.lon+180)/360*1000, y:(90-c.lat)/180*520 });
-const PALETTE = ['#e8b93c','#4da3ff','#ff5c5c','#39d98a','#c77dff','#ff9f43','#4dd0e1','#f06292','#aed581','#ffd54f','#90a4ae','#ba68c8'];
+const PALETTE = ['#e8b93c','#4da3ff','#ff5c5c','#39d98a','#c77dff','#ff9f43','#4dd0e1','#f06292','#aed581','#ffd54f','#90a4ae','#ba68c8','#7986cb','#4db6ac','#dce775','#ff8a65','#a1887f','#9575cd','#64b5f6','#e57373','#81c784','#d4ab6a','#6ad4c8','#f38bb8','#b8d06e','#ffc94d','#8fa8b8','#c792ea','#5ec9f5','#ff7d7d'];
 /* territórios estilizados (mesma projeção do mapa) */
 const PROV_POS = {
   us: [[170,150],[230,175],[290,140]],
@@ -503,6 +521,18 @@ const PROV_POS = {
   ng: [[512,244],[522,232],[526,248]],
   au: [[890,362],[880,335],[872,368]],
 };
+function terrFor(id){
+  if (TERRITORIES[id]) return TERRITORIES[id];
+  const c = CBYID[id]; if (!c) return null;
+  const q = proj(c); const pts = [];
+  for (let a=0;a<6;a++){ const ang = Math.PI/3*a - Math.PI/6; pts.push([Math.round(q.x+26*Math.cos(ang)), Math.round(q.y+20*Math.sin(ang))]); }
+  return pts;
+}
+function provSpotsFor(id){
+  if (PROV_POS[id]) return PROV_POS[id];
+  const c = CBYID[id]; if (!c) return [];
+  const q = proj(c); return [[q.x,q.y-10],[q.x-11,q.y+8],[q.x+11,q.y+8]];
+}
 const TERRITORIES = {
   us: [[155,132],[200,120],[262,118],[305,128],[308,150],[288,170],[272,188],[240,200],[210,196],[178,170],[156,152]],
   mx: [[196,202],[240,206],[262,208],[276,222],[268,238],[246,232],[220,222],[202,212]],
@@ -718,7 +748,19 @@ function renderGame(){
 
   // propostas de aliança para mim
   const bar = $('propose-bar'); bar.innerHTML = '';
-  state.proposals.filter(pr => pr.to === myId).forEach(pr => {
+  state.proposals.filter(pr => pr.to === myId || (pr.kind==='ajuda' && pr.from !== myId)).forEach(pr => {
+    if (pr.kind === 'ajuda'){
+      const from = state.players.find(p=>p.id===pr.from);
+      if (!from) return;
+      const div = document.createElement('div'); div.className = 'propose';
+      const txt = document.createElement('span'); txt.textContent = `🆘 ${cname(from)} pede AJUDA INTERNACIONAL`;
+      const ok = document.createElement('button'); ok.className='primary'; ok.textContent='Enviar $200';
+      ok.disabled = !me() || me().money < 200;
+      ok.onclick = () => send({t:'resp_ajuda', from:pr.from});
+      div.appendChild(txt); div.appendChild(ok);
+      bar.appendChild(div);
+      return;
+    }
     const from = state.players.find(p=>p.id===pr.from);
     if (!from) return;
     const K = { paz:['🕊️','propôs um tratado de PAZ','resp_paz'], comercial:['💼','propôs um ACORDO COMERCIAL','resp_comercial'], alianca:['🤝','propôs aliança','resp_alianca'] }[pr.kind||'alianca'];
@@ -768,7 +810,7 @@ function renderMap(){
   const gP = document.getElementById('map-prov');
   gP.innerHTML = '';
   state.players.forEach(pl => {
-    const spots = PROV_POS[pl.country] || [];
+    const spots = provSpotsFor(pl.country) || [];
     pl.provinces.forEach((prv, i) => {
       const pos = spots[i]; if (!pos) return;
       const owner = state.players.find(x => x.id === prv.owner);
@@ -787,7 +829,7 @@ function renderMap(){
     });
   });
   state.players.forEach(pl => {
-    const poly = TERRITORIES[pl.country];
+    const poly = terrFor(pl.country);
     if (!poly) return;
     const el = document.createElementNS('http://www.w3.org/2000/svg','polygon');
     el.setAttribute('points', poly.map(pt=>pt.join(',')).join(' '));
@@ -1003,6 +1045,38 @@ function renderPanel(){
       b.onclick=()=>send({t:'action',action:'setor',value:k}); r.appendChild(b);
       extra.appendChild(r);
     });
+    // forças armadas
+    sub2('🎖️ Unidades (1⚡)');
+    [['blindados','Blindados +5% atq',300],['aviacao','Aviação +5% def',400],['frota','Frota (bloqueios)',500]].forEach(([k,lb,cost])=>{
+      const r=document.createElement('div'); r.className='xrow';
+      const n=document.createElement('span'); n.className='xn'; n.textContent=lb; r.appendChild(n);
+      const pp=document.createElement('span'); pp.className='pips';
+      pp.textContent='▪'.repeat(p.units[k])+'▫'.repeat(3-p.units[k]); r.appendChild(pp);
+      const b=document.createElement('button'); b.textContent='$'+cost;
+      b.disabled=p.units[k]>=3||m.ap<1||m.money<cost;
+      b.onclick=()=>send({t:'action',action:k}); r.appendChild(b);
+      extra.appendChild(r);
+    });
+    // construções em andamento
+    if (p.builds.length){
+      sub2('⏳ Construções em andamento');
+      p.builds.forEach(b=>{
+        const r=document.createElement('div'); r.className='xrow';
+        const n=document.createElement('span'); n.className='xn';
+        const nm = b.kind==='infra' ? ('Obra: '+(p.provinces[b.prov]?p.provinces[b.prov].name:'—')) : b.kind==='nuclear'?'Etapa nuclear':'Etapa espacial';
+        n.textContent = '⏳ ' + nm + ' (conclui no turno ' + b.until + ')';
+        r.appendChild(n); extra.appendChild(r);
+      });
+    }
+    // emergência + pedir ajuda
+    if (state.turn < p.emergencyUntil){
+      sub2('🆘 EMERGÊNCIA ATIVA (-20% renda)');
+      const r=document.createElement('div'); r.className='xrow';
+      const n=document.createElement('span'); n.className='xn'; n.textContent='Peça ajuda internacional'; r.appendChild(n);
+      const b=document.createElement('button'); b.textContent='🆘 Pedir';
+      b.onclick=()=>send({t:'action',action:'pedir_ajuda'}); r.appendChild(b);
+      extra.appendChild(r);
+    }
     // espaço
     sub2('🚀 Programa espacial (2⚡)');
     const r4=document.createElement('div'); r4.className='xrow';
@@ -1032,7 +1106,7 @@ function renderPanel(){
     acts.appendChild(mkBtn('💸','Ajudar $200 (+relações)', ()=>send({t:'action',action:'ajudar',target:p.id}), m.ap<1||m.money<200));
     // relação bilateral
     const rel = m.relations[p.id] != null ? m.relations[p.id] : 50;
-    note.textContent = `📈 Relação bilateral: ${rel}/100` + (ally?' · 🤝 aliados':'') + (atWar?' · ⚔️ EM GUERRA':'');
+    note.textContent = `📈 Relação bilateral: ${rel}/100` + (ally?' · 🤝 aliados':'') + (atWar?' · ⚔️ EM GUERRA':'') + (state.turn < p.emergencyUntil?' · 🆘 em emergência':'');
   }
   if (p.alive && p.sanctionedBy.length){
     const names = p.sanctionedBy.map(id => { const x = state.players.find(q=>q.id===id); return x ? x.name : '?'; }).join(', ');

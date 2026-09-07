@@ -34,8 +34,27 @@ const COUNTRIES = [
   { id:'jp', name:'Japão',          flag:'🇯🇵', eco:12, mil:7,  money:1200, provs:[['Tóquio',2],['Osaka',2],['Hokkaido',1]] },
   { id:'mx', name:'México',         flag:'🇲🇽', eco:9,  mil:7,  money:900,  provs:[['Cidade do México',2],['Jalisco',1],['Yucatán',1]] },
   { id:'ng', name:'Nigéria',        flag:'🇳🇬', eco:7,  mil:8,  money:800,  provs:[['Lagos',1],['Kano',1],['Delta do Níger',1]] },
+  { id:'ar', name:'Argentina',      flag:'🇦🇷', eco:8,  mil:6,  money:900,  provs:[['Buenos Aires',2],['Córdoba',1],['Patagônia',1]] },
+  { id:'ca', name:'Canadá',         flag:'🇨🇦', eco:10, mil:6,  money:1100, provs:[['Ontário',2],['Quebec',2],['Alberta',1]] },
+  { id:'es', name:'Espanha',        flag:'🇪🇸', eco:10, mil:7,  money:1000, provs:[['Madri',2],['Catalunha',1],['Andaluzia',1]] },
+  { id:'it', name:'Itália',         flag:'🇮🇹', eco:10, mil:8,  money:1000, provs:[['Lombardia',2],['Lácio',1],['Sicília',1]] },
+  { id:'tr', name:'Turquia',        flag:'🇹🇷', eco:9,  mil:9,  money:900,  provs:[['Anatólia',2],['Istambul',2],['Egeu',1]] },
+  { id:'sa', name:'Arábia Saudita', flag:'🇸🇦', eco:9,  mil:8,  money:1100, provs:[['Riade',2],['Hejaz',1],['Província Oriental',1]] },
+  { id:'ir', name:'Irã',            flag:'🇮🇷', eco:8,  mil:9,  money:900,  provs:[['Teerã',2],['Isfahan',1],['Fars',1]] },
+  { id:'eg', name:'Egito',          flag:'🇪🇬', eco:7,  mil:8,  money:800,  provs:[['Cairo',2],['Alexandria',1],['Alto Egito',1]] },
+  { id:'za', name:'África do Sul',  flag:'🇿🇦', eco:8,  mil:7,  money:900,  provs:[['Gauteng',2],['Cabo',1],['KwaZulu-Natal',1]] },
+  { id:'id', name:'Indonésia',      flag:'🇮🇩', eco:8,  mil:7,  money:900,  provs:[['Java',2],['Sumatra',1],['Bornéu',1]] },
+  { id:'kr', name:'Coreia do Sul',  flag:'🇰🇷', eco:11, mil:9,  money:1100, provs:[['Seul',2],['Busan',2],['Jeju',1]] },
+  { id:'pk', name:'Paquistão',      flag:'🇵🇰', eco:7,  mil:9,  money:800,  provs:[['Punjab',2],['Sindh',1],['Baluchistão',1]] },
+  { id:'pl', name:'Polônia',        flag:'🇵🇱', eco:9,  mil:8,  money:900,  provs:[['Mazóvia',2],['Pequena Polônia',1],['Silésia',1]] },
+  { id:'ua', name:'Ucrânia',        flag:'🇺🇦', eco:7,  mil:8,  money:800,  provs:[['Kiev',2],['Donbass',1],['Odessa',1]] },
+  { id:'se', name:'Suécia',         flag:'🇸🇪', eco:9,  mil:6,  money:1000, provs:[['Estocolmo',2],['Götaland',1],['Norrland',1]] },
+  { id:'co', name:'Colômbia',       flag:'🇨🇴', eco:7,  mil:6,  money:800,  provs:[['Bogotá',2],['Antioquia',1],['Valle',1]] },
+  { id:'cl', name:'Chile',          flag:'🇨🇱', eco:7,  mil:6,  money:800,  provs:[['Santiago',2],['Valparaíso',1],['Patagônia',1]] },
+  { id:'pt', name:'Portugal',       flag:'🇵🇹', eco:8,  mil:6,  money:900,  provs:[['Lisboa',2],['Porto',1],['Algarve',1]] },
   { id:'au', name:'Austrália',      flag:'🇦🇺', eco:9,  mil:6,  money:1000, provs:[['Nova Gales do Sul',2],['Queensland',1],['Vitória',1]] },
 ];
+const LATLON = { ar:[-34,-64], ca:[56,-106], es:[40,-4], it:[42,12], tr:[39,35], sa:[24,45], ir:[32,53], eg:[26,30], za:[-29,25], id:[-2,118], kr:[36,128], pk:[30,69], pl:[52,19], ua:[49,32], se:[62,15], co:[4,-73], cl:[-35,-71], pt:[39,-8] };
 const COUNTRY_BY_ID = Object.fromEntries(COUNTRIES.map(c => [c.id, c]));
 const cname = p => { const c = COUNTRY_BY_ID[p.country]; return c ? c.flag + ' ' + c.name : p.name; };
 
@@ -190,6 +209,7 @@ function snapshot(room) {
       ministers: p.ministers, techs: p.techs, sectors: p.sectors, space: p.space,
       relations: p.relations, embassies: p.embassies, trades: p.trades,
       blockading: p.blockading, blockadedBy: p.blockadedBy,
+      units: p.units, builds: p.builds, emergencyUntil: p.emergencyUntil,
     })),
   };
 }
@@ -211,6 +231,7 @@ function addPlayer(room, conn, name, isHost) {
     ministers: { eco: null, def: null, dip: null },
     techs: [], sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
+    units: { blindados: 0, aviacao: 0, frota: 0 }, builds: [], emergencyUntil: 0,
   };
   conn.meta = { room, player: p };
   room.players.push(p);
@@ -234,6 +255,7 @@ function startGame(room) {
     p.ministers = { eco: null, def: null, dip: null };
     p.techs = []; p.sectors = { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0 };
     p.space = 0; p.relations = {}; p.embassies = []; p.trades = []; p.blockading = []; p.blockadedBy = [];
+    p.units = { blindados: 0, aviacao: 0, frota: 0 }; p.builds = []; p.emergencyUntil = 0;
     for (const o of room.players) if (o !== p) { p.relations[o.id] = 50; o.relations[p.id] = 50; }
   }
   room.phase = 'game'; room.turn = 1; room.proposals = [];
@@ -307,7 +329,8 @@ function incomeOf(room, p) {
   if (p.taxRate === 2) mult += 0.15;
   if (p.taxRate === 0) mult -= 0.10;
   if (room.embargo && room.embargo.target === p.id && room.turn < room.embargo.until) mult *= 0.7;
-  if (p.blockadedBy.length) mult *= 0.75;
+  if (p.blockadedBy.length) mult *= p.units.frota >= 1 ? 0.9 : 0.75;
+  if (room.turn < p.emergencyUntil) mult *= 0.8;
   base *= mult;
   const costs = Math.round(p.mil * 2)
     + p.sanctionedBy.length * 50
@@ -351,6 +374,13 @@ function resolveTurn(room) {
   room.turn++;
   for (const p of room.players) {
     if (!p.alive) continue;
+    const done = p.builds.filter(b => b.until <= room.turn);
+    p.builds = p.builds.filter(b => b.until > room.turn);
+    for (const b of done) {
+      if (b.kind === 'infra') { const pr = p.provinces[b.prov]; if (pr && pr.owner === p.id && pr.infra < 5) { pr.infra += 1; log(room, `🏗️ Construção concluída: ${pr.name} (${cname(p)}) infraestrutura ${pr.infra}.`); } }
+      if (b.kind === 'nuclear' && p.nuclear < NUKE_MAX_LEVEL) { p.nuclear += 1; log(room, `☢️ ${cname(p)} conclui etapa do programa nuclear (nível ${p.nuclear}).`); }
+      if (b.kind === 'espacial' && p.space < 3) { p.space += 1; p.aprov = Math.min(100, p.aprov + 2); log(room, `🚀 ${cname(p)} conclui etapa do programa espacial (nível ${p.space}).`); }
+    }
     p.money += incomeOf(room, p);
     if (p.money < 0) { p.money = 0; p.mil = Math.max(1, Math.round(p.mil * 0.9)); }
     // aprovação
@@ -404,7 +434,7 @@ function randomEvent(room) {
     case 5: pick.aprov = Math.min(100, pick.aprov + 5); log(room, `🎉 Festival nacional em ${cname(pick)}: aprovação +5.`); break;
     case 6: { const provs = ownProvinces(pick).filter(pr => pr.infra < 5); if (provs.length) { provs[0].infra += 1; log(room, `🏗️ Obra concluída em ${provs[0].name} (${cname(pick)}): infraestrutura +1.`); } break; }
     case 7: pick.influencia += 2; log(room, `🎬 Cultura de ${cname(pick)} conquista o mundo: influência +2.`); break;
-    case 8: { const provs = ownProvinces(pick).filter(pr => pr.infra > 0); if (provs.length) { const pr = provs[0]; pr.infra -= 1; log(room, `🌪️ Desastre natural em ${pr.name} (${cname(pick)}): infraestrutura -1. O mundo pode enviar ajuda!`); } break; }
+    case 8: { const provs = ownProvinces(pick).filter(pr => pr.infra > 0); if (provs.length) { const pr = provs[0]; pr.infra -= 1; pick.emergencyUntil = room.turn + 3; log(room, `🌪️ DESASTRE em ${pr.name} (${cname(pick)}): infra -1 e EMERGÊNCIA (-20% renda por 3 turnos). Peça ou receba ajuda!`); } break; }
   }
 }
 
@@ -466,10 +496,10 @@ function performAction(room, p, msg) {
       break;
     }
     case 'espacial': {
-      if (p.space >= 3) return;
-      if (!spend(p, 2, SPACE_COSTS[p.space])) return;
-      p.space += 1; p.aprov = Math.min(100, p.aprov + 2);
-      log(room, p.space === 3 ? `🚀 ${cname(p)} conclui o PROGRAMA ESPACIAL! Dividendos de prestígio ativos.` : `🚀 ${cname(p)} avança no programa espacial (nível ${p.space}).`);
+      if (p.space + p.builds.filter(b=>b.kind==='espacial').length >= 3) return;
+      if (!spend(p, 2, SPACE_COSTS[p.space + p.builds.filter(b=>b.kind==='espacial').length])) return;
+      p.builds.push({ kind: 'espacial', until: room.turn + 1 });
+      log(room, `🚀 ${cname(p)} inicia etapa do programa espacial (conclui no próximo turno).`);
       break;
     }
     case 'imposto': p.taxRate = Math.max(0, Math.min(2, msg.value | 0)); log(room, `🧾 ${cname(p)} ajusta impostos para ${['baixa', 'média', 'alta'][p.taxRate]}.`); break;
@@ -479,14 +509,15 @@ function performAction(room, p, msg) {
       const prov = p.provinces[msg.prov];
       if (!prov || prov.owner !== p.id || prov.infra >= 5) return;
       if (!spend(p, 1, 200)) return;
-      prov.infra += 1; log(room, `🏗️ ${cname(p)} desenvolve ${prov.name} (infraestrutura ${prov.infra}).`);
+      p.builds.push({ kind: 'infra', prov: msg.prov, until: room.turn + 1 });
+      log(room, `🏗️ ${cname(p)} inicia construção em ${prov.name} (conclui no próximo turno).`);
       break;
     }
     case 'nuclear':
-      if (p.nuclear >= NUKE_MAX_LEVEL) { err(p.conn, 'Programa nuclear no nível máximo.'); return; }
+      if (p.nuclear + p.builds.filter(b=>b.kind==='nuclear').length >= NUKE_MAX_LEVEL) { err(p.conn, 'Programa nuclear no nível máximo.'); return; }
       if (!spend(p, 2, 600)) return;
-      p.nuclear += 1;
-      log(room, p.nuclear >= NUKE_MIN_LEVEL ? `☢️ ${cname(p)} atingiu o nível ${p.nuclear} — CAPAZ DE LANÇAR MÍSSEIS!` : `☢️ ${cname(p)} avança seu programa nuclear (nível ${p.nuclear}).`);
+      p.builds.push({ kind: 'nuclear', until: room.turn + 1 });
+      log(room, `☢️ ${cname(p)} inicia etapa do programa nuclear (conclui no próximo turno).`);
       break;
 
     /* --- externos --- */
@@ -528,8 +559,24 @@ function performAction(room, p, msg) {
       if (!target || target === p || !target.alive) return;
       if (!spend(p, 1, 200)) return;
       target.money += 200; p.aprov = Math.min(100, p.aprov + 2); target.aprov = Math.min(100, target.aprov + 2);
+      const tinhaEm = room.turn < target.emergencyUntil;
+      target.emergencyUntil = 0;
       bumpRel(p, target, 10);
-      log(room, `🤝 ${cname(p)} enviou ajuda humanitária ($200) para ${cname(target)}.`);
+      log(room, `🤝 ${cname(p)} enviou ajuda humanitária ($200) para ${cname(target)}${tinhaEm ? ' e encerrou a EMERGÊNCIA' : ''}!`);
+      break;
+    }
+    case 'pedir_ajuda': {
+      if (room.proposals.some(pr => pr.from === p.id && pr.kind === 'ajuda')) return;
+      room.proposals.push({ from: p.id, to: 'ALL', kind: 'ajuda' });
+      log(room, `🆘 ${cname(p)} pede AJUDA INTERNACIONAL${room.turn < p.emergencyUntil ? ' (em emergência!)' : ''}.`);
+      break;
+    }
+    case 'blindados': case 'aviacao': case 'frota': {
+      const costs = { blindados: 300, aviacao: 400, frota: 500 };
+      if (p.units[msg.action] >= 3) { err(p.conn, 'Nível máximo de unidade.'); return; }
+      if (!spend(p, 1, costs[msg.action])) return;
+      p.units[msg.action] += 1;
+      log(room, `🎖️ ${cname(p)} fortalece ${msg.action === 'blindados' ? 'forças BLINDADAS' : msg.action === 'aviacao' ? 'sua AVIAÇÃO' : 'sua FROTA NAVAL'} (nível ${p.units[msg.action]}).`);
       break;
     }
     case 'embaixada': {
@@ -580,6 +627,7 @@ function performAction(room, p, msg) {
     }
     case 'bloqueio': {
       if (!target || target === p || !target.alive || !p.wars.includes(target.id)) { err(p.conn, 'Bloqueio naval exige guerra.'); return; }
+      if (p.units.frota < 1) { err(p.conn, 'Você precisa de uma FROTA (🎖️ frota nível 1+).'); return; }
       if (p.blockading.includes(target.id)) {
         p.blockading = p.blockading.filter(id => id !== target.id);
         target.blockadedBy = target.blockadedBy.filter(id => id !== p.id);
@@ -601,6 +649,8 @@ function performAction(room, p, msg) {
       if (p.ideology === 'autoritarismo') aM += 0.15;
       if (p.techs.includes('exercito')) aM += 0.15;
       if (p.ministers.def === 'fal') aM += 0.10;
+      aM += 0.05 * p.units.blindados + 0.02 * p.units.aviacao;
+      dM += 0.05 * target.units.aviacao + 0.03 * target.units.frota;
       if (target.ministers.def === 'estr') dM += 0.10;
       const aP = p.mil * aM * (0.85 + Math.random() * 0.45);
       const dP = target.mil * dM * (0.9 + Math.random() * 0.45) * 1.08;
@@ -729,6 +779,22 @@ function route(conn, msg) {
     case 'action': { const { room, player } = conn.meta || {}; if (!room) return; performAction(room, player, msg); break; }
     case 'resp_alianca': { const { room, player } = conn.meta || {}; if (!room || room.phase !== 'game') return; respondProposal(room, player, msg.from, !!msg.accept, 'alianca'); break; }
     case 'resp_paz': { const { room, player } = conn.meta || {}; if (!room || room.phase !== 'game') return; respondProposal(room, player, msg.from, !!msg.accept, 'paz'); break; }
+    case 'resp_ajuda': {
+      const { room, player } = conn.meta || {};
+      if (!room || room.phase !== 'game') return;
+      const idx = room.proposals.findIndex(pr => pr.from === msg.from && pr.kind === 'ajuda');
+      if (idx === -1) return;
+      const from = room.players.find(x => x.id === msg.from);
+      if (!from || !from.alive || !player.alive || player.money < 200) { broadcast(room); return; }
+      room.proposals.splice(idx, 1);
+      player.money -= 200; from.money += 200;
+      from.emergencyUntil = 0;
+      from.aprov = Math.min(100, from.aprov + 2); player.aprov = Math.min(100, player.aprov + 2);
+      bumpRel(player, from, 15);
+      log(room, `🤝 ${cname(player)} atende ao pedido de ajuda de ${cname(from)} ($200, emergência encerrada)!`);
+      broadcast(room);
+      break;
+    }
     case 'resp_comercial': { const { room, player } = conn.meta || {}; if (!room || room.phase !== 'game') return; respondProposal(room, player, msg.from, !!msg.accept, 'comercial'); break; }
     case 'voto_un': {
       const { room, player } = conn.meta || {};
