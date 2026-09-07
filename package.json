@@ -1,18 +1,10 @@
 {
-  "name": "arena-sete-chamas-online",
-  "version": "0.1.0",
-  "description": "Arena 2D online no navegador para ate 5 jogadores, com salas, herois personalizados e chefes.",
+  "name": "presidente-online",
+  "version": "1.0.0",
+  "description": "Presidente Online — simulador de geopolítica multiplayer no navegador: salas com amigos, mapa-múndi, economia, guerras, ocupação de províncias, programa nuclear, sanções, sabotagem e 5 caminhos de vitória.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "verify": "node --check server.js && node --check public/client.js && node tools/verify_game.js && python3 tools/verify_visual.py"
-  },
-  "dependencies": {
-    "playwright": "^1.63.0",
-    "socket.io": "^4.8.3"
-  },
-  "devDependencies": {
-    "socket.io-client": "^4.8.3"
+    "start": "node server.js"
   },
   "engines": {
     "node": ">=20"

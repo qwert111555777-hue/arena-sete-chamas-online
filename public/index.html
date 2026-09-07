@@ -1,134 +1,789 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>Arena das Sete Chamas Online</title>
-  <link rel="stylesheet" href="styles.css?v=42" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Presidente Online — Simulador de Geopolítica</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#121a30; --panel2:#0e1526; --border:#23304f;
+    --gold:#e8b93c; --gold2:#ffd76a; --text:#e8ecf7; --muted:#8fa0c2;
+    --green:#39d98a; --red:#ff5c5c; --blue:#4da3ff;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+    background:var(--bg); color:var(--text); min-height:100vh;
+  }
+  button{
+    font-family:inherit; cursor:pointer; border:1px solid var(--border);
+    background:#1a2440; color:var(--text); border-radius:8px; padding:9px 14px;
+    font-size:14px; transition:all .15s;
+  }
+  button:hover:not(:disabled){background:#243155; border-color:#3a4d7d;}
+  button:disabled{opacity:.4; cursor:not-allowed;}
+  button.primary{background:linear-gradient(180deg,#e8b93c,#c99a1f); color:#221a02; font-weight:700; border:none;}
+  button.primary:hover:not(:disabled){background:linear-gradient(180deg,#ffd76a,#e8b93c);}
+  button.danger{background:#5a1f28; border-color:#8a3040;}
+  input{
+    font-family:inherit; background:#0c1324; border:1px solid var(--border);
+    color:var(--text); border-radius:8px; padding:10px 12px; font-size:15px; outline:none;
+  }
+  input:focus{border-color:var(--gold);}
+  .hidden{display:none !important;}
+  h1,h2,h3{font-weight:800;}
+
+  /* ---------- TOAST ---------- */
+  #toasts{position:fixed; top:16px; left:50%; transform:translateX(-50%); z-index:100; display:flex; flex-direction:column; gap:8px; align-items:center;}
+  .toast{
+    background:#1c2745; border:1px solid var(--border); padding:10px 18px; border-radius:10px;
+    font-size:14px; box-shadow:0 8px 24px rgba(0,0,0,.5); animation:pop .2s ease; max-width:90vw;
+  }
+  .toast.error{border-color:#8a3040; background:#3a1620;}
+  .toast.info{border-color:#2a5b8f; background:#132941;}
+  @keyframes pop{from{transform:translateY(-8px); opacity:0;} to{transform:none; opacity:1;}}
+
+  /* ---------- TELA INICIAL ---------- */
+  #scr-home{max-width:640px; margin:0 auto; padding:60px 20px; text-align:center;}
+  .flagband{font-size:28px; letter-spacing:6px; margin-bottom:10px;}
+  #scr-home h1{font-size:40px; letter-spacing:2px; line-height:1.1;}
+  #scr-home h1 span{color:var(--gold);}
+  .subtitle{color:var(--muted); margin:12px 0 34px; font-size:15px;}
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    padding:22px; text-align:left; margin-bottom:16px; box-shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  .card .label{font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); margin-bottom:8px;}
+  .row{display:flex; gap:10px;}
+  .row input{flex:1; min-width:0;}
+  .divider{display:flex; align-items:center; gap:12px; color:var(--muted); font-size:12px; margin:18px 0;}
+  .divider::before,.divider::after{content:''; flex:1; height:1px; background:var(--border);}
+  .features{display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:26px;}
+  .feat{background:#101830; border:1px solid var(--border); border-radius:999px; padding:7px 14px; font-size:12.5px; color:var(--muted);}
+
+  /* ---------- LOBBY ---------- */
+  #scr-lobby{max-width:980px; margin:0 auto; padding:26px 20px;}
+  .lobby-top{display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:18px;}
+  .room-code{
+    background:var(--panel); border:1px dashed var(--gold); border-radius:12px;
+    padding:10px 22px; text-align:center;
+  }
+  .room-code .label{font-size:11px; letter-spacing:2px; color:var(--muted); text-transform:uppercase;}
+  .room-code .code{font-size:34px; font-weight:900; letter-spacing:8px; color:var(--gold2); font-family:ui-monospace,monospace;}
+  .country-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-top:14px;}
+  .c-country{
+    background:var(--panel2); border:1px solid var(--border); border-radius:12px; padding:12px;
+    text-align:center; cursor:pointer; transition:all .15s;
+  }
+  .c-country:hover{border-color:#3a4d7d; transform:translateY(-2px);}
+  .c-country.mine{border-color:var(--gold); background:#241f0a; box-shadow:0 0 0 1px var(--gold);}
+  .c-country.taken{opacity:.5; cursor:not-allowed;}
+  .c-country .fl{font-size:34px;}
+  .c-country .nm{font-size:13px; font-weight:700; margin-top:4px;}
+  .c-country .who{font-size:11px; color:var(--muted); margin-top:2px; min-height:14px;}
+  .c-country .stats{font-size:10.5px; color:var(--muted); margin-top:5px;}
+  .players-strip{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;}
+  .pchip{background:#101830; border:1px solid var(--border); border-radius:999px; padding:6px 12px; font-size:13px;}
+
+  /* ---------- JOGO ---------- */
+  #scr-game{display:flex; flex-direction:column; height:100vh;}
+  .hud{
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    background:linear-gradient(180deg,#141d38,#0f1730); border-bottom:1px solid var(--border);
+    padding:8px 14px; z-index:5;
+  }
+  .hud .logo{font-weight:900; letter-spacing:1px; color:var(--gold2); font-size:15px;}
+  .hud .date-badge{
+    background:#0c1324; border:1px solid var(--border); border-radius:8px;
+    padding:5px 10px; font-family:ui-monospace,monospace; font-size:13px; color:var(--gold2);
+  }
+  .hud .me-flag{font-size:22px;}
+  .hud .res{display:flex; align-items:center; gap:6px; background:#0c1324; border:1px solid var(--border); border-radius:8px; padding:5px 10px; font-size:13px;}
+  .hud .res b{font-family:ui-monospace,monospace; color:var(--gold2);}
+  .hud .spacer{flex:1;}
+  .hud .timer-big{font-size:20px; font-weight:900; font-family:ui-monospace,monospace; color:var(--gold2);}
+  .game-body{display:flex; flex:1; min-height:0; position:relative;}
+  .map-wrap{flex:1; position:relative; min-width:0; background:#0a1226; overflow:hidden;}
+  svg#map{width:100%; height:100%; display:block;}
+  .mk{cursor:pointer;}
+  .mk:hover circle.ring{stroke-width:3.5;}
+  @keyframes pulse{0%{stroke-opacity:.9; r:16;} 100%{stroke-opacity:0; r:26;}}
+  circle.pulse{animation:pulse 1.4s ease-out infinite;}
+
+  /* painel de país selecionado */
+  .nation-panel{
+    position:absolute; left:12px; bottom:78px; width:262px;
+    background:rgba(14,21,38,.96); border:1px solid var(--border); border-radius:12px;
+    padding:14px; backdrop-filter:blur(6px); z-index:4; box-shadow:0 12px 32px rgba(0,0,0,.5);
+  }
+  .nation-panel .np-head{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+  .nation-panel .np-head .fl{font-size:30px;}
+  .nation-panel .np-head .nm{font-weight:800; font-size:15px; line-height:1.15;}
+  .nation-panel .np-head .nm small{display:block; color:var(--muted); font-weight:400; font-size:11px;}
+  .np-stats{display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:12px; margin-bottom:10px;}
+  .np-stats .ms{background:#0c1324; border:1px solid #1a2440; border-radius:8px; padding:5px 8px; display:flex; justify-content:space-between;}
+  .np-stats .ms b{font-family:ui-monospace,monospace;}
+  .np-actions{display:grid; grid-template-columns:repeat(4,1fr); gap:6px;}
+  .np-actions button{padding:9px 2px; font-size:16px;}
+  .np-note{font-size:11px; color:var(--muted); margin-top:8px; text-align:center;}
+  .np-provs{margin:0 0 10px; display:flex; flex-direction:column; gap:5px;}
+  .np-provs .prov{
+    display:flex; align-items:center; gap:6px; font-size:11.5px;
+    background:#0c1324; border:1px solid #1a2440; border-radius:8px; padding:5px 8px;
+  }
+  .np-provs .prov .pname{flex:1;}
+  .np-provs .prov .pips{letter-spacing:1px; color:var(--gold2);}
+  .np-provs .prov button{padding:2px 7px; font-size:12px; border-radius:6px;}
+  .np-provs .prov .owner{font-size:10px; color:var(--muted);}
+  .np-sub{font-size:10px; text-transform:uppercase; letter-spacing:1.2px; color:var(--muted); margin:8px 0 6px;}
+
+  /* barra circular inferior (estilo MA3) */
+  .bottom-bar{
+    position:absolute; left:50%; transform:translateX(-50%); bottom:10px;
+    display:flex; gap:9px; align-items:flex-end; z-index:4;
+  }
+  .round-btn{
+    width:54px; height:54px; border-radius:50%; border:2px solid var(--border);
+    background:radial-gradient(circle at 35% 30%, #223054, #131c36);
+    font-size:19px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    box-shadow:0 6px 16px rgba(0,0,0,.5); padding:0; position:relative;
+  }
+  .round-btn:hover:not(:disabled){border-color:var(--gold); transform:translateY(-3px);}
+  .round-btn small{font-size:8px; color:var(--muted); margin-top:1px; letter-spacing:.5px;}
+  .round-btn .costdot{
+    position:absolute; top:-8px; right:-8px; background:var(--gold); color:#221a02;
+    font-size:9px; font-weight:800; border-radius:99px; padding:2px 6px;
+  }
+  .ap-dock{
+    background:rgba(14,21,38,.9); border:1px solid var(--border); border-radius:99px;
+    padding:8px 14px; font-size:15px; letter-spacing:3px; color:var(--gold2); align-self:center;
+  }
+
+  /* barra lateral feed/chat */
+  .sidebar{
+    width:300px; background:var(--panel); border-left:1px solid var(--border);
+    display:flex; flex-direction:column; padding:12px; gap:10px; min-height:0;
+  }
+  .sidebar h3{font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted);}
+  .feed{flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:6px;}
+  .feed .item{font-size:12px; background:#0c1324; border:1px solid #1a2440; border-radius:8px; padding:7px 10px; line-height:1.4;}
+  .feed .item .turn{color:var(--muted); font-size:10px; margin-right:6px;}
+  .chat-msgs{height:150px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;}
+  .cmsg{font-size:12.5px; line-height:1.35;}
+  .cmsg .who{color:var(--gold2); font-weight:700;}
+  .chat-input{display:flex; gap:8px;}
+  .chat-input input{flex:1; min-width:0; padding:8px 10px; font-size:13px;}
+  @media(max-width:900px){ .sidebar{display:none;} }
+
+  #propose-bar{position:absolute; top:10px; left:50%; transform:translateX(-50%); display:flex; gap:10px; flex-wrap:wrap; z-index:6; justify-content:center;}
+  .propose{
+    background:#132941; border:1px solid #2a5b8f; border-radius:10px; padding:9px 14px;
+    display:flex; align-items:center; gap:12px; font-size:13px; box-shadow:0 8px 20px rgba(0,0,0,.5);
+  }
+
+  /* ---------- OVERLAY ---------- */
+  #overlay{
+    position:fixed; inset:0; background:rgba(5,8,18,.88); z-index:50;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .ov-card{
+    background:var(--panel); border:1px solid var(--gold); border-radius:16px;
+    padding:36px 44px; text-align:center; max-width:480px; animation:pop .3s ease;
+  }
+  .ov-card .big{font-size:56px;}
+  .ov-card h2{font-size:26px; margin:10px 0;}
+  .ov-card p{color:var(--muted); margin-bottom:20px;}
+  .conn-status{position:fixed; bottom:10px; right:14px; font-size:11px; color:var(--muted); z-index:60;}
+  .conn-status.bad{color:var(--red);}
+</style>
 </head>
 <body>
-  <div id="toast" class="toast"></div>
 
-  <section id="menuScreen" class="screen active menu-screen">
-    <div class="hero-bg"></div>
-    <main class="menu-card glass">
-      <div class="logo-line">🔥 Arena das Sete Chamas</div>
-      <h1>Entrar</h1>
+<div id="toasts"></div>
+<div class="conn-status" id="conn-status"></div>
 
-      <div class="name-row">
-        <label>Seu nome</label>
-        <input id="nameInput" maxlength="18" placeholder="Ex: Player 1" />
+<!-- ============ TELA INICIAL ============ -->
+<div id="scr-home">
+  <div class="flagband">🇧🇷 🇺🇸 🇷🇺 🇨🇳 🇩🇪 🇫🇷 🇬🇧 🇳🇬 🇯🇵</div>
+  <h1>PRESIDENTE <span>ONLINE</span></h1>
+  <div class="subtitle">Simulador de geopolítica multiplayer — governe uma nação no mapa-múndi,<br>gerencie a economia, forme alianças, declare guerras e domine o mundo com seus amigos.</div>
+
+  <div class="card">
+    <div class="label">Seu nome de presidente</div>
+    <div class="row"><input id="inp-name" maxlength="18" placeholder="Ex.: Presidente Silva"></div>
+  </div>
+
+  <div class="card">
+    <div class="label">🏛️ Nova partida</div>
+    <button class="primary" style="width:100%" id="btn-create">Criar sala</button>
+    <div class="divider">ou entre numa sala existente</div>
+    <div class="label">Código da sala</div>
+    <div class="row">
+      <input id="inp-code" maxlength="4" placeholder="Ex.: AB12" style="text-transform:uppercase; letter-spacing:3px; font-weight:700;">
+      <button id="btn-join">Entrar</button>
+    </div>
+  </div>
+
+  <div class="features">
+    <span class="feat">👥 Até 12 jogadores</span>
+    <span class="feat">🗺️ Mapa-múndi interativo</span>
+    <span class="feat">⚔️ Guerras e saques</span>
+    <span class="feat">🤝 Alianças e diplomacia</span>
+    <span class="feat">🎲 Eventos aleatórios</span>
+  </div>
+</div>
+
+<!-- ============ LOBBY ============ -->
+<div id="scr-lobby" class="hidden">
+  <div class="lobby-top">
+    <div>
+      <h2>🏛️ Sala de espera</h2>
+      <div style="color:var(--muted); font-size:13px; margin-top:4px;">Chame seus amigos com o código ou com o link de convite.</div>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <div class="room-code">
+        <div class="label">Código da sala</div>
+        <div class="code" id="lob-code">----</div>
       </div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button id="btn-copy-code">📋 Copiar código</button>
+        <button id="btn-copy-link">🔗 Copiar link de convite</button>
+      </div>
+    </div>
+  </div>
 
-      <div class="join-grid">
-        <button id="createBtn" class="big-btn primary">Criar sala</button>
-        <div class="join-box">
-          <input id="roomInput" maxlength="4" placeholder="CÓDIGO" />
-          <button id="joinBtn" class="big-btn">Entrar por código</button>
+  <div class="panel" style="background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:20px;">
+    <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); margin-bottom:12px;">Jogadores na sala (<span id="lob-count">0</span>/12)</h3>
+    <div class="players-strip" id="lob-players"></div>
+    <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); margin:20px 0 0;">Escolha sua nação</h3>
+    <div class="country-grid" id="lob-countries"></div>
+  </div>
+
+  <div style="display:flex; gap:10px; margin-top:16px; justify-content:flex-end;">
+    <button id="btn-leave" class="danger">Sair da sala</button>
+    <button id="btn-start" class="primary" style="min-width:220px;">▶ Iniciar partida</button>
+  </div>
+</div>
+
+<!-- ============ JOGO ============ -->
+<div id="scr-game" class="hidden">
+  <div class="hud">
+    <span class="logo">🏛️ PRESIDENTE ONLINE</span>
+    <span class="date-badge" id="g-date">01-07-2024</span>
+    <span class="me-flag" id="g-meflag">🏳️</span>
+    <span style="font-weight:800; font-size:14px;" id="g-mename">—</span>
+    <div class="res">💰 <b id="m-money">$0</b></div>
+    <div class="res">🏭 <b id="m-eco">0</b></div>
+    <div class="res">🪖 <b id="m-mil">0</b></div>
+    <div class="res">❤️ <b id="m-aprov">50%</b></div>
+    <div class="spacer"></div>
+    <span class="timer-big" id="g-timer">--:--</span>
+    <span class="date-badge" id="g-code" title="Código da sala">----</span>
+    <button id="btn-endturn" title="Encerrar turno agora (só o anfitrião)">⏭</button>
+  </div>
+
+  <div class="game-body">
+    <div class="map-wrap">
+      <svg id="map" viewBox="0 0 1000 520" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="ocean" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#0e2b52"/><stop offset="1" stop-color="#0a1f3d"/>
+          </linearGradient>
+          <linearGradient id="land" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#7d9b6a"/><stop offset=".5" stop-color="#b3a06b"/><stop offset="1" stop-color="#8a7f52"/>
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="1000" height="520" fill="url(#ocean)"/>
+        <g id="continents" fill="url(#land)" stroke="#3d5a3d" stroke-width="1.5" opacity="0.92">
+          <!-- América do Norte -->
+          <path d="M40,72 Q80,50 140,52 Q220,56 262,74 Q300,92 308,120 Q312,146 290,168 Q278,182 272,190 Q250,206 224,202 Q200,200 196,212 Q214,222 252,228 Q276,232 282,240 L268,246 Q240,244 216,232 Q180,218 160,196 Q120,170 92,140 Q60,110 40,72 Z"/>
+          <!-- Groenlândia -->
+          <path d="M330,42 Q360,34 384,44 Q392,60 380,76 Q360,86 340,78 Q326,60 330,42 Z"/>
+          <!-- América do Sul -->
+          <path d="M292,246 Q320,240 348,252 Q386,266 404,282 Q408,300 396,318 Q382,342 368,344 Q356,368 340,392 Q326,414 312,416 Q300,400 300,372 Q296,336 288,308 Q280,278 284,258 Z"/>
+          <!-- Europa -->
+          <path d="M472,148 Q470,132 484,120 Q492,106 500,100 Q516,88 540,82 Q560,78 576,88 Q600,96 612,104 Q616,120 606,132 Q590,142 570,146 Q548,152 528,152 Q500,156 484,156 Z"/>
+          <!-- Escandinávia -->
+          <path d="M520,78 Q536,60 556,58 Q570,66 566,84 Q552,94 536,92 Q524,88 520,78 Z"/>
+          <!-- Reino Unido (ilha) -->
+          <path d="M486,96 Q494,88 500,94 Q502,106 496,114 Q488,116 484,108 Q484,100 486,96 Z"/>
+          <!-- África -->
+          <path d="M482,168 Q506,158 532,160 Q560,162 586,172 Q600,186 596,204 Q620,214 642,228 Q646,244 630,252 Q610,262 600,282 Q590,310 578,336 Q566,358 552,360 Q536,356 528,336 Q520,308 516,282 Q512,262 508,246 Q494,228 488,206 Q480,186 482,168 Z"/>
+          <!-- Ásia -->
+          <path d="M612,104 Q640,84 690,74 Q760,62 830,64 Q900,66 946,76 Q960,96 948,116 Q920,132 892,140 Q866,150 848,166 Q836,180 826,172 Q806,186 792,200 Q780,214 770,208 Q752,222 738,230 Q726,240 716,238 Q700,244 690,236 Q676,220 664,208 Q650,198 636,194 Q620,186 616,168 Q606,148 606,132 Q608,116 612,104 Z"/>
+          <!-- Arábia -->
+          <path d="M596,182 Q614,176 630,184 Q642,196 638,212 Q626,224 610,220 Q598,208 594,194 Z"/>
+          <!-- Índia -->
+          <path d="M688,196 Q706,190 720,198 Q728,214 722,230 Q714,244 706,240 Q696,226 690,212 Z"/>
+          <!-- Sudeste asiático -->
+          <path d="M770,214 Q786,208 800,216 Q808,228 800,240 Q786,246 776,238 Q768,226 770,214 Z"/>
+          <!-- Japão (ilhas) -->
+          <path d="M872,146 Q882,138 890,146 Q894,158 888,168 Q878,170 872,162 Q870,152 872,146 Z"/>
+          <!-- Indonésia -->
+          <path d="M796,262 Q816,256 838,262 Q856,268 868,264 Q872,272 858,276 Q830,280 806,274 Q794,270 796,262 Z"/>
+          <!-- Austrália -->
+          <path d="M814,330 Q840,318 872,322 Q902,326 918,342 Q922,360 908,372 Q884,382 856,378 Q828,372 816,356 Q810,342 814,330 Z"/>
+          <!-- Nova Zelândia -->
+          <path d="M942,384 Q950,378 956,386 Q954,396 946,400 Q940,394 942,384 Z"/>
+        </g>
+        <g id="map-lines"></g>
+        <g id="map-markers"></g>
+      </svg>
+
+      <div id="propose-bar"></div>
+
+      <div class="nation-panel hidden" id="np">
+        <div class="np-head">
+          <span class="fl" id="np-flag">🏳️</span>
+          <div class="nm"><span id="np-name">—</span><small id="np-leader">—</small></div>
         </div>
+        <div class="np-stats" id="np-stats"></div>
+        <div class="np-provs" id="np-provs"></div>
+        <div class="np-actions" id="np-actions"></div>
+        <div class="np-note" id="np-note"></div>
       </div>
 
-      <section class="rooms-box">
-        <div class="rooms-head compact-head">
-          <h3>Salas abertas</h3>
-          <button id="refreshRoomsBtn" class="small-btn ghost">Atualizar</button>
-        </div>
-        <div id="openRoomsList" class="open-rooms-list">Carregando salas...</div>
-      </section>
-
-      <div class="menu-actions">
-        <a id="apkBtn" class="small-btn ghost apk-btn" href="/ArenaSeteChamas-v16.apk" download>APK Android</a>
-        <button id="fullscreenMenuBtn" class="small-btn ghost" type="button">Tela cheia</button>
-      </div>
-    </main>
-  </section>
-
-  <section id="lobbyScreen" class="screen lobby-screen">
-    <header class="topbar glass">
-      <div>
-        <div class="tiny">Sala online</div>
-        <h2 id="roomTitle">Sala ----</h2>
-      </div>
-      <div class="top-actions">
-        <button id="fullscreenLobbyBtn" class="small-btn ghost">Tela cheia</button>
-        <button id="copyBtn" class="small-btn">Copiar código</button>
-        <button id="leaveBtn" class="small-btn ghost">Sair</button>
-      </div>
-    </header>
-
-    <main class="lobby-grid">
-      <section class="glass panel">
-        <h3>Dificuldade</h3>
-        <div id="difficultyButtons" class="difficulty-buttons"></div>
-      </section>
-
-      <section class="glass panel players-panel">
-        <h3>Jogadores</h3>
-        <div id="playersList" class="players-list"></div>
-        <div class="start-row">
-          <button id="readyBtn" class="big-btn">Estou pronto</button>
-          <button id="startBtn" class="big-btn primary">Iniciar partida</button>
-        </div>
-      </section>
-
-      <section class="glass panel heroes-panel">
-        <div class="panel-title-row">
-          <div>
-            <h3>Heróis</h3>
-          </div>
-        </div>
-        <div id="heroCards" class="hero-cards"></div>
-      </section>
-
-    </main>
-  </section>
-
-  <section id="gameScreen" class="screen game-screen">
-    <canvas id="gameCanvas"></canvas>
-
-    <div class="game-hud top-hud glass">
-      <div class="hud-buttons">
-        <button id="fullscreenGameBtn" class="small-btn ghost">Tela cheia</button>
-        <button id="backLobbyBtn" class="small-btn ghost">Lobby</button>
-      </div>
-      <div class="hidden-game-info">
-        <h2 id="hudStage">Carregando...</h2>
-        Sala <strong id="hudRoom">----</strong> · <span id="hudDiff">Médio</span><span id="hudSub"></span>
+      <div class="bottom-bar">
+        <div class="ap-dock" id="m-ap" title="Pontos de ação">●●●●</div>
+        <button class="round-btn" data-act="investir" title="Investir na economia (+2 🏭) — $250 · 1⚡"><small>ECONOMIA</small><span class="costdot">$250</span></button>
+        <button class="round-btn" data-act="militar" title="Recrutar tropas (+3 🪖) — $300 · 1⚡"><small>TROPAS</small><span class="costdot">$300</span></button>
+        <button class="round-btn" data-act="propaganda" title="Propaganda (+7 ❤️) — $150 · 1⚡"><small>MÍDIA</small><span class="costdot">$150</span></button>
+        <button class="round-btn" data-act="nuclear" title="Avançar programa nuclear (+1 ☢️, máx 5; nível 3+ libera míssil) — $600 · 2⚡">️<small>NUCLEAR</small><span class="costdot">$600</span></button>
+        <button class="round-btn" data-act="ideologia" title="Expandir doutrina (+2 ⚖️ — 60 vence por hegemonia ideológica) — $200 · 1⚡">⚖️<small>DOUTRINA</small><span class="costdot">$200</span></button>
+        <button class="round-btn" data-act="fe" title="Enviar missionários (+2 🕌 — 60 vence por hegemonia religiosa) — $200 · 1⚡"><small>FÉ</small><span class="costdot">$200</span></button>
       </div>
     </div>
 
-    <div id="teamHud" class="team-hud glass"></div>
-    <div id="abilityHud" class="ability-hud glass"></div>
-    <div id="bossHud" class="boss-hud glass"></div>
-    <div id="messagesHud" class="messages-hud"></div>
-
-    <div class="controls">
-      <div id="joystick" class="joystick">
-        <div id="stick" class="stick"></div>
-      </div>
-      <div class="action-buttons">
-        <button id="dashTouch" class="action dash">ESQUIVAR<span>Shift</span></button>
-        <button id="attackTouch" class="action attack">TIRO AUTO<span>automático</span></button>
-        <button id="specialTouch" class="action special">HABILIDADE<span>Q</span></button>
-        <button id="ultimateTouch" class="action ultimate">ULTIMATE<span>auto</span></button>
+    <div class="sidebar">
+      <h3>📜 Acontecimentos</h3>
+      <div class="feed" id="feed"></div>
+      <h3>💬 Diplomacia (chat)</h3>
+      <div class="chat-msgs" id="chat-msgs"></div>
+      <div class="chat-input">
+        <input id="chat-inp" maxlength="200" placeholder="Fale com os líderes...">
+        <button id="chat-send">➤</button>
       </div>
     </div>
+  </div>
+</div>
 
-    <div id="orientationHint" class="orientation-hint glass">
-      <h2>Vire o celular</h2>
-    </div>
+<!-- ============ OVERLAY ============ -->
+<div id="overlay" class="hidden">
+  <div class="ov-card">
+    <div class="big" id="ov-emoji">🏆</div>
+    <h2 id="ov-title">Fim de jogo</h2>
+    <p id="ov-text">—</p>
+    <button class="primary" id="ov-btn">Jogar novamente</button>
+  </div>
+</div>
 
-    <div id="endOverlay" class="end-overlay glass hidden">
-      <h1 id="endTitle">Fim</h1>
-      <p id="endText">Resultado</p>
-      <div class="end-actions">
-        <button id="playAgainBtn" class="big-btn primary">Voltar ao lobby</button>
-      </div>
-    </div>
-  </section>
+<script>
+'use strict';
+/* ================= dados compartilhados com o servidor ================= */
+const COUNTRIES = [
+  { id:'br', name:'Brasil',        flag:'🇧🇷', lat:-10, lon:-52 },
+  { id:'us', name:'Estados Unidos',flag:'🇺🇸', lat:39,  lon:-98 },
+  { id:'ru', name:'Rússia',        flag:'🇷🇺', lat:58,  lon:80  },
+  { id:'cn', name:'China',         flag:'🇨🇳', lat:35,  lon:104 },
+  { id:'de', name:'Alemanha',      flag:'🇩🇪', lat:51,  lon:10  },
+  { id:'fr', name:'França',        flag:'🇫🇷', lat:46,  lon:2   },
+  { id:'gb', name:'Reino Unido',   flag:'🇬🇧', lat:54,  lon:-2  },
+  { id:'in', name:'Índia',         flag:'🇮🇳', lat:21,  lon:78  },
+  { id:'jp', name:'Japão',         flag:'🇯🇵', lat:36,  lon:138 },
+  { id:'mx', name:'México',        flag:'🇲🇽', lat:23,  lon:-102},
+  { id:'ng', name:'Nigéria',       flag:'🇳🇬', lat:9,   lon:8   },
+  { id:'au', name:'Austrália',     flag:'🇦🇺', lat:-25, lon:134 },
+];
+const CBYID = Object.fromEntries(COUNTRIES.map(c=>[c.id,c]));
+const proj = c => ({ x:(c.lon+180)/360*1000, y:(90-c.lat)/180*520 });
+const $ = id => document.getElementById(id);
+const fmt = n => '$' + Math.round(n).toLocaleString('pt-BR');
+const myName = () => localStorage.getItem('po_name') || '';
 
+/* ================= conexão ================= */
+let ws = null, state = null, myId = null, selectedId = null, deadShown = false;
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="client.js?v=42"></script>
+function wsUrl(){
+  const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
+  return proto + location.host + '/';
+}
+function connect(){
+  setConn('conectando…', true);
+  ws = new WebSocket(wsUrl());
+  ws.onopen = () => setConn('🟢 online', false);
+  ws.onmessage = e => { let m; try{ m = JSON.parse(e.data); }catch(_){return;} handle(m); };
+  ws.onclose = () => { setConn('🔴 reconectando…', true); setTimeout(connect, 1500); };
+  ws.onerror = () => { try{ ws.close(); }catch(_){} };
+}
+function setConn(txt, bad){
+  const el = $('conn-status'); el.textContent = txt; el.className = 'conn-status' + (bad ? ' bad':'');
+}
+function send(obj){ if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
+
+/* ================= toast ================= */
+function toast(msg, kind){
+  const d = document.createElement('div');
+  d.className = 'toast ' + (kind||'');
+  d.textContent = msg;
+  $('toasts').appendChild(d);
+  setTimeout(()=>d.remove(), 3800);
+}
+
+/* ================= mensagens ================= */
+function handle(m){
+  if (m.t === 'state'){ state = m; myId = m.you; render(); }
+  else if (m.t === 'chat'){
+    const box = $('chat-msgs');
+    const div = document.createElement('div'); div.className = 'cmsg';
+    const who = document.createElement('span'); who.className='who'; who.textContent = m.flag + ' ' + m.from + ': ';
+    div.appendChild(who); div.appendChild(document.createTextNode(m.text));
+    box.appendChild(div); box.scrollTop = box.scrollHeight;
+  }
+  else if (m.t === 'error') toast('⚠️ ' + m.msg, 'error');
+  else if (m.t === 'info') toast(m.msg, 'info');
+}
+
+/* ================= render ================= */
+function me(){ return state ? state.players.find(p=>p.id===myId) : null; }
+function cflag(p){ const c = CBYID[p.country]; return c ? c.flag : '🏳️'; }
+function cname(p){ const c = CBYID[p.country]; return c ? c.flag+' '+c.name : '—'; }
+function gameDate(turn){
+  const d = new Date(2024, 6, 1);
+  d.setMonth(d.getMonth() + Math.max(0, turn-1));
+  const dd = String(d.getDate()).padStart(2,'0'), mm = String(d.getMonth()+1).padStart(2,'0');
+  return `${dd}-${mm}-${d.getFullYear()}`;
+}
+function showScreen(id){
+  ['scr-home','scr-lobby','scr-game'].forEach(s => $(s).classList.toggle('hidden', s!==id));
+}
+function render(){
+  if (!state) return;
+  if (state.phase === 'lobby'){ showScreen('scr-lobby'); renderLobby(); }
+  else { showScreen('scr-game'); renderGame(); renderOverlay(); }
+}
+
+/* ---------- lobby ---------- */
+function renderLobby(){
+  $('lob-code').textContent = state.code;
+  $('lob-count').textContent = state.players.length;
+  const isHost = me() && me().isHost;
+  const btn = $('btn-start');
+  btn.classList.toggle('hidden', !isHost);
+  btn.textContent = state.players.length >= 2
+    ? `▶ Iniciar partida (${state.players.length} jogadores)`
+    : '▶ Iniciar sozinho (treino)';
+
+  const strip = $('lob-players'); strip.innerHTML = '';
+  state.players.forEach(p => {
+    const chip = document.createElement('span'); chip.className = 'pchip';
+    chip.textContent = cflag(p) + ' ' + p.name + (p.isHost ? ' 👑' : '');
+    strip.appendChild(chip);
+  });
+
+  const grid = $('lob-countries'); grid.innerHTML = '';
+  const takenBy = {};
+  state.players.forEach(p => { if (p.country) takenBy[p.country] = p; });
+  COUNTRIES.forEach(c => {
+    const taken = takenBy[c.id];
+    const mine = me() && me().country === c.id;
+    const div = document.createElement('div');
+    div.className = 'c-country' + (mine ? ' mine' : '') + (taken && !mine ? ' taken' : '');
+    div.innerHTML = `<div class="fl">${c.flag}</div><div class="nm">${c.name}</div>`;
+    const who = document.createElement('div'); who.className='who';
+    who.textContent = taken ? (taken.id===myId ? '✓ você' : taken.name) : 'livre';
+    div.appendChild(who);
+    if (!taken || mine) div.onclick = () => send({t:'pick', country:c.id});
+    grid.appendChild(div);
+  });
+}
+
+/* ---------- jogo / mapa ---------- */
+function relTo(p){
+  const m = me();
+  if (p.id === myId) return 'me';
+  if (!m) return 'other';
+  if (m.allies.includes(p.id)) return 'ally';
+  return 'other';
+}
+
+function renderGame(){
+  const m = me(); if (!m) return;
+
+  // HUD
+  $('g-date').textContent = gameDate(state.turn);
+  $('g-meflag').textContent = cflag(m);
+  $('g-mename').textContent = m.name;
+  $('g-code').textContent = state.code;
+  $('btn-endturn').classList.toggle('hidden', !m.isHost || state.phase!=='game');
+  $('m-money').textContent = fmt(m.money);
+  $('m-eco').textContent = m.eco;
+  $('m-mil').textContent = m.mil;
+  $('m-aprov').textContent = m.aprov + '%';
+  $('m-aprov').style.color = m.aprov > 55 ? 'var(--green)' : (m.aprov > 25 ? 'var(--gold2)' : 'var(--red)');
+  $('m-ap').textContent = '●'.repeat(m.ap) + '○'.repeat(Math.max(0,4-m.ap));
+
+  document.querySelectorAll('.round-btn').forEach(b => {
+    const costs = { investir:[1,250], militar:[1,300], propaganda:[1,150], nuclear:[2,600], ideologia:[1,200], fe:[1,200] };
+    const [ap, cost] = costs[b.dataset.act];
+    b.disabled = state.phase!=='game' || !m.alive || m.ap < ap || m.money < cost || (b.dataset.act==='nuclear' && m.nuclear>=5);
+  });
+
+  // propostas de aliança para mim
+  const bar = $('propose-bar'); bar.innerHTML = '';
+  state.proposals.filter(pr => pr.to === myId).forEach(pr => {
+    const from = state.players.find(p=>p.id===pr.from);
+    if (!from) return;
+    const div = document.createElement('div'); div.className = 'propose';
+    const txt = document.createElement('span');
+    txt.textContent = `🤝 ${cname(from)} propôs aliança`;
+    const ok = document.createElement('button'); ok.className='primary'; ok.textContent='Aceitar';
+    ok.onclick = () => send({t:'resp_alianca', from:pr.from, accept:true});
+    const no = document.createElement('button'); no.textContent='Recusar';
+    no.onclick = () => send({t:'resp_alianca', from:pr.from, accept:false});
+    div.appendChild(txt); div.appendChild(ok); div.appendChild(no);
+    bar.appendChild(div);
+  });
+
+  renderMap();
+  renderPanel();
+
+  // feed
+  const feed = $('feed'); feed.innerHTML = '';
+  state.log.forEach(item => {
+    const div = document.createElement('div'); div.className='item';
+    const t = document.createElement('span'); t.className='turn'; t.textContent = gameDate(item.turn) + ' ·';
+    div.appendChild(t); div.appendChild(document.createTextNode(item.msg));
+    feed.appendChild(div);
+  });
+}
+
+function renderMap(){
+  const m = me();
+  const gLines = document.getElementById('map-lines');
+  const g = document.getElementById('map-markers');
+  gLines.innerHTML = ''; g.innerHTML = '';
+
+  // linhas de aliança entre mim e meus aliados
+  if (m && m.country){
+    const a = proj(CBYID[m.country]);
+    m.allies.forEach(aid => {
+      const ally = state.players.find(p=>p.id===aid);
+      if (ally && ally.country && ally.alive){
+        const b = proj(CBYID[ally.country]);
+        const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+        ln.setAttribute('x1',a.x); ln.setAttribute('y1',a.y);
+        ln.setAttribute('x2',b.x); ln.setAttribute('y2',b.y);
+        ln.setAttribute('stroke','#e8b93c'); ln.setAttribute('stroke-width','2');
+        ln.setAttribute('stroke-dasharray','6 5'); ln.setAttribute('opacity','0.75');
+        gLines.appendChild(ln);
+      }
+    });
+  }
+
+  state.players.forEach(p => {
+    if (!p.country) return;
+    const c = CBYID[p.country];
+    const pos = proj(c);
+    const rel = relTo(p);
+    const ringColor = !p.alive ? '#5a6478' : rel==='me' ? '#ffd76a' : rel==='ally' ? '#39d98a' : '#ff6b6b';
+    const r = 11 + Math.min(9, p.mil/4);
+
+    const mk = document.createElementNS('http://www.w3.org/2000/svg','g');
+    mk.setAttribute('class','mk');
+    mk.setAttribute('transform',`translate(${pos.x},${pos.y})`);
+    mk.setAttribute('opacity', p.alive ? '1' : '0.4');
+
+    if (p.id === selectedId){
+      const halo = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      halo.setAttribute('class','pulse');
+      halo.setAttribute('r','16'); halo.setAttribute('fill','none');
+      halo.setAttribute('stroke', ringColor); halo.setAttribute('stroke-width','2');
+      mk.appendChild(halo);
+    }
+    const ring = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    ring.setAttribute('class','ring');
+    ring.setAttribute('r', r);
+    ring.setAttribute('fill', '#0c1324');
+    ring.setAttribute('stroke', ringColor);
+    ring.setAttribute('stroke-width', p.id===selectedId ? '3.5' : '2.5');
+    mk.appendChild(ring);
+
+    const fl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    fl.setAttribute('text-anchor','middle'); fl.setAttribute('dominant-baseline','central');
+    fl.setAttribute('font-size', '15');
+    fl.textContent = c.flag;
+    mk.appendChild(fl);
+
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('text-anchor','middle'); lbl.setAttribute('y', String(r + 13));
+    lbl.setAttribute('font-size','9.5'); lbl.setAttribute('fill','#cfd8ee');
+    lbl.setAttribute('font-weight','700');
+    lbl.textContent = p.alive ? `${c.name} ${p.isHost?'👑':''}` : '💀 ' + c.name;
+    mk.appendChild(lbl);
+
+    if (p.nuclear >= 1){
+      const nb = document.createElementNS('http://www.w3.org/2000/svg','text');
+      nb.setAttribute('x', String(r+1)); nb.setAttribute('y', String(-r-1));
+      nb.setAttribute('font-size','11');
+      nb.textContent = '☢️';
+      mk.appendChild(nb);
+    }
+    mk.onclick = () => { selectedId = (selectedId === p.id ? null : p.id); renderMap(); renderPanel(); };
+    g.appendChild(mk);
+  });
+}
+
+function renderPanel(){
+  const m = me();
+  const np = $('np');
+  const p = state.players.find(x=>x.id===selectedId);
+  if (!p){ np.classList.add('hidden'); return; }
+  np.classList.remove('hidden');
+  const c = CBYID[p.country];
+  $('np-flag').textContent = c.flag;
+  $('np-name').textContent = c.name + (p.nuclear>=3 ? ' ☢️' : '');
+  $('np-leader').textContent = p.name + (p.isHost ? ' 👑' : '') + (!p.connected ? ' 📴' : '');
+  $('np-stats').innerHTML =
+    `<div class="ms"><span>💰 Caixa</span><b>${fmt(p.money)}</b></div>` +
+    `<div class="ms"><span>🏭 Economia</span><b>${p.eco}</b></div>` +
+    `<div class="ms"><span>🪖 Militar</span><b>${p.mil}</b></div>` +
+    `<div class="ms"><span>❤️ Aprovação</span><b>${p.aprov}%</b></div>` +
+    `<div class="ms"><span>☢️ Nuclear</span><b>${p.nuclear}/5</b></div>` +
+    `<div class="ms"><span>⚖️ · 🕌</span><b>${p.influencia} · ${p.fe}</b></div>`;
+
+  // províncias (de qualquer país selecionado)
+  const provsEl = $('np-provs'); provsEl.innerHTML = '';
+  const sub = document.createElement('div'); sub.className='np-sub';
+  sub.textContent = p.id===myId ? '🗺️ Suas províncias (🏗️ = +1 infra, $200 · 1⚡)' : '🗺️ Províncias';
+  provsEl.appendChild(sub);
+  p.provinces.forEach((pr, i) => {
+    const row = document.createElement('div'); row.className='prov';
+    const name = document.createElement('span'); name.className='pname';
+    name.textContent = pr.name;
+    row.appendChild(name);
+    if (pr.owner !== p.id){
+      const ow = state.players.find(x=>x.id===pr.owner);
+      const o = document.createElement('span'); o.className='owner';
+      o.textContent = '⤷ ' + (ow ? CBYID[ow.country].flag : '❓') + ' ocupada';
+      row.appendChild(o);
+    }
+    const pips = document.createElement('span'); pips.className='pips';
+    pips.textContent = '▪'.repeat(pr.infra) + '▫'.repeat(Math.max(0,5-pr.infra));
+    row.appendChild(pips);
+    if (p.id === myId && m && m.alive && state.phase==='game'){
+      const b = document.createElement('button');
+      b.textContent = '🏗️'; b.title = 'Desenvolver ' + pr.name + ' (+1 infra)';
+      b.disabled = pr.infra>=5 || pr.owner!==myId || m.ap<1 || m.money<200;
+      b.onclick = () => send({t:'action', action:'infra', prov:i});
+      row.appendChild(b);
+    }
+    provsEl.appendChild(row);
+  });
+
+  const acts = $('np-actions'); acts.innerHTML = '';
+  const note = $('np-note'); note.textContent = '';
+  const canAct = m && m.alive && state.phase === 'game' && p.alive;
+  if (p.id === myId){
+    note.textContent = '🫵 Sua nação — ações internas nos botões redondos abaixo.';
+  } else if (!p.alive){
+    note.textContent = '☠️ ' + (p.reason || 'Eliminado');
+  } else if (canAct){
+    const ally = m.allies.includes(p.id);
+    const pending = state.proposals.some(pr => pr.from===myId && pr.to===p.id);
+    const sancAtiva = m.sanctioning.includes(p.id);
+    const mkBtn = (emoji, title, fn, dis) => {
+      const b = document.createElement('button');
+      b.textContent = emoji; b.title = title; b.disabled = !!dis; b.onclick = fn;
+      return b;
+    };
+    acts.appendChild(mkBtn('🕵️','Espionar ($100 · 1⚡)', ()=>send({t:'action',action:'espionar',target:p.id}), m.ap<1||m.money<100));
+    acts.appendChild(mkBtn('⚔️','Atacar — ocupa 1 província (2⚡)', ()=>send({t:'action',action:'atacar',target:p.id}), m.ap<2||ally));
+    acts.appendChild(mkBtn('☢️','Lançar míssil nuclear (3⚡, requer nível 3+)', ()=>send({t:'action',action:'nuke',target:p.id}), m.ap<3||m.nuclear<3||ally));
+    acts.appendChild(mkBtn('🧨','Sabotagem — destrói infraestrutura (1⚡, $150)', ()=>send({t:'action',action:'sabotagem',target:p.id}), m.ap<1||m.money<150));
+    acts.appendChild(mkBtn(sancAtiva?'🕊️':'🚫', sancAtiva?'SUSPENDER sanções':'Impor SANÇÕES econômicas (1⚡)', ()=>send({t:'action',action:'sancao',target:p.id}), !sancAtiva && (m.ap<1||m.sanctioning.length>=3)));
+    acts.appendChild(mkBtn('💸','Ajudar $200 (+2 ❤️ ambos, 1⚡)', ()=>send({t:'action',action:'ajudar',target:p.id}), m.ap<1||m.money<200));
+    acts.appendChild(mkBtn('🤝','Propor aliança', ()=>send({t:'action',action:'alianca',target:p.id}), ally||pending||m.allies.length>=3));
+    if (ally) note.textContent = '🤝 Nações aliadas — não podem se atacar.';
+    else if (pending) note.textContent = '⏳ Proposta de aliança aguardando resposta…';
+  }
+  if (p.alive && p.sanctionedBy.length){
+    const names = p.sanctionedBy.map(id => { const x = state.players.find(q=>q.id===id); return x ? x.name : '?'; }).join(', ');
+    note.textContent = (note.textContent ? note.textContent + ' | ' : '') + '🚫 Sofre sanções de: ' + names;
+  }
+}
+
+/* ---------- overlay ---------- */
+function renderOverlay(){
+  const ov = $('overlay');
+  const m = me();
+  if (state.phase === 'over' && state.winner){
+    const w = state.players.find(p=>p.id===state.winner.id);
+    $('ov-emoji').textContent = (w && w.id===myId) ? '🏆' : '🌍';
+    $('ov-title').textContent = (w && w.id===myId) ? 'VOCÊ VENCEU!' : cname(w) + ' venceu!';
+    $('ov-text').textContent = state.winner.reason + ' — ' + (w ? w.name : '');
+    $('ov-btn').textContent = 'Jogar novamente';
+    ov.classList.remove('hidden');
+  } else if (m && !m.alive && !deadShown){
+    deadShown = true;
+    $('ov-emoji').textContent = '💥';
+    $('ov-title').textContent = 'Você foi deposto!';
+    $('ov-text').textContent = (m.reason || 'Seu governo chegou ao fim.') + ' Você pode continuar assistindo.';
+    $('ov-btn').textContent = 'Assistir como espectador';
+    ov.classList.remove('hidden');
+  } else if (state.phase === 'game'){
+    ov.classList.add('hidden');
+  }
+}
+
+/* ================= ações da UI ================= */
+$('btn-create').onclick = () => { localStorage.setItem('po_name', $('inp-name').value.trim()); send({t:'create', name:$('inp-name').value.trim()}); };
+$('btn-join').onclick = () => {
+  const code = $('inp-code').value.trim().toUpperCase();
+  if (code.length < 4) return toast('Digite o código de 4 letras da sala.', 'error');
+  localStorage.setItem('po_name', $('inp-name').value.trim());
+  send({t:'join', code, name:$('inp-name').value.trim()});
+};
+$('inp-name').value = myName();
+const urlSala = new URLSearchParams(location.search).get('sala');
+if (urlSala){ $('inp-code').value = urlSala.toUpperCase().slice(0,4); toast('🔗 Código de sala preenchido! Digite seu nome e entre.', 'info'); }
+
+$('btn-copy-code').onclick = () => navigator.clipboard.writeText(state.code).then(()=>toast('Código copiado: ' + state.code)).catch(()=>toast('Código: ' + state.code,'info'));
+$('btn-copy-link').onclick = () => {
+  const link = location.origin + '/?sala=' + state.code;
+  navigator.clipboard.writeText(link).then(()=>toast('🔗 Link de convite copiado!')).catch(()=>toast(link,'info'));
+};
+$('btn-leave').onclick = () => location.reload();
+$('btn-start').onclick = () => send({t:'start'});
+$('btn-endturn').onclick = () => send({t:'fim_turno'});
+document.querySelectorAll('.round-btn').forEach(b => b.onclick = () => send({t:'action', action:b.dataset.act}));
+
+function sendChat(){
+  const inp = $('chat-inp');
+  const text = inp.value.trim();
+  if (!text) return;
+  send({t:'chat', text});
+  inp.value = '';
+}
+$('chat-send').onclick = sendChat;
+$('chat-inp').addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
+$('inp-code').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-join').click(); });
+$('inp-name').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-create').click(); });
+$('ov-btn').onclick = () => {
+  if (state && state.phase === 'over') location.reload();
+  else { deadShown = true; $('overlay').classList.add('hidden'); }
+};
+
+/* ================= timer ================= */
+setInterval(() => {
+  if (!state || state.phase !== 'game') return;
+  const left = Math.max(0, Math.ceil((state.timerEnd - Date.now())/1000));
+  const el = $('g-timer');
+  el.textContent = String(Math.floor(left/60)).padStart(2,'0') + ':' + String(left%60).padStart(2,'0');
+  el.style.color = left <= 10 ? 'var(--red)' : 'var(--gold2)';
+}, 250);
+
+connect();
+</script>
 </body>
 </html>

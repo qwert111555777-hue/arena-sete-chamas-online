@@ -1,61 +1,28 @@
-# Arena das Sete Chamas Online
+# 🏛️ Presidente Online — Simulador de Geopolítica Multiplayer
 
-Jogo 2D online no navegador para até 5 jogadores.
+Jogo de estratégia geopolítica **online e multiplayer** no navegador, inspirado no gênero
+dos simuladores de presidente (estilo Modern Age). Código 100% original, servidor Node.js
+sem dependências (WebSocket artesanal).
 
-## Como funciona a sala
+## Jogar
+1. Abra o site e digite seu nome → **Criar sala**
+2. Compartilhe o **código de 4 letras** ou o **link de convite** (`/?sala=XXXX`)
+3. Até 12 jogadores escolhem nações e o anfitrião inicia
 
-- Um jogador clica em **Criar sala**.
-- A sala aparece automaticamente na lista **Salas abertas** dentro do jogo.
-- Os amigos entram clicando em **Entrar** nessa sala.
-- Também existe entrada por código como reserva.
-- Cada jogador escolhe um herói diferente.
-- Só os heróis podem ser escolhidos; vilões são chefes controlados pelo jogo.
-
-## Dificuldades
-
-O host escolhe:
-
-- **Fácil**: chefes mais leves e reviver rápido.
-- **Médio**: equilíbrio para jogar em grupo.
-- **Difícil**: chefes agressivos, mais vida e dano.
-
-## Como jogar no celular
-
-Use o celular **deitado/horizontal**, como Brawl Stars:
-
-- Lado esquerdo: joystick para andar.
-- Lado direito: botões de atacar, habilidade e ultimate.
-- No celular, a mira é automática no inimigo mais próximo.
-
-## Como jogar no PC
-
-- **WASD** ou setas: mover.
-- **Mouse**: mirar.
-- **Clique esquerdo** ou **Espaço**: atacar.
-- **Q**: habilidade especial.
-- **E**: ultimate quando carregar 100%.
-
-## Personagens selecionáveis
-
-- Albert
-- Geovanna
-- Rômulo
-- Arthur
-- Guilherme
-
-## Chefes
-
-1. Otávio + Anielle
-2. Mito
-3. Lenda
-4. Vanjo
-5. Napoleão
+## Mecânicas
+- Turnos de 45s com calendário (início 01-07-2024), 4 pontos de ação/turno
+- Economia, recrutamento, propaganda, aprovação popular (≤5% = deposto)
+- 🗺️ Mapa-múndi interativo com 12 nações e 3 províncias reais por país
+- 🏗️ Infraestrutura por província (rende $/turno) e 🏴 ocupação territorial em guerras
+- ⚔️ Ataques convencionais com saque · ☢️ Programa nuclear (níveis 0–5) e lançamento de míssil
+- 🤝 Alianças · 🚫 Sanções econômicas · 🧨 Sabotagem · 🕵️ Espionagem
+- 🎲 Eventos aleatórios · 💬 Chat de diplomacia
+- 🏆 5 vitórias: conquista, econômica, ideológica, religiosa ou última nação de pé
 
 ## Rodar localmente
-
 ```bash
-npm install
-npm start
+npm start   # ou: node server.js  (porta 3000 por padrão, honra $PORT)
 ```
 
-Depois abra: `http://localhost:3000`
+## Deploy (Render)
+Serviço Node web; build `npm install`, start `npm start`, health check `/health`.
