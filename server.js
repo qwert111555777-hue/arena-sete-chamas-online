@@ -389,6 +389,7 @@ function snapshot(room) {
       blockading: p.blockading, blockadedBy: p.blockadedBy,
       units: p.units, builds: p.builds, emergencyUntil: p.emergencyUntil, leis: p.leis,
       pop: p.pop, rec: p.rec, xp: p.xp, bot: p.bot, customName: p.customName, customFlag: p.customFlag,
+      dailyIncome: Math.round(incomeOf(room, p)),
       buildings: p.buildings, stats: p.stats, famine: p.famine, blackout: p.blackout,
       depositos: p.depositos || [], upgrades: p.upgrades || {}, pacts: p.pacts || {},
     })),
