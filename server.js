@@ -12,6 +12,7 @@ const http = require('http');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -291,6 +292,8 @@ class WSConn {
   constructor(socket) {
     this.socket = socket; this.buffer = Buffer.alloc(0);
     this.onMessage = null; this.onClose = null; this.closed = false;
+    // cliente aceita frames de estado comprimidos com gzip (negociado via ?gz=1)
+    this.gz = false;
     socket.setNoDelay(true);
     socket.on('data', chunk => { this.buffer = Buffer.concat([this.buffer, chunk]); this.drain(); });
     socket.on('close', () => this._close());
@@ -336,6 +339,9 @@ class WSConn {
     }
   }
   send(obj) { if (this.closed) return; try { this.socket.write(encodeFrame(JSON.stringify(obj))); } catch (e) { this._close(); } }
+  // envia JSON já serializado (sem re-serializar) — usado pelo broadcast
+  sendText(json) { if (this.closed) return; try { this.socket.write(encodeFrame(json)); } catch (e) { this._close(); } }
+  sendBinary(buf) { if (this.closed) return; try { this.socket.write(encodeFrame(buf, 0x2)); } catch (e) { this._close(); } }
 }
 
 /* ---------------- Estado ---------------- */
@@ -398,7 +404,21 @@ function snapshot(room) {
 }
 function broadcast(room) {
   const base = snapshot(room);
-  for (const p of room.players) if (p.conn && p.connected) p.conn.send({ ...base, you: p.id });
+  let text = null, gz = null;
+  for (const p of room.players) {
+    if (!p.conn || !p.connected) continue;
+    p.conn.send({ t: 'you', you: p.id });
+    if (p.conn.gz) {
+      if (!gz) {
+        if (text === null) text = JSON.stringify(base);
+        gz = zlib.gzipSync(Buffer.from(text), { level: 6 });
+      }
+      p.conn.sendBinary(gz);
+    } else {
+      if (text === null) text = JSON.stringify(base);
+      p.conn.sendText('{"you":"' + p.id + '",' + text.slice(1));
+    }
+  }
 }
 function err(conn, msg) { if (conn) conn.send({ t: 'error', msg }); }
 function info(conn, msg) { if (conn) conn.send({ t: 'info', msg }); }
@@ -1469,6 +1489,8 @@ server.on('upgrade', (req, socket) => {
   if (!key) { socket.destroy(); return; }
   socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ' + acceptKey(key) + '\r\n\r\n');
   socket.resume();
-  handleClient(new WSConn(socket));
+  const conn = new WSConn(socket);
+  conn.gz = /(?:^|[?&])gz=1(?:&|$)/.test(String(req.url || ''));
+  handleClient(conn);
 });
 server.listen(PORT, '0.0.0.0', () => console.log(`🏛️ Presidente Online (VERSÃO TOTAL) em http://0.0.0.0:${PORT}`));

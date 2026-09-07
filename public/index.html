@@ -734,15 +734,29 @@ const myName = () => localStorage.getItem('po_name') || '';
 /* ================= conexão ================= */
 let ws = null, state = null, myId = null, selectedId = null, deadShown = false;
 
+/* ---- estado comprimido: o servidor manda o "state" em gzip (frame binário).
+       Negociado na conexão; navegador sem DecompressionStream cai no modo texto. ---- */
+const GZOK = (typeof DecompressionStream !== 'undefined');
 function wsUrl(){
   const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
-  return proto + location.host + '/';
+  return proto + location.host + '/?gz=' + (GZOK ? '1' : '0');
+}
+function inflateBlob(blob){
+  return new Response(blob.stream().pipeThrough(new DecompressionStream('gzip'))).text();
 }
 function connect(){
   setConn('conectando…', true);
   ws = new WebSocket(wsUrl());
+  ws.binaryType = 'blob';
   ws.onopen = () => setConn('🟢 online', false);
-  ws.onmessage = e => { let m; try{ m = JSON.parse(e.data); }catch(_){return;} handle(m); };
+  ws.onmessage = e => {
+    if (typeof e.data !== 'string'){
+      if (!GZOK) return;
+      inflateBlob(e.data).then(txt => { let m; try{ m = JSON.parse(txt); }catch(_){ return; } applyState(m); }).catch(()=>{});
+      return;
+    }
+    let m; try{ m = JSON.parse(e.data); }catch(_){return;} handle(m);
+  };
   ws.onclose = () => { setConn('🔴 reconectando…', true); setTimeout(connect, 1500); };
   ws.onerror = () => { try{ ws.close(); }catch(_){} };
 }
@@ -809,25 +823,28 @@ function parseFx(top){
 }
 
 /* ================= mensagens ================= */
-function handle(m){
-  if (m.t === 'state'){
-    state = m; myId = m.you;
-    if (m.turn !== lastTurn){ if (lastTurn) sfx('turn'); lastTurn = m.turn; }
-    const top = m.log[0] && m.log[0].msg;
-    if (top && top !== lastTopLog){
-      lastTopLog = top;
-      parseFx(top);
-      const myP = me();
-      if (myP && myP.country && /^(⚔️|🛡️|☢️|🚫|🧨|💥)/.test(top) && top.includes(cname(myP))) toast(top, 'info');
-      if (top.startsWith('☢️💥')) sfx('nuke');
-      else if (top.startsWith('⚔️') || top.startsWith('🛡️') || top.startsWith('💥')) sfx('war');
-      else if (top.startsWith('🤝')) sfx('ally');
-      else if (top.startsWith('🏆')) sfx('win');
-      else if (top.startsWith('🏗️') || top.startsWith('🏭') || top.startsWith('🪖')) sfx('build');
-    }
-    render();
+function applyState(m){
+  state = m; if (m.you) myId = m.you;
+  if (m.turn !== lastTurn){ if (lastTurn) sfx('turn'); lastTurn = m.turn; }
+  const top = m.log[0] && m.log[0].msg;
+  if (top && top !== lastTopLog){
+    lastTopLog = top;
+    parseFx(top);
+    const myP = me();
+    if (myP && myP.country && /^(⚔️|🛡️|☢️|🚫|🧨|💥)/.test(top) && top.includes(cname(myP))) toast(top, 'info');
+    if (top.startsWith('☢️💥')) sfx('nuke');
+    else if (top.startsWith('⚔️') || top.startsWith('🛡️') || top.startsWith('💥')) sfx('war');
+    else if (top.startsWith('🤝')) sfx('ally');
+    else if (top.startsWith('🏆')) sfx('win');
+    else if (top.startsWith('🏗️') || top.startsWith('🏭') || top.startsWith('🪖')) sfx('build');
   }
-  else if (m.t === 'chat'){
+  render();
+}
+
+function handle(m){
+  if (m.t === 'you'){ myId = m.you; return; }
+  if (m.t === 'state'){ applyState(m); return; }
+  if (m.t === 'chat'){
     const box = $('chat-msgs');
     const div = document.createElement('div'); div.className = 'cmsg';
     const who = document.createElement('span'); who.className='who'; who.textContent = m.flag + ' ' + m.from + ': ';

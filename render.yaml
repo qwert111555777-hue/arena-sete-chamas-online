@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: arena-sete-chamas-online
+    name: presidente-online
     env: node
     plan: free
     buildCommand: npm install
