@@ -440,7 +440,7 @@ function addPlayer(room, conn, name, isHost) {
     taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, budget: {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: 0, ideology: null, religion: 'laico',
     customName: null, customFlag: '🏳️', bot: false, pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 0, madeira: 0, terras_raras: 12, uranio: 0 },
     xp: 0, blackout: false, depositos: [], upgrades: {}, pacts: {},
-    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0 }, famine: false,
+    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0 }, famine: false,
     ministers: { eco: null, def: null, dip: null },
     techs: [], sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
@@ -469,7 +469,7 @@ function makeAIBot(c) {
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
     units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 },
     builds: [], emergencyUntil: 0, leis: [],
-    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0 }, famine: false,
+    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0 }, famine: false,
     ideology: Object.keys(IDEOLOGIES)[h % 6], religion: Object.keys(RELIGIONS)[h % 5],
     seguranca: { defesa: h % 2, secreto: (h >> 1) % 2, policia: (h >> 2) % 3, guarda: (h >> 3) % 2 },
   };
@@ -485,7 +485,7 @@ function startGame(room) {
     p.country = cid;
     p.money = 10000; p.eco = 3; p.mil = 3; p.pop = 0; p.rec = { comida: 0, minerio: 0, energia: 0, concreto: 0, madeira: 0, terras_raras: 12, uranio: 0 }; p.xp = 0; p.blackout = false;
     p.depositos = depositosOf(cid); p.upgrades = {}; p.pacts = {};
-    p.buildings = { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0 }; p.stats = { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0 }; p.famine = false;
+    p.buildings = { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }; p.stats = { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0 }; p.famine = false;
     p.aprov = 50; p.ap = AP_PER_TURN; p.alive = true;
     p.allies = []; p.eliminatedReason = null; p.nuclear = 0; p.influencia = 0; p.fe = 0; p.wars = [];
     p.provinces = [{ name: 'Capital de ' + nat.name, infra: 1, owner: p.id, origem: p.id }];
@@ -686,7 +686,9 @@ function resolveTurn(room) {
     const infra = ownProvinces(p).reduce((sx, x) => sx + x.infra, 0);
     const nBld = p.buildings.fazenda + p.buildings.mina + p.buildings.usina + p.buildings.petroleo + p.buildings.fabrica + p.buildings.serraria + p.buildings.mina_ouro + p.buildings.mina_rara + p.buildings.adubo + p.buildings.mina_uranio;
     const needEn = Math.ceil(nBld / 3);
-    p.rec.energia += 3 + infra * 2 + Math.round(p.buildings.usina * 4 * upM(p, 'usina')) + Math.round(p.buildings.petroleo * 3 * upM(p, 'petroleo'));
+    p.rec.energia += 3 + infra * 2 + Math.round(p.buildings.usina * 4 * upM(p, 'usina')) + Math.round(p.buildings.petroleo * 3 * upM(p, 'petroleo'))
+                 + Math.round(p.buildings.solar * 3 * upM(p, 'solar'))
+                 + Math.round(p.buildings.eolica * 5 * upM(p, 'eolica'));
     let mult = 1;
     if (nBld > 0 && p.rec.energia < needEn) {
       mult = 0.5;
@@ -748,9 +750,9 @@ function resolveTurn(room) {
   broadcast(room);
 }
 
-const PROD_BUILDS = { fabrica: 300, serraria: 280, fazenda: 250, mina: 300, usina: 350, petroleo: 400, mina_ouro: 500, estrada: 150, base: 400, mina_rara: 450, adubo: 260, mina_uranio: 500 };
-const CONCRETE_NEED = { fabrica: 0, serraria: 8, fazenda: 8, mina: 8, usina: 8, petroleo: 8, mina_ouro: 10, estrada: 5, base: 10, mina_rara: 10, adubo: 8, mina_uranio: 10 };
-const PROD_NAMES = { fabrica: '🧱 Fábrica de concreto', serraria: '🪵 Serraria', fazenda: '🌾 Fazenda', mina: '⛏️ Mina', usina: '⚡ Usina', petroleo: '🛢️ Poço de petróleo', mina_ouro: '🏦 Mina de ouro', estrada: '🛣️ Estrada', base: '🎖️ Base militar', mina_rara: '⚙️ Mina de terras raras', adubo: '🌱 Usina de nutrientes', mina_uranio: '☢️ Mina de urânio' };
+const PROD_BUILDS = { fabrica: 300, serraria: 280, fazenda: 250, mina: 300, usina: 350, petroleo: 400, mina_ouro: 500, estrada: 150, base: 400, mina_rara: 450, adubo: 260, mina_uranio: 500, solar: 320, eolica: 480 };
+const CONCRETE_NEED = { fabrica: 0, serraria: 8, fazenda: 8, mina: 8, usina: 8, petroleo: 8, mina_ouro: 10, estrada: 5, base: 10, mina_rara: 10, adubo: 8, mina_uranio: 10, solar: 6, eolica: 12 };
+const PROD_NAMES = { fabrica: '🧱 Fábrica de concreto', serraria: '🪵 Serraria', fazenda: '🌾 Fazenda', mina: '⛏️ Mina', usina: '⚡ Usina', petroleo: '🛢️ Poço de petróleo', mina_ouro: '🏦 Mina de ouro', estrada: '🛣️ Estrada', base: '🎖️ Base militar', mina_rara: '⚙️ Mina de terras raras', adubo: '🌱 Usina de nutrientes', mina_uranio: '☢️ Mina de urânio', solar: '🌞 Usina solar', eolica: '🌬️ Parque eólico' };
 const MISSIONS = [
   { id: 'construir_3', desc: 'Conclua 3 construções',            reward: 500, check: p => p.stats.construidas >= 3 },
   { id: 'vender_30',   desc: 'Venda 30 unidades no mercado',      reward: 400, check: p => p.stats.vendidas >= 30 },
@@ -1200,6 +1202,7 @@ function performAction(room, p, msg) {
     case 'construir': {
       if (!PROD_BUILDS[msg.kind]) return;
       if (msg.kind === 'mina_uranio' && !(p.depositos || []).includes('uranio')) { err(p.conn, '☢️ Seu país não possui jazidas de urânio — importe no mercado ou conquiste um território que tenha.'); return; }
+      if (msg.kind === 'eolica' && (p.rec.terras_raras || 0) < 5) { err(p.conn, '🌬️ Turbinas eólicas exigem 5 ⚙️ terras raras em estoque.'); return; }
       const need = CONCRETE_NEED[msg.kind] || 0;
       if (p.rec.concreto < need) { err(p.conn, `🧱 Precisa de ${need} de concreto — construa uma Fábrica de concreto primeiro.`); return; }
       let cCost = PROD_BUILDS[msg.kind];
@@ -1389,12 +1392,29 @@ function performAction(room, p, msg) {
       break;
     }
     case 'propor_resolucao': {
-      if (!target || target === p || !target.alive) return;
       if (room.un) { err(p.conn, 'A ONU já está em sessão.'); return; }
+      const UN_IDS = UN_TYPES.map(u => u.id).concat('autorizar');
+      const tipo = UN_IDS.includes(msg.tipo) ? msg.tipo : 'autorizar';
+      const precisaAlvo = tipo === 'autorizar' || tipo === 'embargo' || tipo === 'condenar';
+      // valida antes de gastar, para não comer ponto de ação à toa
+      if (precisaAlvo && (!target || target === p || !target.alive)) { err(p.conn, 'Escolha uma nação-alvo viva para essa resolução.'); return; }
       if (!spend(p, 1, 300)) return;
-      room.un = { type: 'autorizar', desc: `Autorizar intervenção militar de ${cname(p)} contra ${cname(target)}`, target: target.id, proposer: p.id, votes: {}, deadline: Date.now() + 20000 };
+      let desc, alvoId = null;
+      if (tipo === 'autorizar') {
+        alvoId = target.id;
+        desc = `Autorizar intervenção militar de ${cname(p)} contra ${cname(target)}`;
+      } else {
+        const t = UN_TYPES.find(u => u.id === tipo);
+        alvoId = precisaAlvo ? target.id : null;
+        desc = t.desc.replace('{T}', precisaAlvo ? cname(target) : '');
+      }
+      room.un = { type: tipo, desc, target: alvoId, proposer: p.id, votes: {}, deadline: Date.now() + 20000 };
       log(room, `🇺🇳 ${cname(p)} propôs resolução na ONU: ${room.un.desc}. Votação aberta!`);
-      for (const b of room.players) if (b.bot && b.alive) room.un.votes[b.id] = relBetween(b, p) >= 45 || Math.random() < 0.25;
+      for (const b of room.players) if (b.bot && b.alive) {
+        if (tipo === 'autorizar') room.un.votes[b.id] = relBetween(b, p) >= 45 || Math.random() < 0.25;
+        else if (alvoId) { const tp = room.players.find(x => x.id === alvoId); room.un.votes[b.id] = tp ? relBetween(b, tp) < 50 : Math.random() < 0.5; }
+        else room.un.votes[b.id] = Math.random() < 0.5;
+      }
       break;
     }
     case 'subornar': {

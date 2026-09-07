@@ -1436,13 +1436,13 @@ function renderPanel(){
     });
     // construções produtivas
     sub2('🏗️ Construções (1⚡) — obras avançadas exigem 🧱 concreto');
-    [['fabrica','🧱 Fábrica de concreto (+6🧱/turno)',300,0],['serraria','🪵 Serraria (+5 madeira/turno)',280,8],['fazenda','🌾 Fazenda (+5 comida/turno)',250,8],['mina','⛏️ Mina (+4 minério/turno)',300,8],['usina','⚡ Usina (+4 energia/turno)',350,8],['petroleo','🛢️ Poço de petróleo (+3⚡ +$15/turno)',400,8],['mina_ouro','🏦 Mina de ouro (+$25/turno)',500,10],['estrada','🛣️ Estrada (+$5/turno)',150,5],['base','🎖️ Base militar (+5% defesa, máx 5)',400,10],['mina_rara','⚙️ Mina de terras raras (+3⚙️/turno)',450,10],['adubo','🌱 Usina de nutrientes (+4 comida/turno)',260,8],['mina_uranio','☢️ Mina de urânio (+2 urânio/turno, requer jazida)',500,10]].forEach(([k,lb,cost,nc])=>{
+    [['fabrica','🧱 Fábrica de concreto (+6🧱/turno)',300,0],['serraria','🪵 Serraria (+5 madeira/turno)',280,8],['fazenda','🌾 Fazenda (+5 comida/turno)',250,8],['mina','⛏️ Mina (+4 minério/turno)',300,8],['usina','⚡ Usina (+4 energia/turno)',350,8],['petroleo','🛢️ Poço de petróleo (+3⚡ +$15/turno)',400,8],['mina_ouro','🏦 Mina de ouro (+$25/turno)',500,10],['estrada','🛣️ Estrada (+$5/turno)',150,5],['base','🎖️ Base militar (+5% defesa, máx 5)',400,10],['mina_rara','⚙️ Mina de terras raras (+3⚙️/turno)',450,10],['adubo','🌱 Usina de nutrientes (+4 comida/turno)',260,8],['mina_uranio','☢️ Mina de urânio (+2 urânio/turno, requer jazida)',500,10],['solar','🌞 Usina solar (+3⚡/turno, energia limpa)',320,6],['eolica','🌬️ Parque eólico (+5⚡/turno, exige 5⚙️)',480,12]].forEach(([k,lb,cost,nc])=>{
       const r=document.createElement('div'); r.className='xrow';
       const lvl=(p.upgrades&&p.upgrades[k])||0;
       const n=document.createElement('span'); n.className='xn'; n.textContent=lb+' — '+(p.buildings&&p.buildings[k]?p.buildings[k]:0)+' constr.'+(lvl?' · nv.'+(lvl+1):'')+(nc?' · '+nc+'🧱':''); r.appendChild(n);
       const b=document.createElement('button'); b.textContent='$'+cost;
-      const gated = k==='mina_uranio' && !(p.depositos||[]).includes('uranio');
-      if (gated) b.title='Seu país não possui jazidas de urânio';
+      const gated = (k==='mina_uranio' && !(p.depositos||[]).includes('uranio')) || (k==='eolica' && ((m.rec&&m.rec.terras_raras)||0) < 5);
+      if (gated) b.title = k==='eolica' ? 'Turbinas eólicas exigem 5 ⚙️ terras raras em estoque' : 'Seu país não possui jazidas de urânio';
       b.disabled=gated||m.ap<1||m.money<cost||((m.rec&&m.rec.concreto||0)<nc);
       b.onclick=()=>send({t:'action',action:'construir',kind:k}); r.appendChild(b);
       if (p.buildings && p.buildings[k] && k!=='estrada' && k!=='base') {
@@ -1490,7 +1490,7 @@ function renderPanel(){
       p.builds.forEach(b=>{
         const r=document.createElement('div'); r.className='xrow';
         const n=document.createElement('span'); n.className='xn';
-        const BN = {infra:'Obra', nuclear:'Etapa nuclear', espacial:'Etapa espacial', fazenda:'🌾 Fazenda', mina:'⛏️ Mina', usina:'⚡ Usina', petroleo:'🛢️ Poço de petróleo', fabrica:'🧱 Fábrica de concreto', serraria:'🪵 Serraria', mina_ouro:'🏦 Mina de ouro', estrada:'🛣️ Estrada', base:'🎖️ Base militar', mina_rara:'⚙️ Mina de terras raras', adubo:'🌱 Usina de nutrientes', mina_uranio:'☢️ Mina de urânio'};
+        const BN = {infra:'Obra', nuclear:'Etapa nuclear', espacial:'Etapa espacial', fazenda:'🌾 Fazenda', mina:'⛏️ Mina', usina:'⚡ Usina', petroleo:'🛢️ Poço de petróleo', fabrica:'🧱 Fábrica de concreto', serraria:'🪵 Serraria', mina_ouro:'🏦 Mina de ouro', estrada:'🛣️ Estrada', base:'🎖️ Base militar', mina_rara:'⚙️ Mina de terras raras', adubo:'🌱 Usina de nutrientes', mina_uranio:'☢️ Mina de urânio', solar:'🌞 Usina solar', eolica:'🌬️ Parque eólico'};
         const nm = b.kind==='infra' ? ('Obra: '+(p.provinces[b.prov]?p.provinces[b.prov].name:'—')) : (BN[b.kind]||b.kind);
         n.textContent = '⏳ ' + nm + ' (conclui no turno ' + b.until + ')';
         r.appendChild(n); extra.appendChild(r);
@@ -1541,7 +1541,14 @@ function renderPanel(){
     acts.appendChild(mkBtn('🪖','Enviar TROPAS ao aliado (2⚡, $400)', ()=>send({t:'action',action:'enviar_tropas',target:p.id}), m.ap<2||m.money<400||!ally));
     acts.appendChild(mkBtn('📣','CONVOCAR aliado às armas (1⚡, $200)', ()=>send({t:'action',action:'convocar',target:p.id}), m.ap<1||m.money<200||!ally||m.wars.length===0));
     acts.appendChild(mkBtn('✍️', (m.pacts&&m.pacts[p.id]>state.turn)?'PACTO de não-agressão vigente':'PACTO de não-agressão (1⚡, $100, 8 turnos, rel. 40+)', ()=>send({t:'action',action:'pacto',target:p.id}), m.ap<1||m.money<100||atWar||(m.pacts&&m.pacts[p.id]>state.turn)));
-    acts.appendChild(mkBtn('🇺🇳','Propor resolução contra (1⚡, $300)', ()=>send({t:'action',action:'propor_resolucao',target:p.id}), m.ap<1||m.money<300||!!state.un));
+    const unBloq = m.ap<1||m.money<300||!!state.un;
+    [['autorizar','🇺🇳 Autorizar intervenção contra '+p.flag],
+     ['embargo','🚫 Embargo econômico da ONU contra '+p.flag],
+     ['condenar','📢 Condenação internacional de '+p.flag],
+     ['proibir_guerra','🕊️ Proibir novas guerras (3 turnos)'],
+     ['proibir_armas','🔧 Proibir recrutamento (3 turnos)']].forEach(([tp,lb])=>{
+      acts.appendChild(mkBtn('🇺🇳', lb+' (1⚡, $300)', ()=>send({t:'action',action:'propor_resolucao',target:p.id,tipo:tp}), unBloq));
+    });
     acts.appendChild(mkBtn('⚖️','Espalhar ideologia (1⚡, $300)', ()=>send({t:'action',action:'espalhar_ideologia',target:p.id}), m.ap<1||m.money<300||!m.ideology));
     acts.appendChild(mkBtn('🛐','Espalhar religião (1⚡, $300)', ()=>send({t:'action',action:'espalhar_religiao',target:p.id}), m.ap<1||m.money<300||!m.religion||m.religion==='laico'));
     if (p.bot) acts.appendChild(mkBtn('🏴','Exigir ANEXAÇÃO pacífica (2⚡, $300, rel. 60+)', ()=>send({t:'action',action:'anexar',target:p.id}), m.ap<2||m.money<300||atWar||rel<60));
