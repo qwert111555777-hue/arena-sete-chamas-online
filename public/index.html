@@ -256,7 +256,8 @@
   .conn-status.bad{color:var(--red);}
 
   /* ---------- BATALHA TÁTICA ---------- */
-  #scr-batalha{position:fixed;inset:0;background:rgba(6,10,20,.97);z-index:60;overflow:auto;padding:14px;}
+  #scr-batalha{position:fixed;inset:0;z-index:60;overflow:auto;padding:14px;
+    background:linear-gradient(rgba(6,10,20,.92),rgba(6,10,20,.96)),url(batalha_fundo.jpg) center/cover no-repeat;}
   .bt-wrap{max-width:920px;margin:0 auto;}
   .bt-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap;}
   #bt-titulo{font-size:19px;font-weight:800;color:var(--gold);}
@@ -274,6 +275,8 @@
   .bt-cell.sel{box-shadow:0 0 0 2px var(--gold) inset;background:#1b2a45;}
   .bt-cell.alvo{cursor:crosshair;border-color:var(--red);background:#2d1620;}
   .bt-cell.alvo:hover{background:#3d1c2a;}
+  .bt-sprite{width:82%;height:82%;object-fit:contain;display:block;pointer-events:none;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));}
   .bt-hp{position:absolute;left:4px;right:4px;bottom:3px;height:4px;background:#22304a;border-radius:2px;overflow:hidden;}
   .bt-hp i{display:block;height:100%;background:var(--green);}
   .bt-hp i.low{background:var(--red);}
@@ -411,7 +414,7 @@
 
   <div class="game-body">
     <div class="map-wrap">
-      <div id="advisor" class="hidden"><img src="assessor.png" alt="assessor"><div id="advisor-bubble"></div></div>
+      <div id="advisor" class="hidden"><img src="assessor.jpg" alt="assessor"><div id="advisor-bubble"></div></div>
       <svg id="map" viewBox="0 0 1000 520" preserveAspectRatio="xMidYMid slice">
         <defs>
           <linearGradient id="ocean" x1="0" y1="0" x2="0" y2="1">
@@ -1850,8 +1853,18 @@ $('map').addEventListener('dblclick', () => { view.s=1; view.tx=0; view.ty=0; ap
 connect();
 
 /* ================= batalha tática (cliente) ================= */
-const UNIT_EM = { infantaria:'🪖', blindados:'🛡️', artilharia:'💥', aviacao:'✈️',
-                  frota:'⚓', submarinos:'🌊', porta_avioes:'🛳️', milicia:'🔰' };
+const UNIT_EM  = { infantaria:'🪖', blindados:'🛡️', artilharia:'💥', aviacao:'✈️',
+                   frota:'⚓', submarinos:'🌊', porta_avioes:'🛳️', milicia:'🔰' };
+const UNIT_IMG = { infantaria:'unidades/infantaria.jpg', blindados:'unidades/blindados.jpg',
+                   artilharia:'unidades/artilharia.jpg', aviacao:'unidades/aviacao.jpg',
+                   frota:'unidades/frota.jpg', submarinos:'unidades/submarinos.jpg',
+                   porta_avioes:'unidades/porta_avioes.jpg', milicia:'unidades/milicia.jpg' };
+function btSprite(tipo, cls){
+  const src = UNIT_IMG[tipo];
+  return src ? '<img class="bt-sprite ' + (cls || '') + '" src="' + src + '" alt="' +
+    (UNIT_NOME[tipo] || tipo) + '" title="' + (UNIT_NOME[tipo] || tipo) + '">'
+    : (UNIT_EM[tipo] || '❓');
+}
 const UNIT_NOME = { infantaria:'Infantaria', blindados:'Blindados', artilharia:'Artilharia',
                     aviacao:'Aviação', frota:'Frota', submarinos:'Submarinos',
                     porta_avioes:'Porta-aviões', milicia:'Milícia' };
@@ -1876,7 +1889,7 @@ function btRender(){
       c.className = 'bt-cell ' + (y <= 2 ? 'atk-field' : 'def-field');
       const u = bt.unidades.find(z => z.hp > 0 && z.x === x && z.y === y);
       if (u){
-        c.textContent = UNIT_EM[u.tipo] || '❓';
+        c.innerHTML = btSprite(u.tipo);
         const hp = document.createElement('div'); hp.className = 'bt-hp';
         const barra = document.createElement('i');
         const pct = Math.max(0, u.hp / u.hpMax);
@@ -1898,8 +1911,12 @@ function btRender(){
 
   const sel = btSel ? bt.unidades.find(z => z.uid === btSel) : null;
   $('bt-unidade').innerHTML = sel
-    ? (UNIT_EM[sel.tipo] || '') + ' <b>' + (UNIT_NOME[sel.tipo] || sel.tipo) + '</b><br>' +
-      '❤️ ' + sel.hp + '/' + sel.hpMax + ' · ⚔️ ' + sel.atk + ' · 🛡️ ' + sel.def + ' · 🎯 alcance ' + sel.alc
+    ? '<div style="display:flex;gap:10px;align-items:center">' +
+      '<img src="' + UNIT_IMG[sel.tipo] + '" style="width:52px;height:52px;object-fit:contain;' +
+      'border:1px solid var(--border);border-radius:8px;background:#0c1424">' +
+      '<div><b>' + (UNIT_NOME[sel.tipo] || sel.tipo) + '</b><br>' +
+      '❤️ ' + sel.hp + '/' + sel.hpMax + ' · ⚔️ ' + sel.atk + ' · 🛡️ ' + sel.def +
+      ' · 🎯 alcance ' + sel.alc + '</div></div>'
     : (minhaVez ? 'Toque numa das suas unidades para agir.' : 'Aguarde a vez do adversário.');
 
   const ac = $('bt-acoes'); ac.innerHTML = '';
