@@ -744,11 +744,21 @@ function wsUrl(){
 function inflateBlob(blob){
   return new Response(blob.stream().pipeThrough(new DecompressionStream('gzip'))).text();
 }
+
+/* ---- sessão: permite voltar para a partida depois de F5 ou queda de rede ---- */
+const SS_KEY = 'po_sessao';
+function salvarSessao(m){ try{ sessionStorage.setItem(SS_KEY, JSON.stringify({ code:m.code, token:m.token })); }catch(e){} }
+function limparSessao(){ try{ sessionStorage.removeItem(SS_KEY); }catch(e){} }
+function tentarRetomar(){
+  let s = null;
+  try{ s = JSON.parse(sessionStorage.getItem(SS_KEY) || 'null'); }catch(e){}
+  if (s && s.code && s.token) send({ t:'reconnect', code:s.code, token:s.token });
+}
 function connect(){
   setConn('conectando…', true);
   ws = new WebSocket(wsUrl());
   ws.binaryType = 'blob';
-  ws.onopen = () => setConn('🟢 online', false);
+  ws.onopen = () => { setConn('🟢 online', false); tentarRetomar(); };
   ws.onmessage = e => {
     if (typeof e.data !== 'string'){
       if (!GZOK) return;
@@ -843,6 +853,13 @@ function applyState(m){
 
 function handle(m){
   if (m.t === 'you'){ myId = m.you; return; }
+  if (m.t === 'sessao'){ salvarSessao(m); return; }
+  if (m.t === 'sem_sessao'){ // a sala acabou; volta para a tela inicial
+    limparSessao(); state = null; myId = null; lastTurn = 0; lastTopLog = null;
+    showScreen('scr-home');
+    toast('Sua sala não existe mais. Crie uma nova ou entre com outro código.', 'error');
+    return;
+  }
   if (m.t === 'state'){ applyState(m); return; }
   if (m.t === 'chat'){
     const box = $('chat-msgs');
@@ -1487,7 +1504,7 @@ $('btn-copy-link').onclick = () => {
   const link = location.origin + '/?sala=' + state.code;
   navigator.clipboard.writeText(link).then(()=>toast('🔗 Link de convite copiado!')).catch(()=>toast(link,'info'));
 };
-$('btn-leave').onclick = () => location.reload();
+$('btn-leave').onclick = () => { limparSessao(); location.reload(); };
 $('btn-speed').onclick = () => send({t:'velocidade', speed: (state.speed===45) ? 15 : 45});
 $('btn-start').onclick = () => send({t:'start'});
 $('btn-endturn').onclick = () => send({t:'fim_turno'});

@@ -18,6 +18,10 @@ const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const MAGIC = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 const AP_PER_TURN = 4;
+// limite real de jogadores humanos por sala (o mapa só tem 30 posições para nações novas)
+const MAX_PLAYERS = 12;
+// um jogador desconectado fica esse tempo na partida antes de ser dado como desertor
+const ABANDON_MS = 10 * 60 * 1000;
 const PROV_INCOME = 6;
 const NUKE_MIN_LEVEL = 3;
 const NUKE_MAX_LEVEL = 5;
@@ -426,6 +430,8 @@ function info(conn, msg) { if (conn) conn.send({ t: 'info', msg }); }
 function addPlayer(room, conn, name, isHost) {
   const p = {
     id: 'p' + (playerSeq++), conn, name, country: null, color: (playerSeq + 5) % 12,
+    // segredo que permite reassumir este jogador depois de uma queda de conexão
+    token: crypto.randomBytes(9).toString('base64url'), disconnectedAt: 0,
     money: 0, eco: 0, mil: 0, aprov: 50, ap: AP_PER_TURN, alive: true,
     allies: [], connected: true, eliminatedReason: null,
     nuclear: 0, influencia: 0, fe: 0, provinces: [], wars: [],
@@ -1371,8 +1377,8 @@ function handleDisconnect(conn) {
     if (room.hostId === player.id) room.hostId = room.players[0].id;
     broadcast(room);
   } else {
-    player.connected = false; player.conn = null;
-    log(room, `📴 ${player.name} perdeu a conexão.`);
+    player.connected = false; player.conn = null; player.disconnectedAt = Date.now();
+    log(room, `📴 ${player.name} perdeu a conexão (tem ${Math.round(ABANDON_MS / 60000)} min para voltar).`);
     if (room.hostId === player.id) { const next = room.players.find(p => p.connected); if (next) room.hostId = next.id; }
     if (!room.players.some(p => p.connected)) { if (room.timer) clearInterval(room.timer); rooms.delete(room.code); return; }
     broadcast(room);
@@ -1380,17 +1386,83 @@ function handleDisconnect(conn) {
 }
 function sanitizeName(n) { return String(n || '').replace(/[^\p{L}\p{N} _\-.]/gu, '').trim().slice(0, 18) || 'Presidente'; }
 
+/* ---------------- Abandono ---------------- */
+// rompe todos os vínculos diplomáticos de quem saiu, para a partida não travar
+function severLinks(room, p) {
+  const tira = (alvo, campo, outro) => {
+    const q = room.players.find(x => x.id === alvo);
+    if (q && Array.isArray(q[outro])) q[outro] = q[outro].filter(id => id !== p.id);
+    return null;
+  };
+  p.allies.forEach(id => tira(id, 'allies', 'allies')); p.allies = [];
+  p.sanctioning.forEach(id => tira(id, 'sanctioning', 'sanctionedBy')); p.sanctioning = [];
+  p.sanctionedBy.forEach(id => tira(id, 'sanctionedBy', 'sanctioning')); p.sanctionedBy = [];
+  p.wars.forEach(id => tira(id, 'wars', 'wars')); p.wars = [];
+  p.trades.forEach(id => tira(id, 'trades', 'trades')); p.trades = [];
+  p.blockading.forEach(id => tira(id, 'blockading', 'blockadedBy')); p.blockading = [];
+  p.blockadedBy.forEach(id => tira(id, 'blockadedBy', 'blockading')); p.blockadedBy = [];
+  p.embassies.forEach(id => tira(id, 'embassies', 'embassies')); p.embassies = [];
+  for (const q of room.players) {
+    if (q === p) continue;
+    for (const c of ['allies', 'sanctioning', 'sanctionedBy', 'wars', 'trades', 'blockading', 'blockadedBy', 'embassies'])
+      if (Array.isArray(q[c])) q[c] = q[c].filter(id => id !== p.id);
+  }
+}
+// quem ficou desconectado demais é dado como desertor e sai da partida
+setInterval(() => {
+  const agora = Date.now();
+  for (const room of rooms.values()) {
+    if (room.phase !== 'game') continue;
+    let mudou = false;
+    for (const p of room.players) {
+      if (p.bot || !p.alive || p.connected || !p.disconnectedAt) continue;
+      if (agora - p.disconnectedAt < ABANDON_MS) continue;
+      p.alive = false; p.eliminatedReason = 'Abandonou a partida'; p.conn = null;
+      severLinks(room, p);
+      log(room, `🏳️ ${cname(p)} abandonou a partida.`);
+      mudou = true;
+    }
+    if (mudou) { checkVictory(room); broadcast(room); }
+  }
+}, 60000);
+
 function route(conn, msg) {
   switch (msg.t) {
-    case 'create': { if (conn.meta) return; const room = newRoom(); addPlayer(room, conn, sanitizeName(msg.name), true); log(room, `👋 ${sanitizeName(msg.name)} criou a sala.`); broadcast(room); break; }
+    case 'create': {
+      if (conn.meta) return;
+      const room = newRoom();
+      const nome = sanitizeName(msg.name);
+      const p = addPlayer(room, conn, nome, true);
+      log(room, `👋 ${nome} criou a sala.`);
+      conn.send({ t: 'sessao', code: room.code, token: p.token });
+      broadcast(room); break;
+    }
     case 'join': {
       if (conn.meta) return;
       const room = rooms.get(String(msg.code || '').toUpperCase().trim());
       if (!room) return err(conn, 'Sala não encontrada. Confira o código.');
       if (room.phase !== 'lobby') return err(conn, 'Essa partida já começou. Crie sua própria sala!');
-      if (room.players.length >= COUNTRIES.length) return err(conn, 'Sala cheia (12 jogadores).');
-      addPlayer(room, conn, sanitizeName(msg.name), false);
-      log(room, `👋 ${sanitizeName(msg.name)} entrou na sala.`);
+      if (room.players.length >= MAX_PLAYERS) return err(conn, `Sala cheia (${MAX_PLAYERS} jogadores).`);
+      const nome = sanitizeName(msg.name);
+      const p = addPlayer(room, conn, nome, false);
+      log(room, `👋 ${nome} entrou na sala.`);
+      conn.send({ t: 'sessao', code: room.code, token: p.token });
+      broadcast(room); break;
+    }
+    // reassume um jogador que caiu (F5, wifi oscilando) sem perder a partida
+    case 'reconnect': {
+      if (conn.meta) return;
+      const room = rooms.get(String(msg.code || '').toUpperCase().trim());
+      if (!room) { conn.send({ t: 'sem_sessao' }); return; }
+      const p = room.players.find(x => !x.bot && x.token && x.token === String(msg.token || ''));
+      if (!p) { conn.send({ t: 'sem_sessao' }); return; }
+      if (p.conn && p.conn !== conn) { // fecha a aba/conexão antiga se ainda existir
+        try { p.conn.socket.destroy(); } catch (e) {}
+      }
+      p.conn = conn; p.connected = true; p.disconnectedAt = 0;
+      conn.meta = { room, player: p };
+      conn.send({ t: 'sessao', code: room.code, token: p.token });
+      log(room, `🔄 ${p.name} voltou para a partida.`);
       broadcast(room); break;
     }
     case 'pick': {
