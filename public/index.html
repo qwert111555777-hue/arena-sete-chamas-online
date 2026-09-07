@@ -681,6 +681,12 @@ const RELIGIONS = { laico:'Laico', cristao:'Cristã', muculmano:'Islâmica', bud
 const MINISTERS = { eco:{tec:'Tecocrata +10% renda', pop:'Populista +1❤️'}, def:{fal:'Falcão +10% atq', estr:'Estrategista +10% def'}, dip:{neg:'Negociador dip -50%', inf:'Influenciador +1⚖️'} };
 const TECHS = { livrecomercio:['Livre Comércio',500], automacao:['Automação',600], exercito:['Exército Prof.',600], antiaerea:['Def. Antiaérea',600], bemestar:['Bem-Estar',500], midia:['Mídia Global',500], engenharia:['Engenharia Avançada',600] };
 const SECTORS_UI = [['educacao','Educação'],['saude','Saúde'],['cultura','Cultura'],['esportes','Esportes'],['habitacao','Habitação'],['justica','Justiça'],['turismo','Turismo']];
+const SEG_UI = {
+  defesa:  { em:'🛡️', nome:'Ministério da Defesa', desc:'+8% de defesa por nível',              custos:[400,900,1800] },
+  secreto: { em:'🕵️', nome:'Serviço Secreto',      desc:'sabotagem mais forte e contém ataques', custos:[350,800,1600] },
+  policia: { em:'🚓', nome:'Polícia',              desc:'+1 de aprovação por turno por nível',  custos:[300,700,1400] },
+  guarda:  { em:'🪖', nome:'Guarda Nacional',      desc:'+6% de defesa por nível, aborta golpes', custos:[350,800,1600] },
+};
 const SPACE_COSTS = [500,800,1200];
 const PORTRAITS = { br:'portraits/br.jpg', us:'portraits/us.jpg', ru:'portraits/ru.jpg', cn:'portraits/cn.jpg', gb:'portraits/gb.jpg', fr:'portraits/fr.jpg', de:'portraits/de.jpg', in:'portraits/in.jpg', jp:'portraits/jp.jpg', mx:'portraits/mx.jpg', ng:'portraits/ng.jpg', au:'portraits/au.jpg' };
 const proj = c => ({ x:(c.lon+180)/360*1000, y:(90-c.lat)/180*520 });
@@ -753,6 +759,15 @@ function tentarRetomar(){
   let s = null;
   try{ s = JSON.parse(sessionStorage.getItem(SS_KEY) || 'null'); }catch(e){}
   if (s && s.code && s.token) send({ t:'reconnect', code:s.code, token:s.token });
+}
+/* ---- keep-alive: o plano free do Render desliga a instância após ~15 min sem
+       requisições, o que destruiria a partida. Enquanto houver aba aberta em
+       partida, pingamos /health a cada 4 min para manter o serviço acordado. ---- */
+function startKeepAlive(){
+  if (window.__poKeepAlive) return;
+  const ping = () => { fetch('/health', { cache:'no-store' }).catch(()=>{}); };
+  ping();
+  window.__poKeepAlive = setInterval(ping, 4 * 60 * 1000);
 }
 function connect(){
   setConn('conectando…', true);
@@ -835,6 +850,7 @@ function parseFx(top){
 /* ================= mensagens ================= */
 function applyState(m){
   state = m; if (m.you) myId = m.you;
+  if (m.phase === 'game') startKeepAlive();
   if (m.turn !== lastTurn){ if (lastTurn) sfx('turn'); lastTurn = m.turn; }
   const top = m.log[0] && m.log[0].msg;
   if (top && top !== lastTopLog){
@@ -1233,6 +1249,13 @@ function renderPanel(){
       b.disabled = prv.infra>=5 || prv.owner!==myId || m.ap<1 || m.money<200;
       b.onclick = () => send({t:'action', action:'infra', prov:i});
       row.appendChild(b);
+      if (prv.origem && prv.origem !== myId && prv.owner === myId){
+        const ib = document.createElement('button');
+        ib.textContent = '🕊️'; ib.title = 'Conceder INDEPENDÊNCIA: devolver ' + prv.name + ' à sua nação de origem (2⚡ · $400)';
+        ib.disabled = m.ap<2 || m.money<400;
+        ib.onclick = () => send({t:'action', action:'independencia', prov:i});
+        row.appendChild(ib);
+      }
     }
     provsEl.appendChild(row);
   });
@@ -1289,6 +1312,23 @@ function renderPanel(){
         b.textContent=MINISTERS[post][v].split(' ')[0]; b.title=MINISTERS[post][v];
         b.onclick=()=>send({t:'action',action:'ministro',post,value:v}); r.appendChild(b);
       });
+      extra.appendChild(r);
+    });
+    // segurança interna
+    sub2('🛡️ Segurança interna (1⚡)');
+    Object.keys(SEG_UI).forEach(k=>{
+      const s = SEG_UI[k];
+      const lvl = (p.seguranca && p.seguranca[k]) || 0;
+      const r=document.createElement('div'); r.className='xrow';
+      const n=document.createElement('span'); n.className='xn';
+      n.textContent = s.em + ' ' + s.nome + ' · ' + s.desc;
+      r.appendChild(n);
+      const pp=document.createElement('span'); pp.className='pips';
+      pp.textContent='▪'.repeat(lvl)+'▫'.repeat(3-lvl); r.appendChild(pp);
+      const b=document.createElement('button');
+      if (lvl>=3){ b.textContent='MÁX'; b.disabled=true; }
+      else { b.textContent='$'+s.custos[lvl]; b.disabled=m.ap<1||m.money<s.custos[lvl]; }
+      b.onclick=()=>send({t:'action',action:'seguranca',value:k}); r.appendChild(b);
       extra.appendChild(r);
     });
     // tecnologias
@@ -1429,6 +1469,12 @@ function renderPanel(){
     acts.appendChild(mkBtn('🚫', m.sanctioning.includes(p.id)?'Suspender sanções':'Impor SANÇÕES (1⚡)', ()=>send({t:'action',action:'sancao',target:p.id}), !m.sanctioning.includes(p.id)&&(m.ap<1||m.sanctioning.length>=3)));
     acts.appendChild(mkBtn('💸','Ajudar $200 (+relações)', ()=>send({t:'action',action:'ajudar',target:p.id}), m.ap<1||m.money<200));
     acts.appendChild(mkBtn('🎁','Enviar presente ($100, +8 relações)', ()=>send({t:'action',action:'presente',target:p.id}), m.ap<1||m.money<100));
+    acts.appendChild(mkBtn('🧾','Isentar de tributos (1⚡, $150, +15 relações)', ()=>send({t:'action',action:'isentar',target:p.id}), m.ap<1||m.money<150));
+    acts.appendChild(mkBtn('🕯️','Dar esperança (1⚡, $200, +12 aprovação)', ()=>send({t:'action',action:'dar_esperanca',target:p.id}), m.ap<1||m.money<200));
+    acts.appendChild(mkBtn('🔬','Contrato de pesquisa (1⚡, $600, rel. 60+)', ()=>send({t:'action',action:'pesquisa',target:p.id}), m.ap<1||m.money<600||atWar||rel<60));
+    acts.appendChild(mkBtn('🏛️❌','Fechar embaixada (1⚡, -12 relações)', ()=>send({t:'action',action:'fechar_embaixada',target:p.id}), m.ap<1||!m.embassies.includes(p.id)));
+    acts.appendChild(mkBtn('🪖','Enviar TROPAS ao aliado (2⚡, $400)', ()=>send({t:'action',action:'enviar_tropas',target:p.id}), m.ap<2||m.money<400||!ally));
+    acts.appendChild(mkBtn('📣','CONVOCAR aliado às armas (1⚡, $200)', ()=>send({t:'action',action:'convocar',target:p.id}), m.ap<1||m.money<200||!ally||m.wars.length===0));
     acts.appendChild(mkBtn('✍️', (m.pacts&&m.pacts[p.id]>state.turn)?'PACTO de não-agressão vigente':'PACTO de não-agressão (1⚡, $100, 8 turnos, rel. 40+)', ()=>send({t:'action',action:'pacto',target:p.id}), m.ap<1||m.money<100||atWar||(m.pacts&&m.pacts[p.id]>state.turn)));
     acts.appendChild(mkBtn('🇺🇳','Propor resolução contra (1⚡, $300)', ()=>send({t:'action',action:'propor_resolucao',target:p.id}), m.ap<1||m.money<300||!!state.un));
     acts.appendChild(mkBtn('⚖️','Espalhar ideologia (1⚡, $300)', ()=>send({t:'action',action:'espalhar_ideologia',target:p.id}), m.ap<1||m.money<300||!m.ideology));

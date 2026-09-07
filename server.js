@@ -402,6 +402,7 @@ function snapshot(room) {
       dailyIncome: Math.round(incomeOf(room, p)),
       buildings: p.buildings, stats: p.stats, famine: p.famine, blackout: p.blackout,
       depositos: p.depositos || [], upgrades: p.upgrades || {}, pacts: p.pacts || {},
+      seguranca: p.seguranca || { defesa: 0, secreto: 0, policia: 0, guarda: 0 },
     })),
     world: room.world, market: room.market, mission: MISSIONS[room.missionIdx % MISSIONS.length], paused: room.paused,
   };
@@ -444,6 +445,7 @@ function addPlayer(room, conn, name, isHost) {
     techs: [], sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
     units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 }, builds: [], emergencyUntil: 0, leis: [],
+    seguranca: { defesa: 0, secreto: 0, policia: 0, guarda: 0 },
   };
   conn.meta = { room, player: p };
   room.players.push(p);
@@ -460,7 +462,7 @@ function makeAIBot(c) {
     money: 10000, eco: 3 + (h % 4), mil: 3 + ((h >> 2) % 4), pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 0, madeira: 0, terras_raras: 12, uranio: 0 }, xp: 0, blackout: false, depositos: depositosOf(c.id), upgrades: {}, pacts: {},
     aprov: 50, ap: AP_PER_TURN, alive: true, allies: [], eliminatedReason: null,
     nuclear: 0, influencia: 0, fe: 0, wars: [],
-    provinces: [{ name: c.name, infra: 1, owner: c.id }],
+    provinces: [{ name: c.name, infra: 1, owner: c.id, origem: c.id }],
     sanctioning: [], sanctionedBy: [], taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, budget: {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: 0, ideology: null, religion: 'laico',
     ministers: { eco: null, def: null, dip: null },
     techs: [], sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 },
@@ -469,6 +471,7 @@ function makeAIBot(c) {
     builds: [], emergencyUntil: 0, leis: [],
     buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0 }, famine: false,
     ideology: Object.keys(IDEOLOGIES)[h % 6], religion: Object.keys(RELIGIONS)[h % 5],
+    seguranca: { defesa: h % 2, secreto: (h >> 1) % 2, policia: (h >> 2) % 3, guarda: (h >> 3) % 2 },
   };
 }
 
@@ -485,13 +488,14 @@ function startGame(room) {
     p.buildings = { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0 }; p.stats = { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0 }; p.famine = false;
     p.aprov = 50; p.ap = AP_PER_TURN; p.alive = true;
     p.allies = []; p.eliminatedReason = null; p.nuclear = 0; p.influencia = 0; p.fe = 0; p.wars = [];
-    p.provinces = [{ name: 'Capital de ' + nat.name, infra: 1, owner: p.id }];
+    p.provinces = [{ name: 'Capital de ' + nat.name, infra: 1, owner: p.id, origem: p.id }];
     p.sanctioning = []; p.sanctionedBy = [];
     p.taxRate = 1; p.taxes = {corp:10, rend:10, prod:10, amb:5}; p.budget = {exe:1, int:1, tra:1, edu:1, ambm:1}; p.debt = 0; p.ideology = null; p.religion = 'laico';
     p.ministers = { eco: null, def: null, dip: null };
     p.techs = []; p.sectors = { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 };
     p.space = 0; p.relations = {}; p.embassies = []; p.trades = []; p.blockading = []; p.blockadedBy = [];
     p.units = { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 }; p.builds = []; p.emergencyUntil = 0; p.leis = [];
+    p.seguranca = { defesa: 0, secreto: 0, policia: 0, guarda: 0 };
   });
   for (let i = 0; i < room.players.length; i++) for (let j = i + 1; j < room.players.length; j++) {
     room.players[i].relations[room.players[j].id] = 50; room.players[j].relations[room.players[i].id] = 50;
@@ -557,6 +561,13 @@ function checkVictory(room) {
   }
 }
 
+// Aparato de segurança interna (nível 0..3 cada). Custo cresce por nível.
+const SEG = {
+  defesa:  { name: 'Ministério da Defesa', icon: '🛡️', desc: '+8% defesa por nível',              custos: [400, 900, 1800] },
+  secreto: { name: 'Serviço Secreto',      icon: '🕵️', desc: 'espionagem mais forte, -12% dano de sabotagem por nível', custos: [350, 800, 1600] },
+  policia: { name: 'Polícia',              icon: '🚓', desc: '+1 aprovação por turno por nível',  custos: [300, 700, 1400] },
+  guarda:  { name: 'Guarda Nacional',      icon: '🪖', desc: '+6% defesa por nível e menos golpes', custos: [350, 800, 1600] },
+};
 const LEIS = {
   servico_militar:   { name: 'Serviço Militar Obrigatório', cost: 150, desc: '+5% ataque em guerras' },
   guarda_nacional:   { name: 'Guarda Nacional',             cost: 160, desc: '+5% defesa' },
@@ -662,6 +673,7 @@ function resolveTurn(room) {
     if (p.taxRate === 2) dAprov -= 2;
     if (p.taxes && p.taxes.amb >= 12) dAprov += 1;
     if (p.budget){ if (p.budget.int>=2) dAprov += 1; if (p.budget.ambm>=2) dAprov += 1; if (p.budget.edu===0) dAprov -= 1; }
+    if (p.seguranca) dAprov += (p.seguranca.policia || 0);
     p.aprov = Math.max(0, Math.min(100, p.aprov + dAprov));
     // fé / influência passivos
     if (p.religion && p.religion !== 'laico') p.fe += 1;
@@ -879,7 +891,12 @@ function randomEvent(room) {
     case 0: alive.forEach(p => p.money += 80); log(room, '📈 Boom das commodities: todas as nações recebem +$80.'); break;
     case 1: pick.money = Math.max(0, pick.money - 150); log(room, `📉 Crise financeira atinge ${cname(pick)}: -$150.`); break;
     case 2: alive.forEach(p => p.aprov = Math.min(100, p.aprov + 3)); log(room, '🕊️ Cúpula de paz global: aprovação +3 para todos.'); break;
-    case 3: pick.mil = Math.max(1, pick.mil - 2); pick.aprov = Math.max(0, pick.aprov - 4); log(room, `🪖 Tentativa de golpe em ${cname(pick)}: -2 militar, -4 aprovação.`); break;
+    case 3: {
+      const g = (pick.seguranca && pick.seguranca.guarda) || 0;
+      if (g >= 2 && Math.random() < 0.25 * g) { log(room, `🪖 A Guarda Nacional de ${cname(pick)} abortou uma tentativa de golpe!`); break; }
+      pick.mil = Math.max(1, pick.mil - 2); pick.aprov = Math.max(0, pick.aprov - 4);
+      log(room, `🪖 Tentativa de golpe em ${cname(pick)}: -2 militar, -4 aprovação.`); break;
+    }
     case 4: pick.eco += 1; log(room, `🛢️ ${cname(pick)} descobre novas reservas: economia +1.`); break;
     case 5: pick.aprov = Math.min(100, pick.aprov + 5); log(room, `🎉 Festival nacional em ${cname(pick)}: aprovação +5.`); break;
     case 6: { const provs = ownProvinces(pick).filter(pr => pr.infra < 5); if (provs.length) { provs[0].infra += 1; log(room, `🏗️ Obra concluída em ${provs[0].name} (${cname(pick)}): infraestrutura +1.`); } break; }
@@ -997,13 +1014,21 @@ function performAction(room, p, msg) {
     case 'sabotagem': {
       if (!target || target === p || !target.alive) return;
       if (!spend(p, 1, dipCost(p, 150))) return;
+      const sAtk = (p.seguranca && p.seguranca.secreto) || 0;   // serviço secreto de quem ataca
+      const sDef = (target.seguranca && target.seguranca.secreto) || 0; // de quem se defende
+      const chance = Math.min(0.85, 0.5 + 0.08 * sAtk);
       const r = Math.random();
-      if (r < 0.5) {
-        const provs = ownProvinces(target).filter(pr => pr.infra > 0);
-        if (provs.length) { const pr = provs[Math.floor(Math.random() * provs.length)]; pr.infra -= 1; log(room, `🧨 Sabotagem de ${cname(p)} destrói infraestrutura em ${pr.name} (${cname(target)})!`); }
-        else { target.mil = Math.max(1, target.mil - 3); log(room, `🧨 Sabotagem de ${cname(p)} danifica o arsenal de ${cname(target)} (-3 militar)!`); }
-        bumpRel(p, target, -5);
-      } else if (r < 0.8) { p.aprov = Math.max(0, p.aprov - 5); target.aprov = Math.min(100, target.aprov + 2); log(room, `🚨 ${cname(p)} foi EXPOSTO sabotando ${cname(target)}!`); bumpRel(p, target, -10); }
+      if (r < chance) {
+        if (sDef >= 2 && Math.random() < 0.15 * sDef) {
+          log(room, `🕵️ O Serviço Secreto de ${cname(target)} DETECTOU e conteve a sabotagem de ${cname(p)}!`);
+          bumpRel(p, target, -3);
+        } else {
+          const provs = ownProvinces(target).filter(pr => pr.infra > 0);
+          if (provs.length) { const pr = provs[Math.floor(Math.random() * provs.length)]; pr.infra -= 1; log(room, `🧨 Sabotagem de ${cname(p)} destrói infraestrutura em ${pr.name} (${cname(target)})!`); }
+          else { target.mil = Math.max(1, target.mil - 3); log(room, `🧨 Sabotagem de ${cname(p)} danifica o arsenal de ${cname(target)} (-3 militar)!`); }
+          bumpRel(p, target, -5);
+        }
+      } else if (r < chance + Math.max(0.1, 0.3 - 0.05 * sAtk)) { p.aprov = Math.max(0, p.aprov - 5); target.aprov = Math.min(100, target.aprov + 2); log(room, `🚨 ${cname(p)} foi EXPOSTO sabotando ${cname(target)}!`); bumpRel(p, target, -10); }
       else log(room, `🕵️ Agentes de ${cname(p)} falham silenciosamente em ${cname(target)}.`);
       break;
     }
@@ -1144,6 +1169,8 @@ function performAction(room, p, msg) {
       if (p.leis.includes('servico_militar')) aM += 0.05;
       if (target.leis.includes('guarda_nacional')) dM += 0.05;
       if (target.ministers.def === 'estr') dM += 0.10;
+      const sD = target.seguranca || {};
+      dM += 0.08 * (sD.defesa || 0) + 0.06 * (sD.guarda || 0);
       const aP = p.mil * aM * (0.85 + Math.random() * 0.45);
       const dP = target.mil * dM * (0.9 + Math.random() * 0.45) * 1.08;
       if (aP > dP) {
@@ -1216,6 +1243,114 @@ function performAction(room, p, msg) {
       if (!spend(p, 1, 100)) return;
       bumpRel(p, target, 8); p.stats.presentes++; p.xp += 2;
       log(room, `🎁 ${cname(p)} enviou um PRESENTE diplomático a ${cname(target)} (+8 relações).`);
+      break;
+    }
+    /* ===== novas ações (equivalentes ao MA3) ===== */
+    case 'enviar_tropas': {            // Send Troops
+      if (!target || target === p || !target.alive) return;
+      if (!p.allies.includes(target.id)) return err(p.conn, 'Só é possível enviar tropas a um ALIADO.');
+      if (target.wars.length === 0) return err(p.conn, 'Seu aliado não está em guerra — não há onde empregar as tropas.');
+      const n = Math.max(1, Math.floor(p.mil * 0.25));
+      if (p.mil - n < 1) return err(p.conn, 'Seu exército é pequeno demais para ceder tropas.');
+      if (!spend(p, 2, 400)) return;
+      p.mil -= n; target.mil += n;
+      bumpRel(p, target, 10); p.xp += 8;
+      log(room, `🪖 ${cname(p)} ENVIOU TROPAS para ${cname(target)}: +${n} poder militar para o aliado.`);
+      break;
+    }
+    case 'convocar': {                 // Call to Arms
+      if (!target || target === p || !target.alive) return;
+      if (!p.allies.includes(target.id)) return err(p.conn, 'Só é possível convocar um ALIADO.');
+      const meusInimigos = p.wars.filter(w => {
+        const w2 = room.players.find(x => x.id === w); return w2 && w2.alive && !target.wars.includes(w);
+      });
+      if (!meusInimigos.length) return err(p.conn, 'Você não está em guerra, ou seu aliado já luta contra os mesmos inimigos.');
+      if (!spend(p, 1, 200)) return;
+      const inimigo = room.players.find(x => x.id === meusInimigos[0]);
+      target.wars.push(inimigo.id); inimigo.wars.push(target.id);
+      bumpRel(target, inimigo, -15);
+      log(room, `📣 ${cname(p)} CONVOCOU ${cname(target)} às armas contra ${cname(inimigo)}!`);
+      break;
+    }
+    case 'independencia': {            // Grant Independence
+      if (room.phase !== 'game') return;
+      const i = Number(msg.prov);
+      const pr = p.provinces[i];
+      if (!pr) return;
+      if (pr.owner !== p.id) return err(p.conn, 'Você não controla essa província.');
+      const origId = pr.origem;
+      if (!origId || origId === p.id) return err(p.conn, 'Essa província é território original da sua nação.');
+      if (!spend(p, 2, 400)) return;
+      const devolver = p.provinces.filter(x => x.origem === origId && x.owner === p.id);
+      for (const d of devolver) d.owner = origId;
+      p.provinces = p.provinces.filter(x => devolver.indexOf(x) === -1);
+      const nacao = room.players.find(x => x.id === origId);
+      if (nacao) {
+        const renasceu = !nacao.alive;
+        nacao.provinces = nacao.provinces.concat(devolver);
+        nacao.alive = true; nacao.eliminatedReason = null;
+        nacao.aprov = Math.max(nacao.aprov, 45);
+        bumpRel(p, nacao, 25); p.aprov = Math.min(100, p.aprov + 6); p.xp += 20;
+        log(room, `🕊️ ${cname(p)} CONCEDEU A INDEPENDÊNCIA de ${cname(nacao)} (${devolver.length} província(s))!${renasceu ? ' A nação RENASCE no mapa.' : ''} +25 relações.`);
+      }
+      break;
+    }
+    case 'pesquisa': {                 // Research Contract
+      if (!target || target === p || !target.alive) return;
+      if (relBetween(p, target) < 60) return err(p.conn, 'Relações muito baixas (mínimo 60) para um contrato de pesquisa.');
+      if (p.wars.includes(target.id)) return err(p.conn, 'Impossível em meio à guerra.');
+      if (!spend(p, 1, 600)) return;
+      const falta = k => (k === 'eco' ? 'economia' : 'conhecimento');
+      let ganhou = 0;
+      for (const quem of [p, target]) {
+        const disp = Object.keys(TECHS).filter(k => !quem.techs.includes(k));
+        if (disp.length) { quem.techs.push(disp[Math.floor(Math.random() * disp.length)]); ganhou++; }
+        else quem.eco += 1;
+      }
+      bumpRel(p, target, 12); p.xp += 10;
+      log(room, `🔬 CONTRATO DE PESQUISA entre ${cname(p)} e ${cname(target)}: ${ganhou} tecnologia(s) compartilhada(s), +12 relações.`);
+      break;
+    }
+    case 'fechar_embaixada': {         // Destroy Embassy
+      if (!target || target === p) return;
+      if (!p.embassies.includes(target.id)) return err(p.conn, 'Não há embaixada aberta nesse país.');
+      if (!spend(p, 1, 0)) return;
+      p.embassies = p.embassies.filter(id => id !== target.id);
+      target.embassies = target.embassies.filter(id => id !== p.id);
+      bumpRel(p, target, -12);
+      log(room, `🏛️❌ ${cname(p)} FECHOU a embaixada em ${cname(target)} (-12 relações).`);
+      break;
+    }
+    case 'isentar': {                  // Exempt from Paying Taxes
+      if (!target || target === p || !target.alive) return;
+      if (!spend(p, 1, 150)) return;
+      bumpRel(p, target, 15);
+      target.aprov = Math.min(100, target.aprov + 5);
+      p.aprov = Math.max(0, p.aprov - 1);
+      log(room, `🧾 ${cname(p)} ISENTOU ${cname(target)} do pagamento de tributos (+15 relações, +5 aprovação para eles).`);
+      break;
+    }
+    case 'dar_esperanca': {            // Give Hope
+      if (!target || target === p || !target.alive) return;
+      if (!spend(p, 1, 200)) return;
+      target.aprov = Math.min(100, target.aprov + 12);
+      if (target.emergencyUntil > room.turn) target.emergencyUntil = 0;
+      bumpRel(p, target, 8); p.xp += 5;
+      log(room, `🕯️ ${cname(p)} LEVOU ESPERANÇA a ${cname(target)}: +12 aprovação e fim do estado de emergência.`);
+      break;
+    }
+    case 'seguranca': {                // aparato de segurança interna
+      if (room.phase !== 'game') return;
+      const k = String(msg.value || '');
+      const def = SEG[k];
+      if (!def) return;
+      p.seguranca = p.seguranca || { defesa: 0, secreto: 0, policia: 0, guarda: 0 };
+      const lvl = p.seguranca[k] || 0;
+      if (lvl >= 3) return err(p.conn, `${def.name} já está no nível máximo.`);
+      const custo = def.custos[lvl];
+      if (!spend(p, 1, custo)) return;
+      p.seguranca[k] = lvl + 1;
+      log(room, `${def.icon} ${cname(p)} estruturou a ${def.name} (nível ${lvl + 1}): ${def.desc}.`);
       break;
     }
     case 'upgrade': {
