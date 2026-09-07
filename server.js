@@ -252,11 +252,21 @@ const TECHS = {
   antiaerea:     { name: 'Defesa Antiaérea',      cost: 600, desc: 'dano nuclear -50%' },
   bemestar:      { name: 'Estado de Bem-Estar',   cost: 500, desc: 'desgaste de aprovação pela metade' },
   midia:         { name: 'Mídia Global',          cost: 500, desc: '+1 influência/turno' },
+  engenharia:    { name: 'Engenharia Avançada',   cost: 600, desc: 'construções e melhorias 15% mais baratas' },
 };
 const SECTORS = [
   ['educacao', 'Educação'], ['saude', 'Saúde'], ['cultura', 'Cultura'],
-  ['esportes', 'Esportes'], ['habitacao', 'Habitação'], ['justica', 'Justiça'],
+  ['esportes', 'Esportes'], ['habitacao', 'Habitação'], ['justica', 'Justiça'], ['turismo', 'Turismo'],
 ];
+const DEPOSIT_POOL = ['petroleo', 'minerio', 'madeira', 'ouro', 'uranio', 'terras_raras', 'comida'];
+const DEP_NAMES = { petroleo: '🛢️ Petróleo', minerio: '⛏️ Minério', madeira: '🪵 Madeira', ouro: '🏦 Ouro', uranio: '☢️ Urânio', terras_raras: '⚙️ Terras raras', comida: '🌾 Terra fértil' };
+function depositosOf(id) {
+  let h = 0; for (const ch of String(id) + 'x') h = (h * 31 + ch.charCodeAt(0)) % 997;
+  const out = [];
+  for (const d of [DEPOSIT_POOL[h % 7], DEPOSIT_POOL[Math.floor(h / 7) % 7], DEPOSIT_POOL[Math.floor(h / 49) % 7]]) if (!out.includes(d)) out.push(d);
+  let i = 0; while (out.length < 3 && i < 7) { const d = DEPOSIT_POOL[(h + 3 * ++i) % 7]; if (!out.includes(d)) out.push(d); }
+  return out.slice(0, 3);
+}
 const SPACE_COSTS = [500, 800, 1200];
 const UN_TYPES = [
   { id: 'proibir_guerra', desc: 'Proibição de novas declarações de guerra por 3 turnos' },
@@ -342,7 +352,7 @@ function newRoom() {
     code: makeCode(), phase: 'lobby', turn: 0, timerEnd: 0, speed: 45,
     players: [], hostId: null, proposals: [], log: [], winner: null, timer: null,
     un: null, noWarUntil: 0, noArmsUntil: 0, embargo: null, paused: false, pausedRemaining: 0,
-    world: COUNTRIES.slice(), market: { comida: 8, minerio: 12, energia: 10, concreto: 10, madeira: 7, terras_raras: 20 }, missionIdx: 0, warAuth: null, paused: false, pausedRemaining: 0,
+    world: COUNTRIES.slice(), market: { comida: 8, minerio: 12, energia: 10, concreto: 10, madeira: 7, terras_raras: 20, uranio: 25 }, missionIdx: 0, warAuth: null, paused: false, pausedRemaining: 0,
   };
   rooms.set(room.code, room);
   return room;
@@ -380,6 +390,7 @@ function snapshot(room) {
       units: p.units, builds: p.builds, emergencyUntil: p.emergencyUntil, leis: p.leis,
       pop: p.pop, rec: p.rec, xp: p.xp, bot: p.bot, customName: p.customName, customFlag: p.customFlag,
       buildings: p.buildings, stats: p.stats, famine: p.famine, blackout: p.blackout,
+      depositos: p.depositos || [], upgrades: p.upgrades || {}, pacts: p.pacts || {},
     })),
     world: room.world, market: room.market, mission: MISSIONS[room.missionIdx % MISSIONS.length], paused: room.paused,
   };
@@ -399,11 +410,11 @@ function addPlayer(room, conn, name, isHost) {
     nuclear: 0, influencia: 0, fe: 0, provinces: [], wars: [],
     sanctioning: [], sanctionedBy: [],
     taxRate: 1, debt: 0, ideology: null, religion: 'laico',
-    customName: null, customFlag: '🏳️', bot: false, pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 0, madeira: 0, terras_raras: 12 },
-    xp: 0, blackout: false,
-    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0 }, famine: false,
+    customName: null, customFlag: '🏳️', bot: false, pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 0, madeira: 0, terras_raras: 12, uranio: 0 },
+    xp: 0, blackout: false, depositos: [], upgrades: {}, pacts: {},
+    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0 }, famine: false,
     ministers: { eco: null, def: null, dip: null },
-    techs: [], sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0 },
+    techs: [], sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
     units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 }, builds: [], emergencyUntil: 0, leis: [],
   };
@@ -419,17 +430,17 @@ function makeAIBot(c) {
   return {
     id: c.id, name: c.name, country: c.id, bot: true, conn: null, connected: true, color: 0,
     customName: null, customFlag: null, isHost: false,
-    money: 10000, eco: 3 + (h % 4), mil: 3 + ((h >> 2) % 4), pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 0, madeira: 0, terras_raras: 12 }, xp: 0, blackout: false,
+    money: 10000, eco: 3 + (h % 4), mil: 3 + ((h >> 2) % 4), pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 0, madeira: 0, terras_raras: 12, uranio: 0 }, xp: 0, blackout: false, depositos: depositosOf(c.id), upgrades: {}, pacts: {},
     aprov: 50, ap: AP_PER_TURN, alive: true, allies: [], eliminatedReason: null,
     nuclear: 0, influencia: 0, fe: 0, wars: [],
     provinces: [{ name: c.name, infra: 1, owner: c.id }],
     sanctioning: [], sanctionedBy: [], taxRate: 1, debt: 0, ideology: null, religion: 'laico',
     ministers: { eco: null, def: null, dip: null },
-    techs: [], sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0 },
+    techs: [], sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
     units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 },
     builds: [], emergencyUntil: 0, leis: [],
-    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0 }, famine: false,
+    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0 }, famine: false,
     ideology: Object.keys(IDEOLOGIES)[h % 6], religion: Object.keys(RELIGIONS)[h % 5],
   };
 }
@@ -442,15 +453,16 @@ function startGame(room) {
     const nat = { id: cid, name: p.customName || (p.name + 'lândia'), flag: p.customFlag || '🏳️', lat: spot[0] + Math.floor(i / NEWLANDS.length) * 5, lon: spot[1] };
     room.world.push(nat); DYNC[cid] = nat;
     p.country = cid;
-    p.money = 10000; p.eco = 3; p.mil = 3; p.pop = 0; p.rec = { comida: 0, minerio: 0, energia: 0, concreto: 0, madeira: 0, terras_raras: 12 }; p.xp = 0; p.blackout = false;
-    p.buildings = { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0 }; p.stats = { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0 }; p.famine = false;
+    p.money = 10000; p.eco = 3; p.mil = 3; p.pop = 0; p.rec = { comida: 0, minerio: 0, energia: 0, concreto: 0, madeira: 0, terras_raras: 12, uranio: 0 }; p.xp = 0; p.blackout = false;
+    p.depositos = depositosOf(cid); p.upgrades = {}; p.pacts = {};
+    p.buildings = { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0 }; p.stats = { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0 }; p.famine = false;
     p.aprov = 50; p.ap = AP_PER_TURN; p.alive = true;
     p.allies = []; p.eliminatedReason = null; p.nuclear = 0; p.influencia = 0; p.fe = 0; p.wars = [];
     p.provinces = [{ name: 'Capital de ' + nat.name, infra: 1, owner: p.id }];
     p.sanctioning = []; p.sanctionedBy = [];
     p.taxRate = 1; p.debt = 0; p.ideology = null; p.religion = 'laico';
     p.ministers = { eco: null, def: null, dip: null };
-    p.techs = []; p.sectors = { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0 };
+    p.techs = []; p.sectors = { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 };
     p.space = 0; p.relations = {}; p.embassies = []; p.trades = []; p.blockading = []; p.blockadedBy = [];
     p.units = { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 }; p.builds = []; p.emergencyUntil = 0; p.leis = [];
   });
@@ -531,6 +543,8 @@ function incomeOf(room, p) {
   const prov = ownProvinces(p).reduce((s, pr) => s + pr.infra, 0) * PROV_INCOME;
   let base = p.eco * 10 + prov + Math.floor(p.pop / 8) + p.buildings.petroleo * 15 + p.buildings.mina_ouro * 25 + p.buildings.estrada * 5
     + p.allies.length * 25
+    + ((p.depositos || []).includes('ouro') ? 15 : 0)
+    - p.embassies.length * 10
     + p.trades.length * 20
     + (p.space >= 3 ? 30 : 0)
     + sectorSum(p) * 2
@@ -628,19 +642,27 @@ function resolveTurn(room) {
   // população, produção de recursos e oscilação do mercado
   for (const p of room.players) if (p.alive) {
     const infra = ownProvinces(p).reduce((sx, x) => sx + x.infra, 0);
-    const nBld = p.buildings.fazenda + p.buildings.mina + p.buildings.usina + p.buildings.petroleo + p.buildings.fabrica + p.buildings.serraria + p.buildings.mina_ouro + p.buildings.mina_rara + p.buildings.adubo;
+    const nBld = p.buildings.fazenda + p.buildings.mina + p.buildings.usina + p.buildings.petroleo + p.buildings.fabrica + p.buildings.serraria + p.buildings.mina_ouro + p.buildings.mina_rara + p.buildings.adubo + p.buildings.mina_uranio;
     const needEn = Math.ceil(nBld / 3);
-    p.rec.energia += 3 + infra * 2 + p.buildings.usina * 4 + p.buildings.petroleo * 3;
+    p.rec.energia += 3 + infra * 2 + Math.round(p.buildings.usina * 4 * upM(p, 'usina')) + Math.round(p.buildings.petroleo * 3 * upM(p, 'petroleo'));
     let mult = 1;
     if (nBld > 0 && p.rec.energia < needEn) {
       mult = 0.5;
       if (!p.blackout) { log(room, `🔌 APAGÃO em ${cname(p)}! Energia insuficiente — produção pela metade. Construa usinas.`); p.blackout = true; }
     } else { p.blackout = false; p.rec.energia -= needEn; }
-    p.rec.comida += Math.round((4 + infra * 3 + p.buildings.fazenda * 5 + p.buildings.adubo * 4) * mult);
-    p.rec.minerio += Math.round((2 + Math.round(p.eco * 0.8) + p.buildings.mina * 4) * mult);
-    p.rec.concreto += Math.round((1 + p.buildings.fabrica * 6) * mult);
-    p.rec.madeira += Math.round(p.buildings.serraria * 5 * mult);
-    p.rec.terras_raras += Math.round(p.buildings.mina_rara * 3 * mult);
+    p.rec.comida += Math.round((4 + infra * 3 + p.buildings.fazenda * 5 * upM(p, 'fazenda') + p.buildings.adubo * 4 * upM(p, 'adubo')) * mult);
+    p.rec.minerio += Math.round((2 + Math.round(p.eco * 0.8) + p.buildings.mina * 4 * upM(p, 'mina')) * mult);
+    p.rec.concreto += Math.round((1 + p.buildings.fabrica * 6 * upM(p, 'fabrica')) * mult);
+    p.rec.madeira += Math.round(p.buildings.serraria * 5 * upM(p, 'serraria') * mult);
+    p.rec.terras_raras += Math.round(p.buildings.mina_rara * 3 * upM(p, 'mina_rara') * mult);
+    p.rec.uranio += Math.round(p.buildings.mina_uranio * 2 * upM(p, 'mina_uranio') * mult);
+    const dep = p.depositos || [];
+    if (dep.includes('petroleo')) p.rec.energia += 2;
+    if (dep.includes('minerio')) p.rec.minerio += 2;
+    if (dep.includes('madeira')) p.rec.madeira += 3;
+    if (dep.includes('comida')) p.rec.comida += 3;
+    if (dep.includes('terras_raras')) p.rec.terras_raras += 1;
+    if (dep.includes('uranio')) p.rec.uranio += 1;
     const need = Math.ceil(p.pop / 10);
     let g = 4 + infra * 2;
     if (p.rec.comida >= need) p.rec.comida -= need; else { p.rec.comida = 0; g = Math.max(1, Math.floor(g / 3)); }
@@ -666,6 +688,7 @@ function resolveTurn(room) {
     a.relations[b.id] = v; b.relations[a.id] = v;
   }
   randomEvent(room);
+  worldNews(room);
   if (room.turn % 4 === 0 && !room.un) openUN(room);
   aiTurn(room);
   const mNow = MISSIONS[room.missionIdx % MISSIONS.length];
@@ -683,9 +706,9 @@ function resolveTurn(room) {
   broadcast(room);
 }
 
-const PROD_BUILDS = { fabrica: 300, serraria: 280, fazenda: 250, mina: 300, usina: 350, petroleo: 400, mina_ouro: 500, estrada: 150, base: 400, mina_rara: 450, adubo: 260 };
-const CONCRETE_NEED = { fabrica: 0, serraria: 8, fazenda: 8, mina: 8, usina: 8, petroleo: 8, mina_ouro: 10, estrada: 5, base: 10, mina_rara: 10, adubo: 8 };
-const PROD_NAMES = { fabrica: '🧱 Fábrica de concreto', serraria: '🪵 Serraria', fazenda: '🌾 Fazenda', mina: '⛏️ Mina', usina: '⚡ Usina', petroleo: '🛢️ Poço de petróleo', mina_ouro: '🏦 Mina de ouro', estrada: '🛣️ Estrada', base: '🎖️ Base militar', mina_rara: '⚙️ Mina de terras raras', adubo: '🌱 Usina de nutrientes' };
+const PROD_BUILDS = { fabrica: 300, serraria: 280, fazenda: 250, mina: 300, usina: 350, petroleo: 400, mina_ouro: 500, estrada: 150, base: 400, mina_rara: 450, adubo: 260, mina_uranio: 500 };
+const CONCRETE_NEED = { fabrica: 0, serraria: 8, fazenda: 8, mina: 8, usina: 8, petroleo: 8, mina_ouro: 10, estrada: 5, base: 10, mina_rara: 10, adubo: 8, mina_uranio: 10 };
+const PROD_NAMES = { fabrica: '🧱 Fábrica de concreto', serraria: '🪵 Serraria', fazenda: '🌾 Fazenda', mina: '⛏️ Mina', usina: '⚡ Usina', petroleo: '🛢️ Poço de petróleo', mina_ouro: '🏦 Mina de ouro', estrada: '🛣️ Estrada', base: '🎖️ Base militar', mina_rara: '⚙️ Mina de terras raras', adubo: '🌱 Usina de nutrientes', mina_uranio: '☢️ Mina de urânio' };
 const MISSIONS = [
   { id: 'construir_3', desc: 'Conclua 3 construções',            reward: 500, check: p => p.stats.construidas >= 3 },
   { id: 'vender_30',   desc: 'Venda 30 unidades no mercado',      reward: 400, check: p => p.stats.vendidas >= 30 },
@@ -694,9 +717,13 @@ const MISSIONS = [
   { id: 'vencer_1',    desc: 'Vença 1 batalha',                   reward: 600, check: p => p.stats.vitorias >= 1 },
   { id: 'educacao_2',  desc: 'Leve Educação ao nível 2',          reward: 400, check: p => p.sectors.educacao >= 2 },
   { id: 'presente_2',  desc: 'Envie 2 presentes diplomáticos',    reward: 350, check: p => p.stats.presentes >= 2 },
+  { id: 'anexar',      desc: 'Ocupe território inimigo (2+ províncias)', reward: 700, check: p => ownProvinces(p).length >= 2 },
+  { id: 'blindados_1', desc: 'Produza forças blindadas',                 reward: 400, check: p => p.units.blindados >= 1 },
+  { id: 'treinar_3',   desc: 'Treine o exército 3 vezes',                reward: 400, check: p => p.stats.treinos >= 3 },
 ];
 
 const UNIT_COSTS = { blindados: 300, aviacao: 400, frota: 500, infantaria: 200, artilharia: 350, submarinos: 450, porta_avioes: 700 };
+const upM = (p, k) => 1 + 0.5 * ((p.upgrades && p.upgrades[k]) || 0);
 
 function allyDefend(room, atk, def) {
   for (const al of room.players) {
@@ -753,6 +780,7 @@ function aiTurn(room) {
         b.money -= PROD_BUILDS[kind]; b.rec.concreto -= CONCRETE_NEED[kind] || 0; b.builds.push({ kind, until: room.turn + 1 });
       }
     }
+    if (b.money > 1200 && b.mil < 12 && room.turn % 4 === 0) { b.money -= 150; b.mil += 1; }
     if (b.money > 900 && b.rec.terras_raras >= 4) {
       const ks = ['infantaria', 'blindados', 'artilharia', 'aviacao', 'porta_avioes'];
       const k = ks[room.turn % ks.length];
@@ -777,7 +805,7 @@ function aiTurn(room) {
       }
     }
     if (room.turn > 12 && humans.length && b.mil >= 4 && Math.random() * botsAlive < 0.3 && room.turn >= room.noWarUntil) {
-      const ts = humans.filter(h => !b.allies.includes(h.id) && !b.wars.includes(h.id));
+      const ts = humans.filter(h => !b.allies.includes(h.id) && !b.wars.includes(h.id) && !(((b.pacts && b.pacts[h.id]) || 0) > room.turn));
       if (ts.length) {
         const h = ts[Math.floor(Math.random() * ts.length)];
         b.wars.push(h.id); h.wars.push(b.id);
@@ -795,12 +823,29 @@ function aiTurn(room) {
   }
 }
 
+const NEWS_TEMPLATES = [
+  a => `🗞️ Escândalo de corrupção abala o governo de ${a}.`,
+  a => `🗞️ Economia de ${a} surpreende analistas com crescimento recorde.`,
+  a => `🗞️ ${a} anuncia candidatura para sediar a Copa do Mundo.`,
+  a => `🗞️ Multidões protestam nas ruas de ${a} por melhores salários.`,
+  a => `🗞️ Cientistas de ${a} anunciam avanço histórico em energia limpa.`,
+  a => `🗞️ Seleção de ${a} vence amistoso internacional e país festeja.`,
+  a => `🗞️ Queda nas bolsas globais afeta investimentos em ${a}.`,
+  a => `🗞️ ${a} inaugura nova linha de trem de alta velocidade.`,
+];
+function worldNews(room) {
+  if (Math.random() > 0.75) return;
+  const pool = room.players.filter(p => p.alive && p.bot);
+  if (!pool.length) return;
+  const a = pool[Math.floor(Math.random() * pool.length)];
+  log(room, NEWS_TEMPLATES[Math.floor(Math.random() * NEWS_TEMPLATES.length)](cname(a)));
+}
 function randomEvent(room) {
   if (Math.random() > 0.45) return;
   const alive = room.players.filter(p => p.alive);
   if (!alive.length) return;
   const pick = alive[Math.floor(Math.random() * alive.length)];
-  switch (Math.floor(Math.random() * 9)) {
+  switch (Math.floor(Math.random() * 10)) {
     case 0: alive.forEach(p => p.money += 80); log(room, '📈 Boom das commodities: todas as nações recebem +$80.'); break;
     case 1: pick.money = Math.max(0, pick.money - 150); log(room, `📉 Crise financeira atinge ${cname(pick)}: -$150.`); break;
     case 2: alive.forEach(p => p.aprov = Math.min(100, p.aprov + 3)); log(room, '🕊️ Cúpula de paz global: aprovação +3 para todos.'); break;
@@ -810,6 +855,7 @@ function randomEvent(room) {
     case 6: { const provs = ownProvinces(pick).filter(pr => pr.infra < 5); if (provs.length) { provs[0].infra += 1; log(room, `🏗️ Obra concluída em ${provs[0].name} (${cname(pick)}): infraestrutura +1.`); } break; }
     case 7: pick.influencia += 2; log(room, `🎬 Cultura de ${cname(pick)} conquista o mundo: influência +2.`); break;
     case 8: { const provs = ownProvinces(pick).filter(pr => pr.infra > 0); if (provs.length) { const pr = provs[0]; pr.infra -= 1; pick.emergencyUntil = room.turn + 3; log(room, `🌪️ DESASTRE em ${pr.name} (${cname(pick)}): infra -1 e EMERGÊNCIA (-20% renda por 3 turnos). Peça ou receba ajuda!`); } break; }
+    case 9: { const ks = Object.keys(pick.buildings).filter(k => pick.buildings[k] > 0); if (ks.length) { const k = ks[Math.floor(Math.random() * ks.length)]; pick.buildings[k] -= 1; pick.aprov = Math.max(0, pick.aprov - 5); pick.emergencyUntil = room.turn + 3; log(room, `🌍 TERREMOTO em ${cname(pick)}: ${PROD_NAMES[k] || k} destruído, -5 aprovação, EMERGÊNCIA declarada!`); } break; }
   }
 }
 
@@ -890,7 +936,9 @@ function performAction(room, p, msg) {
     }
     case 'nuclear':
       if (p.nuclear + p.builds.filter(b=>b.kind==='nuclear').length >= NUKE_MAX_LEVEL) { err(p.conn, 'Programa nuclear no nível máximo.'); return; }
+      if (p.rec.uranio < 10) { err(p.conn, '☢️ O programa nuclear exige 10 de URÂNIO — minere numa jazida própria ou compre no mercado.'); return; }
       if (!spend(p, 2, 600)) return;
+      p.rec.uranio -= 10;
       p.builds.push({ kind: 'nuclear', until: room.turn + 1 });
       log(room, `☢️ ${cname(p)} inicia etapa do programa nuclear (conclui no próximo turno).`);
       break;
@@ -1000,6 +1048,7 @@ function performAction(room, p, msg) {
       if (room.turn < room.noWarUntil) { err(p.conn, '🇺🇳 A ONU proibiu novas guerras neste período.'); return; }
       if (p.wars.includes(target.id)) { err(p.conn, 'Vocês já estão em guerra.'); return; }
       if (p.allies.includes(target.id)) { err(p.conn, 'Você não pode declarar guerra a um aliado.'); return; }
+      if (((p.pacts && p.pacts[target.id]) || 0) > room.turn) { err(p.conn, '🤝 Um pacto de não-agressão com essa nação está vigente.'); return; }
       if (!spend(p, 1, 0)) return;
       p.wars.push(target.id); target.wars.push(p.id);
       p.trades = p.trades.filter(id => id !== target.id); target.trades = target.trades.filter(id => id !== p.id);
@@ -1107,9 +1156,12 @@ function performAction(room, p, msg) {
     }
     case 'construir': {
       if (!PROD_BUILDS[msg.kind]) return;
+      if (msg.kind === 'mina_uranio' && !(p.depositos || []).includes('uranio')) { err(p.conn, '☢️ Seu país não possui jazidas de urânio — importe no mercado ou conquiste um território que tenha.'); return; }
       const need = CONCRETE_NEED[msg.kind] || 0;
       if (p.rec.concreto < need) { err(p.conn, `🧱 Precisa de ${need} de concreto — construa uma Fábrica de concreto primeiro.`); return; }
-      if (!spend(p, 1, PROD_BUILDS[msg.kind])) return;
+      let cCost = PROD_BUILDS[msg.kind];
+      if (p.techs.includes('engenharia')) cCost = Math.ceil(cCost * 0.85);
+      if (!spend(p, 1, cCost)) return;
       p.rec.concreto -= need;
       p.builds.push({ kind: msg.kind, until: room.turn + 1 });
       log(room, `🏗️ ${cname(p)} inicia ${PROD_NAMES[msg.kind]} (conclui no próximo turno).`);
@@ -1120,6 +1172,38 @@ function performAction(room, p, msg) {
       if (!spend(p, 1, 100)) return;
       bumpRel(p, target, 8); p.stats.presentes++; p.xp += 2;
       log(room, `🎁 ${cname(p)} enviou um PRESENTE diplomático a ${cname(target)} (+8 relações).`);
+      break;
+    }
+    case 'upgrade': {
+      const k = msg.kind;
+      if (!PROD_BUILDS[k]) return;
+      if (!p.buildings[k]) { err(p.conn, 'Construa o prédio antes de melhorá-lo.'); return; }
+      const lvl = (p.upgrades && p.upgrades[k]) || 0;
+      if (lvl >= 2) { err(p.conn, '⬆️ Melhoria já está no nível máximo (3).'); return; }
+      let uCost = Math.round(PROD_BUILDS[k] * 0.6 * (lvl + 1));
+      if (p.techs.includes('engenharia')) uCost = Math.ceil(uCost * 0.85);
+      if (!spend(p, 1, uCost)) return;
+      p.upgrades = p.upgrades || {}; p.upgrades[k] = lvl + 1;
+      log(room, `⬆️ ${cname(p)} melhora ${PROD_NAMES[k]} para o nível ${lvl + 2} (+50% de produção).`);
+      break;
+    }
+    case 'treinar': {
+      if (!spend(p, 1, 150)) return;
+      p.mil = Math.min(25, p.mil + 1); p.stats.treinos = (p.stats.treinos || 0) + 1;
+      log(room, `🏋️ ${cname(p)} treina suas forças armadas (poder militar +1).`);
+      break;
+    }
+    case 'pacto': {
+      if (!target || target === p || !target.alive) return;
+      if (p.wars.includes(target.id)) { err(p.conn, 'Impossível assinar pacto em meio à guerra.'); return; }
+      if (((p.pacts && p.pacts[target.id]) || 0) > room.turn) { err(p.conn, 'Já existe pacto de não-agressão vigente.'); return; }
+      if (relBetween(p, target) < 40) { err(p.conn, 'Relações muito baixas (mínimo 40) para um pacto de não-agressão.'); return; }
+      if (!spend(p, 1, 100)) return;
+      const until = room.turn + 8;
+      p.pacts = p.pacts || {}; target.pacts = target.pacts || {};
+      p.pacts[target.id] = until; target.pacts[p.id] = until;
+      bumpRel(p, target, 5);
+      log(room, `🤝 ${cname(p)} e ${cname(target)} assinam um PACTO DE NÃO-AGRESSÃO (8 turnos).`);
       break;
     }
     case 'show': {

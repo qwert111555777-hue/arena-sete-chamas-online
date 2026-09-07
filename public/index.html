@@ -439,9 +439,10 @@
         <button class="round-btn" data-act="investir" title="Investir na economia (+2 🏭) — $250 · 1⚡"><small>ECONOMIA</small><span class="costdot">$250</span></button>
         <button class="round-btn" data-act="militar" title="Recrutar tropas (+3 🪖) — $300 · 1⚡"><small>TROPAS</small><span class="costdot">$300</span></button>
         <button class="round-btn" data-act="propaganda" title="Propaganda (+7 ❤️) — $150 · 1⚡"><small>MÍDIA</small><span class="costdot">$150</span></button>
-        <button class="round-btn" data-act="nuclear" title="Avançar programa nuclear (+1 ☢️, máx 5; nível 3+ libera míssil) — $600 · 2⚡">️<small>NUCLEAR</small><span class="costdot">$600</span></button>
+        <button class="round-btn" data-act="nuclear" title="Avançar programa nuclear (+1 ☢️, máx 5; requer 10 de URÂNIO; nível 3+ libera míssil) — $600 · 2⚡">️<small>NUCLEAR</small><span class="costdot">$600</span></button>
         <button class="round-btn" data-act="ideologia" title="Expandir doutrina (+2 ⚖️ — 60 vence por hegemonia ideológica) — $200 · 1⚡">⚖️<small>DOUTRINA</small><span class="costdot">$200</span></button>
         <button class="round-btn" data-act="fe" title="Enviar missionários (+2 🕌 — 60 vence por hegemonia religiosa) — $200 · 1⚡"><small>FÉ</small><span class="costdot">$200</span></button>
+        <button class="round-btn" data-act="treinar" title="Treinar exército (+1 🪖 militar) — $150 · 1⚡"><small>TREINAR</small><span class="costdot">$150</span></button>
       </div>
     </div>
 
@@ -673,8 +674,8 @@ function cbid(id){ if (state && state.world){ const w = state.world.find(x=>x.id
 const IDEOLOGIES = { democracia:'Democracia +5% renda', autoritarismo:'Autoritarismo +15% atq', comunismo:'Comunismo setores baratos', fascismo:'Fascismo recrutar barato', monarquia:'Monarquia dip barata', republica:'República tech barata' };
 const RELIGIONS = { laico:'Laico', cristao:'Cristã', muculmano:'Islâmica', budista:'Budista', hindu:'Hindu' };
 const MINISTERS = { eco:{tec:'Tecocrata +10% renda', pop:'Populista +1❤️'}, def:{fal:'Falcão +10% atq', estr:'Estrategista +10% def'}, dip:{neg:'Negociador dip -50%', inf:'Influenciador +1⚖️'} };
-const TECHS = { livrecomercio:['Livre Comércio',500], automacao:['Automação',600], exercito:['Exército Prof.',600], antiaerea:['Def. Antiaérea',600], bemestar:['Bem-Estar',500], midia:['Mídia Global',500] };
-const SECTORS_UI = [['educacao','Educação'],['saude','Saúde'],['cultura','Cultura'],['esportes','Esportes'],['habitacao','Habitação'],['justica','Justiça']];
+const TECHS = { livrecomercio:['Livre Comércio',500], automacao:['Automação',600], exercito:['Exército Prof.',600], antiaerea:['Def. Antiaérea',600], bemestar:['Bem-Estar',500], midia:['Mídia Global',500], engenharia:['Engenharia Avançada',600] };
+const SECTORS_UI = [['educacao','Educação'],['saude','Saúde'],['cultura','Cultura'],['esportes','Esportes'],['habitacao','Habitação'],['justica','Justiça'],['turismo','Turismo']];
 const SPACE_COSTS = [500,800,1200];
 const PORTRAITS = { br:'portraits/br.jpg', us:'portraits/us.jpg', ru:'portraits/ru.jpg', cn:'portraits/cn.jpg', gb:'portraits/gb.jpg', fr:'portraits/fr.jpg', de:'portraits/de.jpg', in:'portraits/in.jpg', jp:'portraits/jp.jpg', mx:'portraits/mx.jpg', ng:'portraits/ng.jpg', au:'portraits/au.jpg' };
 const proj = c => ({ x:(c.lon+180)/360*1000, y:(90-c.lat)/180*520 });
@@ -930,7 +931,7 @@ function renderGame(){
   $('m-ap').textContent = '●'.repeat(m.ap) + '○'.repeat(Math.max(0,4-m.ap));
 
   document.querySelectorAll('.round-btn').forEach(b => {
-    const costs = { investir:[1,250], militar:[1,300], propaganda:[1,150], nuclear:[2,600], ideologia:[1,200], fe:[1,200] };
+    const costs = { investir:[1,250], militar:[1,300], propaganda:[1,150], nuclear:[2,600], ideologia:[1,200], fe:[1,200], treinar:[1,150] };
     const [ap, cost] = costs[b.dataset.act];
     b.disabled = state.phase!=='game' || !m.alive || m.ap < ap || m.money < cost || (b.dataset.act==='nuclear' && m.nuclear>=5);
   });
@@ -1129,6 +1130,8 @@ function renderPanel(){
     `<div class="ms"><span>⚖️ · 🕌</span><b>${p.influencia} · ${p.fe}</b></div>` +
     `<div class="ms"><span>👥 População</span><b>${p.pop}</b></div>` +
     (p.rec ? `<div class="ms"><span>🌾 · ⛏️ · ⚡</span><b>${p.rec.comida} · ${p.rec.minerio} · ${p.rec.energia}</b></div>` : '') +
+    (p.rec ? `<div class="ms"><span>🧱 · 🪵 · ⚙️ · ☢️</span><b>${p.rec.concreto} · ${p.rec.madeira} · ${p.rec.terras_raras} · ${p.rec.uranio}</b></div>` : '') +
+    ((p.depositos&&p.depositos.length) ? `<div class="ms"><span>🏔️ Jazidas naturais</span><b>${p.depositos.map(d=>({petroleo:'🛢️Petróleo',minerio:'⛏️Minério',madeira:'🪵Madeira',ouro:'🏦Ouro',uranio:'☢️Urânio',terras_raras:'⚙️Terras raras',comida:'🌾Terra fértil'}[d]||d)).join(', ')}</b></div>` : '') +
     `<div class="ms"><span>⚔️ Poder militar</span><b>${p.mil*10 + Object.values(p.units).reduce((a,b)=>a+b,0)*15 + p.nuclear*20}</b></div>`;
 
   // províncias
@@ -1214,7 +1217,7 @@ function renderPanel(){
       extra.appendChild(r);
     });
     // tecnologias
-    [['🏭 Economia',['livrecomercio','automacao']],['⚔️ Guerra',['exercito','antiaerea']],['🤝 Diplomacia',['bemestar','midia']]].forEach(([cat,keys])=>{
+    [['🏭 Economia',['livrecomercio','automacao','engenharia']],['⚔️ Guerra',['exercito','antiaerea']],['🤝 Diplomacia',['bemestar','midia']]].forEach(([cat,keys])=>{
       sub2('🔬 Pesquisa: ' + cat + ' (1⚡)');
       keys.forEach(k=>{
         const r=document.createElement('div'); r.className='xrow';
@@ -1253,12 +1256,22 @@ function renderPanel(){
     });
     // construções produtivas
     sub2('🏗️ Construções (1⚡) — obras avançadas exigem 🧱 concreto');
-    [['fabrica','🧱 Fábrica de concreto (+6🧱/turno)',300,0],['serraria','🪵 Serraria (+5 madeira/turno)',280,8],['fazenda','🌾 Fazenda (+5 comida/turno)',250,8],['mina','⛏️ Mina (+4 minério/turno)',300,8],['usina','⚡ Usina (+4 energia/turno)',350,8],['petroleo','🛢️ Poço de petróleo (+3⚡ +$15/turno)',400,8],['mina_ouro','🏦 Mina de ouro (+$25/turno)',500,10],['estrada','🛣️ Estrada (+$5/turno)',150,5],['base','🎖️ Base militar (+5% defesa, máx 5)',400,10],['mina_rara','⚙️ Mina de terras raras (+3⚙️/turno)',450,10],['adubo','🌱 Usina de nutrientes (+4 comida/turno)',260,8]].forEach(([k,lb,cost,nc])=>{
+    [['fabrica','🧱 Fábrica de concreto (+6🧱/turno)',300,0],['serraria','🪵 Serraria (+5 madeira/turno)',280,8],['fazenda','🌾 Fazenda (+5 comida/turno)',250,8],['mina','⛏️ Mina (+4 minério/turno)',300,8],['usina','⚡ Usina (+4 energia/turno)',350,8],['petroleo','🛢️ Poço de petróleo (+3⚡ +$15/turno)',400,8],['mina_ouro','🏦 Mina de ouro (+$25/turno)',500,10],['estrada','🛣️ Estrada (+$5/turno)',150,5],['base','🎖️ Base militar (+5% defesa, máx 5)',400,10],['mina_rara','⚙️ Mina de terras raras (+3⚙️/turno)',450,10],['adubo','🌱 Usina de nutrientes (+4 comida/turno)',260,8],['mina_uranio','☢️ Mina de urânio (+2 urânio/turno, requer jazida)',500,10]].forEach(([k,lb,cost,nc])=>{
       const r=document.createElement('div'); r.className='xrow';
-      const n=document.createElement('span'); n.className='xn'; n.textContent=lb+' — '+(p.buildings&&p.buildings[k]?p.buildings[k]:0)+' constr.'+(nc?' · custa '+nc+'🧱':''); r.appendChild(n);
+      const lvl=(p.upgrades&&p.upgrades[k])||0;
+      const n=document.createElement('span'); n.className='xn'; n.textContent=lb+' — '+(p.buildings&&p.buildings[k]?p.buildings[k]:0)+' constr.'+(lvl?' · nv.'+(lvl+1):'')+(nc?' · '+nc+'🧱':''); r.appendChild(n);
       const b=document.createElement('button'); b.textContent='$'+cost;
-      b.disabled=m.ap<1||m.money<cost||((m.rec&&m.rec.concreto||0)<nc);
+      const gated = k==='mina_uranio' && !(p.depositos||[]).includes('uranio');
+      if (gated) b.title='Seu país não possui jazidas de urânio';
+      b.disabled=gated||m.ap<1||m.money<cost||((m.rec&&m.rec.concreto||0)<nc);
       b.onclick=()=>send({t:'action',action:'construir',kind:k}); r.appendChild(b);
+      if (p.buildings && p.buildings[k] && k!=='estrada' && k!=='base') {
+        const ucost=Math.round(cost*0.6*(lvl+1));
+        const u=document.createElement('button'); u.textContent='⬆️$'+ucost;
+        u.title = lvl>=2 ? 'Nível máximo (3)' : 'Melhorar para o nível '+(lvl+2)+' (+50% de produção)';
+        u.disabled=lvl>=2||m.ap<1||m.money<ucost;
+        u.onclick=()=>send({t:'action',action:'upgrade',kind:k}); r.appendChild(u);
+      }
       extra.appendChild(r);
     });
     // ações internas
@@ -1297,7 +1310,7 @@ function renderPanel(){
       p.builds.forEach(b=>{
         const r=document.createElement('div'); r.className='xrow';
         const n=document.createElement('span'); n.className='xn';
-        const BN = {infra:'Obra', nuclear:'Etapa nuclear', espacial:'Etapa espacial', fazenda:'🌾 Fazenda', mina:'⛏️ Mina', usina:'⚡ Usina', petroleo:'🛢️ Poço de petróleo', fabrica:'🧱 Fábrica de concreto', serraria:'🪵 Serraria', mina_ouro:'🏦 Mina de ouro', estrada:'🛣️ Estrada', base:'🎖️ Base militar', mina_rara:'⚙️ Mina de terras raras', adubo:'🌱 Usina de nutrientes'};
+        const BN = {infra:'Obra', nuclear:'Etapa nuclear', espacial:'Etapa espacial', fazenda:'🌾 Fazenda', mina:'⛏️ Mina', usina:'⚡ Usina', petroleo:'🛢️ Poço de petróleo', fabrica:'🧱 Fábrica de concreto', serraria:'🪵 Serraria', mina_ouro:'🏦 Mina de ouro', estrada:'🛣️ Estrada', base:'🎖️ Base militar', mina_rara:'⚙️ Mina de terras raras', adubo:'🌱 Usina de nutrientes', mina_uranio:'☢️ Mina de urânio'};
         const nm = b.kind==='infra' ? ('Obra: '+(p.provinces[b.prov]?p.provinces[b.prov].name:'—')) : (BN[b.kind]||b.kind);
         n.textContent = '⏳ ' + nm + ' (conclui no turno ' + b.until + ')';
         r.appendChild(n); extra.appendChild(r);
@@ -1340,12 +1353,13 @@ function renderPanel(){
     acts.appendChild(mkBtn('🚫', m.sanctioning.includes(p.id)?'Suspender sanções':'Impor SANÇÕES (1⚡)', ()=>send({t:'action',action:'sancao',target:p.id}), !m.sanctioning.includes(p.id)&&(m.ap<1||m.sanctioning.length>=3)));
     acts.appendChild(mkBtn('💸','Ajudar $200 (+relações)', ()=>send({t:'action',action:'ajudar',target:p.id}), m.ap<1||m.money<200));
     acts.appendChild(mkBtn('🎁','Enviar presente ($100, +8 relações)', ()=>send({t:'action',action:'presente',target:p.id}), m.ap<1||m.money<100));
+    acts.appendChild(mkBtn('✍️', (m.pacts&&m.pacts[p.id]>state.turn)?'PACTO de não-agressão vigente':'PACTO de não-agressão (1⚡, $100, 8 turnos, rel. 40+)', ()=>send({t:'action',action:'pacto',target:p.id}), m.ap<1||m.money<100||atWar||(m.pacts&&m.pacts[p.id]>state.turn)));
     acts.appendChild(mkBtn('🇺🇳','Propor resolução contra (1⚡, $300)', ()=>send({t:'action',action:'propor_resolucao',target:p.id}), m.ap<1||m.money<300||!!state.un));
     acts.appendChild(mkBtn('⚖️','Espalhar ideologia (1⚡, $300)', ()=>send({t:'action',action:'espalhar_ideologia',target:p.id}), m.ap<1||m.money<300||!m.ideology));
     acts.appendChild(mkBtn('🛐','Espalhar religião (1⚡, $300)', ()=>send({t:'action',action:'espalhar_religiao',target:p.id}), m.ap<1||m.money<300||!m.religion||m.religion==='laico'));
     // relação bilateral
     const rel = m.relations[p.id] != null ? m.relations[p.id] : 50;
-    note.textContent = `📈 Relação bilateral: ${rel}/100` + (ally?' · 🤝 aliados':'') + (atWar?' · ⚔️ EM GUERRA':'') + (state.turn < p.emergencyUntil?' · 🆘 em emergência':'');
+    note.textContent = `📈 Relação bilateral: ${rel}/100` + (ally?' · 🤝 aliados':'') + (atWar?' · ⚔️ EM GUERRA':'') + ((m.pacts&&m.pacts[p.id]>state.turn)?' · ✍️ pacto de não-agressão':'') + (state.turn < p.emergencyUntil?' · 🆘 em emergência':'');
     const uvals = ['infantaria','blindados','artilharia','aviacao','submarinos','frota'].map(k=>p.units[k]||0);
     const usum = uvals.reduce((a,b)=>a+b,0);
     if (m.embassies.includes(p.id)) note.textContent += ' | 🎖️ Forças: ' + uvals.join('-') + ' (nível ' + usum + '/18)';
@@ -1438,7 +1452,7 @@ function renderMarket(){
   const panel = $('market-panel');
   if (panel.classList.contains('hidden') || !state || !state.market) return;
   const m = me(); if (!m) return;
-  const names = { comida:'🌾 Comida', minerio:'⛏️ Minério', energia:'⚡ Energia', concreto:'🧱 Concreto', madeira:'🪵 Madeira', terras_raras:'⚙️ Terras raras' };
+  const names = { comida:'🌾 Comida', minerio:'⛏️ Minério', energia:'⚡ Energia', concreto:'🧱 Concreto', madeira:'🪵 Madeira', terras_raras:'⚙️ Terras raras', uranio:'☢️ Urânio' };
   panel.innerHTML = '<h3>🛒 Mercado global de recursos</h3><div style="color:var(--muted);font-size:11px;margin-bottom:8px;line-height:1.5;">Os preços oscilam a cada turno. Suas províncias produzem recursos todo turno: comida alimenta a população (sem comida, ela cresce 3x mais devagar); minério e energia podem ser vendidos por lucro.</div>';
   Object.keys(state.market).forEach(k => {
     const row = document.createElement('div'); row.className = 'rank-row'; row.style.gap = '6px';
@@ -1454,7 +1468,7 @@ function renderMarket(){
   const infra = m.provinces.filter(x=>x.owner===myId).reduce((a,x)=>a+x.infra,0);
   const bd = m.buildings || {fazenda:0,mina:0,usina:0,petroleo:0};
   const info=document.createElement('div'); info.style.cssText='color:var(--muted);font-size:11px;margin-top:8px;line-height:1.5;';
-  info.textContent='Sua produção por turno: 🌾+'+(4+infra*3+(bd.fazenda||0)*5+(bd.adubo||0)*4)+' · ⛏️+'+(2+Math.round(m.eco*0.8)+(bd.mina||0)*4)+' · ⚡+'+(3+infra*2+(bd.usina||0)*4+(bd.petroleo||0)*3)+' · 🧱+'+(1+(bd.fabrica||0)*6)+' · 🪵+'+((bd.serraria||0)*5)+' · ⚙️+'+((bd.mina_rara||0)*3)+' · 💰+$'+((bd.petroleo||0)*15+(bd.mina_ouro||0)*25+(bd.estrada||0)*5)+' — 3 prédios consomem 1⚡ (sem energia = apagão: produção pela metade)';
+  info.textContent='Sua produção por turno: 🌾+'+(4+infra*3+(bd.fazenda||0)*5+(bd.adubo||0)*4)+' · ⛏️+'+(2+Math.round(m.eco*0.8)+(bd.mina||0)*4)+' · ⚡+'+(3+infra*2+(bd.usina||0)*4+(bd.petroleo||0)*3)+' · 🧱+'+(1+(bd.fabrica||0)*6)+' · 🪵+'+((bd.serraria||0)*5)+' · ⚙️+'+((bd.mina_rara||0)*3+((m.depositos||[]).includes('terras_raras')?1:0))+' · ☢️+'+((bd.mina_uranio||0)*2+((m.depositos||[]).includes('uranio')?1:0))+' · 💰+$'+((bd.petroleo||0)*15+(bd.mina_ouro||0)*25+(bd.estrada||0)*5)+' — 3 prédios consomem 1⚡ (sem energia = apagão: produção pela metade)';
   panel.appendChild(info);
 }
 $('btn-market').onclick = () => {
