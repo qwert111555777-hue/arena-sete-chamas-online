@@ -1176,6 +1176,7 @@ function aiTurn(room) {
     if (b.money > 2500 && (b.trades || []).length >= 2 && Math.random() < 0.08) { b.money += 100 + 75 * b.trades.length - 200; }
     if (b.money > 2500 && ((b.sectors && b.sectors.turismo) || 0) < 5 && Math.random() < 0.06) { b.money -= 500; b.sectors.turismo = ((b.sectors && b.sectors.turismo) || 0) + 1; }
     if (b.crise && b.crise.tipo === 'pandemia' && b.money > 500 && Math.random() < 0.3) { b.money -= 250; b.crise = null; b.pop += 3; log(room, `💉 ${cname(b)} erradicou a pandemia com vacinação em massa!`); }
+    if (b.money > 3000 && Math.random() < 0.05) { b.orgs = b.orgs || []; const oo = ['interpol','fmi','omc'].filter(k => !b.orgs.includes(k)); if (oo.length) { b.money -= 400; b.orgs.push(oo[0]); } }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -1556,7 +1557,7 @@ function performAction(room, p, msg) {
     }
     case 'emprestimo': {
       if (!spend(p, 1, 0)) return;
-      p.money += 1500; p.eco += 1; p.aprov = Math.max(0, p.aprov - 8);
+      p.money += 1500 + ((p.orgs || []).includes('fmi') ? 500 : 0); p.eco += 1; p.aprov = Math.max(0, p.aprov - 8);
       log(room, `🏦 ${cname(p)} pegou EMPRÉSTIMO do FMI (+$1500, +1 eco, −8❤️ austeridade).`);
       break;
     }
@@ -1651,6 +1652,18 @@ function performAction(room, p, msg) {
       if (!spend(p, 2, 600)) return;
       p.pop += 5; p.aprov = Math.min(100, p.aprov + 6); p.ciencia = (p.ciencia || 0) + 1;
       log(room, `🎗️ ${cname(p)} lançou o programa COMBATE AO CÂNCER (+5 pop, +6❤️, +1 ciência).`);
+      break;
+    }
+    case 'org_interpol': case 'org_fmi': case 'org_omc': {
+      const ON = { org_interpol: ['interpol', '🚔 INTERPOL'], org_fmi: ['fmi', '🏦 FMI'], org_omc: ['omc', '🌐 OMC'] };
+      const oid = ON[msg.action][0];
+      p.orgs = p.orgs || [];
+      if (p.orgs.includes(oid)) { err(p.conn, 'Sua nação já é membro.'); return; }
+      if (!spend(p, 1, 400)) return;
+      p.orgs.push(oid);
+      if (oid === 'fmi') p.money += 200;
+      p.aprov = Math.min(100, p.aprov + 3);
+      log(room, `${ON[msg.action][1]} ${cname(p)} aderiu à ${ON[msg.action][1].split(' ')[1]}! (+3❤️${oid === 'fmi' ? ', +$200 linha de crédito' : ''}).`);
       break;
     }
     case 'ministro':
@@ -1763,7 +1776,7 @@ function performAction(room, p, msg) {
       const sAtk = (p.seguranca && p.seguranca.secreto) || 0;   // serviço secreto de quem ataca
       const sDef = (target.seguranca && target.seguranca.secreto) || 0; // de quem se defende
       const dDef = (target.seguranca && target.seguranca.defesa) || 0;
-      const chance = Math.min(0.9, 0.5 + 0.08 * sAtk + 0.05 * (p.espioes || 0) + (p.ministers.dip === 'esp' ? 0.1 : 0) - ((target.spyShieldUntil || 0) > room.day ? 0.25 : 0) - 0.05 * dDef);
+      const chance = Math.min(0.9, 0.5 + 0.08 * sAtk + 0.05 * (p.espioes || 0) + (p.ministers.dip === 'esp' ? 0.1 : 0) - ((target.spyShieldUntil || 0) > room.day ? 0.25 : 0) - 0.05 * dDef - ((target.orgs || []).includes('interpol') ? 0.15 : 0));
       const r = Math.random();
       if (r < chance) {
         if (sDef >= 2 && Math.random() < 0.15 * sDef) {
@@ -2031,7 +2044,7 @@ function performAction(room, p, msg) {
     case 'vender': {
       const q = Math.max(1, Math.min(100, msg.qty | 0));
       if (room.market[msg.res] == null || p.rec[msg.res] < q) return;
-      p.rec[msg.res] -= q; p.money += Math.round(room.market[msg.res] * q * Math.min(1.2, 1 + 0.03 * p.trades.length) * (room.turn < (p.subsUntil || 0) ? 1.25 : 1)); p.stats.vendidas += q;
+      p.rec[msg.res] -= q; p.money += Math.round(room.market[msg.res] * q * Math.min(1.2, 1 + 0.03 * p.trades.length) * (room.turn < (p.subsUntil || 0) ? 1.25 : 1) * ((p.orgs || []).includes('omc') ? 1.1 : 1)); p.stats.vendidas += q;
       break;
     }
     case 'construir': {
