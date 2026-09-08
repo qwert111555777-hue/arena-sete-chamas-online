@@ -776,6 +776,7 @@ function incomeOf(room, p) {
   }
   let base = p.eco * 10 + prov + Math.floor(p.pop / 8) + bldMoney
     + p.allies.length * 25
+    + (p.maravilhas || []).length * 50
     + ((p.depositos || []).includes('ouro') ? 15 : 0)
     - p.embassies.length * 10
     + p.trades.length * 20
@@ -1173,6 +1174,7 @@ function aiTurn(room) {
     if (b.money > 1000 && Math.random() < 0.05 && b.leis) { const op = Object.keys(LEIS).filter(k => !b.leis.includes(k)); if (op.length && b.money >= LEIS[op[0]].cost + 500) { b.money -= LEIS[op[0]].cost; b.leis.push(op[0]); } }
     if (b.rec && (b.rec.terras_raras || 0) >= 4 && b.money > 1000 && Math.random() < 0.08) { const us = ['infantaria','blindados','artilharia','aviacao','submarinos','frota','fuzileiros','defesa_aerea'].filter(k => (b.units[k] || 0) < 3); if (us.length) { const k = us[Math.floor(Math.random() * us.length)]; b.rec.terras_raras -= 4; b.money -= 200; b.units[k] = (b.units[k] || 0) + 1; } }
     if (b.money > 2500 && (b.trades || []).length >= 2 && Math.random() < 0.08) { b.money += 100 + 75 * b.trades.length - 200; }
+    if (b.money > 2500 && ((b.sectors && b.sectors.turismo) || 0) < 5 && Math.random() < 0.06) { b.money -= 500; b.sectors.turismo = ((b.sectors && b.sectors.turismo) || 0) + 1; }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -1616,6 +1618,26 @@ function performAction(room, p, msg) {
       if (!spend(p, 1, 300)) return;
       p.subsUntil = room.turn + 3;
       log(room, `📦 ${cname(p)} criou SUBSÍDIO À EXPORTAÇÃO (+25% nas vendas por 3 turnos).`);
+      break;
+    }
+    case 'maravilha': {
+      const MW = { torre_eiffel: '🗼 Torre Eiffel', coliseu: '🏟️ Coliseu', big_ben: '🕰️ Big Ben', est_liberdade: '🗽 Estátua da Liberdade' };
+      if (!MW[msg.value]) return;
+      if (((p.sectors && p.sectors.turismo) || 0) < 2) { err(p.conn, '🗽 Precisa de Turismo Nv 2+ para erguer uma maravilha.'); return; }
+      p.maravilhas = p.maravilhas || [];
+      if (p.maravilhas.includes(msg.value)) { err(p.conn, 'Essa maravilha já foi erguida.'); return; }
+      if (!spend(p, 2, 1200)) return;
+      p.maravilhas.push(msg.value);
+      p.money += 400; p.aprov = Math.min(100, p.aprov + 5);
+      p.influencia = Math.min(100, (p.influencia || 0) + 5);
+      log(room, `${cname(p)} ergueu a MARAVILHA ${MW[msg.value]}! (+$400, +5❤️, +5 doutrina, +$50/sem).`);
+      break;
+    }
+    case 'festival_cinema': {
+      if (!spend(p, 1, 250)) return;
+      p.aprov = Math.min(100, p.aprov + 3); p.money += 150;
+      p.influencia = Math.min(100, (p.influencia || 0) + 2);
+      log(room, `🎬 ${cname(p)} sediou um FESTIVAL DE CINEMA mundial (+3❤️, +$150, +2 doutrina).`);
       break;
     }
     case 'ministro':
