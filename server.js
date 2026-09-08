@@ -1454,6 +1454,16 @@ function performAction(room, p, msg) {
       log(room, `🪖 ${cname(p)} ENVIOU TROPAS para ${cname(target)}: +${n} poder militar para o aliado.`);
       break;
     }
+    case 'treino_conjunto': {        // Joint Training (pedido de players MA3)
+      if (!target || target === p || !target.alive) return;
+      if (!p.allies.includes(target.id)) return err(p.conn, 'Treino conjunto exige ALIANÇA.');
+      if (p.wars.includes(target.id)) return err(p.conn, 'Impossível treinar com um inimigo.');
+      if (!spend(p, 1, 200)) return;
+      p.mil = Math.min(25, p.mil + 1); target.mil = Math.min(25, target.mil + 1);
+      bumpRel(p, target, 5); p.xp += 3;
+      log(room, `🏋️🤝 ${cname(p)} e ${cname(target)} fazem TREINO MILITAR CONJUNTO (+1 militar cada, +5 relações).`);
+      break;
+    }
     case 'convocar': {                 // Call to Arms
       if (!target || target === p || !target.alive) return;
       if (!p.allies.includes(target.id)) return err(p.conn, 'Só é possível convocar um ALIADO.');
