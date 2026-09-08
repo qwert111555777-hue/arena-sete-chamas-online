@@ -427,6 +427,8 @@ const UN_TYPES = [
   { id: 'condenar',       desc: 'Condenação internacional de {T} (-6 aprovação)' },
   { id: 'manter_paz',    desc: 'Missão de paz: encerrar todas as guerras de {T}' },
   { id: 'bloqueio',       desc: 'Bloqueio total contra {T} por 3 turnos (renda -50%)' },
+  { id: 'embargo_armas', desc: 'Embargo de armas contra {T} por 3 turnos (sem novas unidades)' },
+  { id: 'ajuda_humanitaria', desc: 'Ajuda humanitária a {T} (+$500, +5 aprovação)' },
 ];
 
 /* ---------------- WebSocket artesanal ---------------- */
@@ -822,6 +824,8 @@ function resolveUN(room) {
     if (u.type === 'proibir_armas') { room.noArmsUntil = room.turn + 3; log(room, '🇺 A ONU APROVOU: proibição de recrutamento por 3 semanas!'); }
     if (u.type === 'embargo' && tgt) { room.embargo = { target: tgt.id, until: room.turn + 3 }; log(room, `🇺🇳 A ONU APROVOU embargo econômico contra ${cname(tgt)}!`); }
     if (u.type === 'bloqueio' && tgt) { room.bloqueio = { target: tgt.id, until: room.turn + 3 }; log(room, `🇺🇳 A ONU APROVOU BLOQUEIO TOTAL contra ${cname(tgt)} (renda -50% por 3 semanas)!`); }
+    if (u.type === 'embargo_armas' && tgt) { room.armsEmbargo = { target: tgt.id, until: room.turn + 3 }; log(room, `🇺🇳 A ONU APROVOU embargo de ARMAS contra ${cname(tgt)} (sem novas unidades por 3 semanas)!`); }
+    if (u.type === 'ajuda_humanitaria' && tgt) { tgt.money += 500; tgt.aprov = Math.min(100, tgt.aprov + 5); log(room, `🇺🇳💙 A ONU enviou AJUDA HUMANITÁRIA a ${cname(tgt)} (+$500, +5❤️)!`); }
     if (u.type === 'condenar' && tgt) { tgt.aprov = Math.max(0, tgt.aprov - 6); log(room, `🇺🇳 A ONU CONDENOU ${cname(tgt)} (-6 aprovação)!`); }
     if (u.type === 'manter_paz' && tgt) {
       const foes = (tgt.wars || []).slice();
@@ -845,13 +849,13 @@ function openUN(room) {
   if (alive.length < 2) return;
   const type = UN_TYPES[Math.floor(Math.random() * UN_TYPES.length)];
   let target = null;
-  if (type.id === 'embargo' || type.id === 'condenar' || type.id === 'manter_paz' || type.id === 'bloqueio') target = alive[Math.floor(Math.random() * alive.length)];
+  if (type.id === 'embargo' || type.id === 'condenar' || type.id === 'manter_paz' || type.id === 'bloqueio' || type.id === 'embargo_armas' || type.id === 'ajuda_humanitaria') target = alive[Math.floor(Math.random() * alive.length)];
   room.un = { type: type.id, desc: type.desc.replace('{T}', target ? cname(target) : ''), target: target ? target.id : null, votes: {}, deadline: Date.now() + 20000 };
   log(room, `🇺🇳 Sessão da ONU: ${room.un.desc}. Votação aberta!`);
   for (const b of room.players) if (b.bot && b.alive) {
     if (room.un.target) {
       const tp = room.players.find(x => x.id === room.un.target);
-      room.un.votes[b.id] = tp ? relBetween(b, tp) < 50 : Math.random() < 0.5;
+      { const posT = (room.un.type === 'manter_paz' || room.un.type === 'ajuda_humanitaria'); room.un.votes[b.id] = tp ? (posT ? relBetween(b, tp) >= 50 : relBetween(b, tp) < 50) : Math.random() < 0.5; }
     } else room.un.votes[b.id] = Math.random() < 0.5;
   }
 }
@@ -1837,6 +1841,7 @@ function performAction(room, p, msg) {
       const costs = { blindados: 300, aviacao: 400, frota: 500, infantaria: 200, artilharia: 350, submarinos: 450, porta_avioes: 700, fuzileiros: 350, defesa_aerea: 450 };
       const UNAMES = { blindados: 'forças BLINDADAS', aviacao: 'sua AVIAÇÃO', frota: 'sua FROTA NAVAL', infantaria: 'sua INFANTARIA', artilharia: 'sua ARTILHARIA', submarinos: 'seus SUBMARINOS', porta_avioes: 'seu PORTA-AVIÕES', fuzileiros: 'seus FUZILEIROS NAVAIS', defesa_aerea: 'sua DEFESA AÉREA' };
       if (p.units[msg.action] >= 3) { err(p.conn, 'Nível máximo de unidade.'); return; }
+      if (room.armsEmbargo && room.armsEmbargo.target === p.id && room.turn < room.armsEmbargo.until) { err(p.conn, '🔫 Embargo de armas da ONU em vigor — nenhuma nova unidade.'); return; }
       if (p.rec.terras_raras < 4) { err(p.conn, '⚙️ Produzir unidades exige 4 TERRAS RARAS — construa uma Mina de terras raras.'); return; }
       if (!spend(p, 1, costs[msg.action])) return;
       p.rec.terras_raras -= 4;
@@ -2215,7 +2220,7 @@ function performAction(room, p, msg) {
       if (room.un) { err(p.conn, 'A ONU já está em sessão.'); return; }
       const UN_IDS = UN_TYPES.map(u => u.id).concat('autorizar');
       const tipo = UN_IDS.includes(msg.tipo) ? msg.tipo : 'autorizar';
-      const precisaAlvo = tipo === 'autorizar' || tipo === 'embargo' || tipo === 'condenar' || tipo === 'manter_paz' || tipo === 'bloqueio';
+      const precisaAlvo = tipo === 'autorizar' || tipo === 'embargo' || tipo === 'condenar' || tipo === 'manter_paz' || tipo === 'bloqueio' || tipo === 'embargo_armas' || tipo === 'ajuda_humanitaria';
       // valida antes de gastar, para não comer ponto de ação à toa
       if (precisaAlvo && (!target || target === p || !target.alive)) { err(p.conn, 'Escolha uma nação-alvo viva para essa resolução.'); return; }
       if (!spend(p, 1, 300)) return;
@@ -2232,7 +2237,7 @@ function performAction(room, p, msg) {
       log(room, `🇺🇳 ${cname(p)} propôs resolução na ONU: ${room.un.desc}. Votação aberta!`);
       for (const b of room.players) if (b.bot && b.alive) {
         if (tipo === 'autorizar') room.un.votes[b.id] = relBetween(b, p) >= 45 || Math.random() < 0.25;
-        else if (alvoId) { const tp = room.players.find(x => x.id === alvoId); room.un.votes[b.id] = tp ? relBetween(b, tp) < 50 : Math.random() < 0.5; }
+        else if (alvoId) { const tp = room.players.find(x => x.id === alvoId); const posT = (tipo === 'manter_paz' || tipo === 'ajuda_humanitaria'); room.un.votes[b.id] = tp ? (posT ? relBetween(b, tp) >= 50 : relBetween(b, tp) < 50) : Math.random() < 0.5; }
         else room.un.votes[b.id] = Math.random() < 0.5;
       }
       break;

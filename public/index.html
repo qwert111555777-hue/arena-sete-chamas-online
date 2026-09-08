@@ -1964,7 +1964,9 @@ function renderPanel(){
      ['condenar','📢 Condenação internacional de '+p.flag],
      ['bloqueio','🚫 Bloqueio TOTAL da ONU contra '+p.flag],
      ['proibir_guerra','🕊️ Proibir novas guerras (3 semanas)'],
-     ['proibir_armas','🔧 Proibir recrutamento (3 semanas)']].forEach(([tp,lb])=>{
+     ['proibir_armas','🔧 Proibir recrutamento (3 semanas)'],
+     ['embargo_armas','🔫 Embargo de armas contra '+p.flag],
+     ['ajuda_humanitaria','💙 Ajuda humanitária a '+p.flag]].forEach(([tp,lb])=>{
       acts.appendChild(mkBtn('🇺🇳', lb+' (1⚡, $300)', ()=>send({t:'action',action:'propor_resolucao',target:p.id,tipo:tp}), unBloq));
     });
     acts.appendChild(mkBtn('⚖️','Espalhar ideologia (1⚡, $300)', ()=>send({t:'action',action:'espalhar_ideologia',target:p.id}), m.ap<1||m.money<300||!m.ideology));
@@ -2487,7 +2489,7 @@ $('btn-onu').onclick = () => {
     if (un.proposer===myId) s += '<div style="margin-top:6px"><button data-sub style="padding:6px 12px;cursor:pointer" '+(m.money>=200?'':'disabled')+'>💰 Comprar apoio ($200, vira metade dos NÃO)</button></div>';
     s += '</div>';
   } else {
-    const TIPOS = [['autorizar','⚔️ Autorizar minha intervenção militar (precisa de alvo)'],['proibir_guerra','🕊️ Proibir novas guerras (3 turnos)'],['proibir_armas','🔫 Proibir recrutamento (3 turnos)'],['embargo','📦 Embargo econômico (alvo, 3 turnos)'],['condenar','📢 Condenar nação (alvo, −6 aprovação dele)'],['manter_paz','🕊️ Missão de paz (alvo: encerra TODAS as guerras dele)'],['bloqueio','🚫 Bloqueio TOTAL (alvo: renda -50%, 3 turnos)']];
+    const TIPOS = [['autorizar','⚔️ Autorizar minha intervenção militar (precisa de alvo)'],['proibir_guerra','🕊️ Proibir novas guerras (3 turnos)'],['proibir_armas','🔫 Proibir recrutamento (3 turnos)'],['embargo','📦 Embargo econômico (alvo, 3 turnos)'],['condenar','📢 Condenar nação (alvo, −6 aprovação dele)'],['manter_paz','🕊️ Missão de paz (alvo: encerra TODAS as guerras dele)'],['bloqueio','🚫 Bloqueio TOTAL (alvo: renda -50%, 3 turnos)'],['embargo_armas','🔫 Embargo de armas (alvo: sem unidades, 3 turnos)'],['ajuda_humanitaria','💙 Ajuda humanitária (alvo: +$500, +5 aprovação)']];
     const others = state.players.filter(p=>p.alive && p.id!==myId && p.country);
     s += '<div style="background:#fff8e6;border:2px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:8px"><b style="font-size:13px">📝 Propor resolução (1⚡ + $300)</b>';
     s += '<div style="margin:6px 0"><select id="un-tipo" style="width:100%;padding:6px">'+TIPOS.map(t=>'<option value="'+t[0]+'">'+t[1]+'</option>').join('')+'</select></div>';
