@@ -878,6 +878,7 @@ function dayTick(room) {
       if (b.kind === 'infra' || b.kind === 'nuclear') p.stats.construidas++;
     }
     p.money += incomeOf(room, p) / DAY_DIV;
+    if (p.dividas && p.dividas.length) { const due = p.dividas.filter(d => room.day >= d.dia); p.dividas = p.dividas.filter(d => room.day < d.dia); for (const d of due) { const cr = room.players.find(x => x.id === d.to); const pag = Math.min(Math.max(0, p.money), d.valor); p.money -= pag; if (cr && cr.alive) { cr.money += pag; if (pag >= d.valor) { bumpRel(p, cr, 3); log(room, `💸 ${cname(p)} quitou o empréstimo de ${cname(cr)} ($${pag}).`); } else { bumpRel(p, cr, -10); log(room, `⚠️ ${cname(p)} deu CALOTE em ${cname(cr)} (pagou $${pag} de $${d.valor}, −10 relações)!`); } } } }
     if (p.money < 0) { p.money = 0; p.mil = Math.max(1, Math.round(p.mil * 0.9)); }
     // aprovação
     let dAprov = -1;
@@ -1177,6 +1178,7 @@ function aiTurn(room) {
     if (b.money > 2500 && ((b.sectors && b.sectors.turismo) || 0) < 5 && Math.random() < 0.06) { b.money -= 500; b.sectors.turismo = ((b.sectors && b.sectors.turismo) || 0) + 1; }
     if (b.crise && b.crise.tipo === 'pandemia' && b.money > 500 && Math.random() < 0.3) { b.money -= 250; b.crise = null; b.pop += 3; log(room, `💉 ${cname(b)} erradicou a pandemia com vacinação em massa!`); }
     if (b.money > 3000 && Math.random() < 0.05) { b.orgs = b.orgs || []; const oo = ['interpol','fmi','omc'].filter(k => !b.orgs.includes(k)); if (oo.length) { b.money -= 400; b.orgs.push(oo[0]); } }
+    if (b.money > 5000 && Math.random() < 0.03) { const poor = room.players.find(o => o.alive && o !== b && (o.money || 0) < 800 && relBetween(b, o) >= 50); if (poor) { b.money -= 1000; poor.money += 1000; poor.dividas = poor.dividas || []; poor.dividas.push({ to: b.id, valor: 1200, dia: room.day + 28 }); log(room, `💸 ${cname(b)} emprestou $1000 a ${cname(poor)}.`); } }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -1676,6 +1678,27 @@ function performAction(room, p, msg) {
       if (oid === 'fmi') p.money += 200;
       p.aprov = Math.min(100, p.aprov + 3);
       log(room, `${ON[msg.action][1]} ${cname(p)} aderiu à ${ON[msg.action][1].split(' ')[1]}! (+3❤️${oid === 'fmi' ? ', +$200 linha de crédito' : ''}).`);
+      break;
+    }
+    case 'emprestar': {
+      if (!target || target === p || !target.alive) return;
+      if (!spend(p, 1, 1000)) return;
+      target.money += 1000;
+      target.dividas = target.dividas || [];
+      target.dividas.push({ to: p.id, valor: 1200, dia: room.day + 28 });
+      bumpRel(p, target, 5);
+      log(room, `💸 ${cname(p)} EMPRESTOU $1000 a ${cname(target)} (devolve $1200 em 28 dias).`);
+      break;
+    }
+    case 'perdoar': {
+      if (!target || target === p || !target.alive) return;
+      target.dividas = target.dividas || [];
+      const antes = target.dividas.length;
+      target.dividas = target.dividas.filter(d => d.to !== p.id);
+      if (target.dividas.length === antes) { err(p.conn, 'Essa nação não te deve nada.'); return; }
+      if (!spend(p, 1, 0)) return;
+      bumpRel(p, target, 15); p.aprov = Math.min(100, p.aprov + 2);
+      log(room, `💙 ${cname(p)} PERDOOU as dívidas de ${cname(target)} (+15 relações, +2❤️).`);
       break;
     }
     case 'ministro':
