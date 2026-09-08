@@ -12,7 +12,8 @@
 ### Branch / commits
 
 ```
-de00ec9 FASE 2: quadradas/minimos/cor/ranking/builds lentos/load+build   ← PRODUÇÃO (dep-dafo3mv40ujc73c543tg LIVE ✅, pág 161710B verificada)
+27b42bd FASE 3: infinito/IA cautelosa/fundar ao vivo/mapa limpo/widgets X   ← PRODUÇÃO (dep-dafoen0n74is73au68cg LIVE ✅, pág 164340B verificada)
+de00ec9 FASE 2: quadradas/minimos/cor/ranking/builds lentos/load+build   ← (era a produção)
 372fd77 Corrige index.html + dias refeitos   ← (era a produção)
 a62b9f3 Dias/tempo real (index.html QUEBRADO pelo regex C9 — supersedido pelo 372fd77)
 d2d6318 Atualiza contexto dev
@@ -26,7 +27,7 @@ e1cc9f1 47 construcoes / 6 abas / 5 niveis + borracha
 ```
 
 - Repositório: `/home/user/presidente-online`, branch `main`
-- Produção (Render): `https://arena-sete-chamas-online.onrender.com` — LIVE em `de00ec9` (verificado: pág 161710B + btn-load/btn-build + tem_save + Cor da nação + foreignObject=0 + btn-speed antigo=0 + /flags 200).
+- Produção (Render): `https://arena-sete-chamas-online.onrender.com` — LIVE em `27b42bd` (verificado: pág 164340B + declutter + hcat + px + po_room + Notícias do mundo + Jogo infinito + Acontecimentos=0 + Fundar=0 + /flags 200).
 - git status (na sessão antiga): `public/index.html` modificado (não commitado) — continha as 140 construções.
 
 ### ✅ BUG CRÍTICO DO np-flag (CORRIGIDO em 8041ed1)
@@ -147,6 +148,7 @@ Itens já resolvidos na lista original:
 - Sem chat; notícias só dentro de um jornal clicável, sem toast — FEITO
 - Velocidade escolhida durante o jogo e sair salva automático — FEITOS
 - Mapa só bandeiras QUADRADAS (sem território); home mínima (criar/entrar/código/carregar); lobby mínimo (fundar = nome+cor+símbolo, sem velocidade); ranking destaca país próprio sem 🤖/💀; obras lentas por prédio (6–27 dias); botões Carregar 📂 e Construir 🏗️ — FEITOS (Fase 2, deploy de00ec9)
+- Jogo INFINITO (vitórias→marcos, humanos nunca caem: reforma/exílio); IA cautelosa (só ataca muito superior, sem gang, trégua 20d); saques 25%→12%; conquista só com aniquilação/superioridade; fundar ao vivo (preview, 60 cores, 48 símbolos, sem botão); load sem código (sala salva); mapa sem bordas + anticolisão + sidebar 240px; widgets quadrados com categorias MUNDO/PAÍS e ✕ em tudo — FEITOS (Fase 3, deploy 27b42bd)
 
 ---
 
@@ -197,6 +199,8 @@ if (typeof o === 'string') { try { o = JSON.parse(o); } catch { return; } }
 - Trigger de deploy: body `-d '{}'` (201). Body `{"clearCache":false}` dá 400 invalid JSON.
 - GET de deploy único retorna o objeto FLAT (`d['status']`), sem wrapper 'deploy' (só a lista usa wrapper).
 - URL de produção: `arena-sete-chamas-online.onrender.com` (presidente-online.onrender.com dá 404).
+- id HTML duplicado = widget morto ($ pega só o 1º): btn-rank existia 2x (HUD + side-tools); side virou btn-rank2.
+- Painel com innerHTML= apaga botão X injetado — o X tem que nascer DENTRO do render (rank/market) ou no HTML estático (np/help/overlay); fechamento via listener delegado em .px.
 
 ---
 
@@ -225,6 +229,8 @@ if (typeof o === 'string') { try { o = JSON.parse(o); } catch { return; } }
 | smoke_day.js | NOVO 2026-09-08 | dias consecutivos 1x/5x + obra conclui em dias (precisa `npm i ws`) |
 | patch_fase2.py | NOVO 2026-09-08 | FASE 2: quadradas, home/lobby mínimos, fundar+cor, ranking, builds lentos, btn-load/btn-build |
 | smoke_fundar.js | NOVO 2026-09-08 | fundar nome+símbolo+cor; cor inválida rejeitada (precisa `npm i ws`) |
+| patch_fase3.py | NOVO 2026-09-08 | FASE 3: infinito, IA cautelosa, fundar ao vivo, mapa limpo, widgets quadrados+X, load sem código |
+| smoke_infinito.js | NOVO 2026-09-08 | símbolo novo 🐯 + eco 60+ sem fim de jogo + MARCO no log (precisa `npm i ws`) |
 
 Regressão verde: 160 verificações / 0 falhas. Esse é o baseline a proteger.
 
@@ -253,7 +259,7 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 ## 9. COMO DEPLOYAR (Render)
 
 - Serviço: `srv-da95mkpf2nfc73eccqjg` (único correto; srv-d43... não existe)
-- Último deploy: `dep-dafo3mv40ujc73c543tg` (commit de00ec9, live)
+- Último deploy: `dep-dafoen0n74is73au68cg` (commit 27b42bd, live)
 - `POST /v1/services/srv-da95mkpf2nfc73eccqjg/deploys` body: `{}` (qualquer clearCache dá 400)
 - Chave: `export RENDER_API_KEY=$(grep RENDER_API_KEY /home/user/.chaves | cut -d= -f2)` (nunca gravar valor em arquivo commitado).
 - Não deployar enquanto houver bug de sintaxe.
@@ -281,3 +287,4 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (deploy): Render NÃO auto-disparou nos pushes; deploy manual dep-dafn2bn40ujc73c0tjd0 (4905085) via API.
 - 2026-09-08 (FASE 1 — dias em tempo real, LIVE dep-dafnillg1s2s73faids0/372fd77): dayTick (1 dia = 1000/speedMul ms), economia diária ÷7, semana = 7 dias (mercado, relações, missões, ONU 28d, IA/eventos 14d), obras em dias (buildDays por custo; infra 2, espacial 4, nuclear 5), broadcastDay leve + full semanal, fim_turno removido, velocidade recria timer, pausa congela dia, saves migram until→untilDay. Cliente: HUD DIA + data real, countdown removido, btn-speed cicla 1/2/3/5, mapa só bandeiras circulares (nomes + losangos removidos), ranking top8 + customs com posição, produção/dia genérica (140 prédios). Smoke: dias consecutivos 1x/5x (200ms/dia), mina_cobre:1, comida 21. MA3 identificado: MA 3 President Simulator (Oxiwyle/Android) — ref. p/ widgets da fase 4. Incidente: regex C9 apagou index.html (commitado/deployado quebrado a62b9f3); restaurado de 62c68a1, refeito e republicado verificado.
 - 2026-09-08 (FASE 2 — LIVE dep-dafo3mv40ujc73c543tg/de00ec9): mapa só QUADRADOS 26x18 (image real ou PALETTE+emoji, sem território/foreignObject), home mínima (nome+criar+código+entrar+carregar via tem_save/same-browser), lobby mínimo (fundar nome+12 cores+24 símbolos, btn-speed removido, hint não-host), fundar aceita cor 0–59, ranking destaca próprio em dourado sem 🤖/💀, builds lentos buildDays=min(30,max(4,3+round(custo/40))) 6–27d + infra 6/espacial 12/nuclear 18, HUD btn-build abre Construções. Smoke: dias OK (mina 12d conclui) + fundar/cor OK (99 rejeitado). Deploy: autoDeploy=yes NÃO disparou; manual via API. Correções de registro: service ID srv-da95... (não srv-d43...), body '{}', GET flat, URL arena-sete-chamas-online.
+- 2026-09-08 (FASE 3 — LIVE dep-dafoen0n74is73au68cg/27b42bd): checkVictory→marcos 1x/nação (phase 'over' nunca mais; dinheiro/pop/poder já eram ilimitados — confirmado sem tetos); humanos imortais (aprov 0=reforma -50% caixa; 0 províncias=exílio, reconquista); bots caem (mundo evolui); IA: guerra só dia 20+, mil 6+, freq 0.12, rel<45, sup 1.5x, sem gang (alvo <2 guerras), alvo com +1 prov e $500+, ataque imediato 25%; bot saque 12%/aprov-4/ocupa só com sup 1.3x; batalha: saque 12%, captura só se vivosD=0 (retirada salva terra); noWarUntil=20 inicial; fundar live (preview bandeira 52x36, 60 cores 22px, 48 símbolos, nome debounce 600ms + rascunho, sem botão); load usa po_room salvo no g-code; mapa: fb/csq/halo removidos, seleção=brilho drop-shadow, declutter 30x22 10it; sidebar 240px só Notícias; HUD MUNDO/PAÍS; tudo quadrado (flimg/pchip/ap-dock/round-btn); ✕ em np/rank/market/help/overlay; btn-rank2. Smoke: dias+fundar verdes, infinito (🐯, eco 71, phase game, MARCO) OK.
