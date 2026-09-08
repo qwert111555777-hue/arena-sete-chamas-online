@@ -12,7 +12,8 @@
 ### Branch / commits
 
 ```
-421d3ad FASE 7: topo MA3 + stats secoes + ministerios   ← PRODUÇÃO (dep-dafp1t8n74is73b0rq90 LIVE ✅, pág 175799B verificada)
+8f270a5 FASE 8: telas tech + guerra MA3   ← PRODUÇÃO (dep-dafp3tad0e5s73dcdu8g LIVE ✅, pág 181475B verificada)
+421d3ad FASE 7: topo MA3 + stats secoes + ministerios   ← (era a produção)
 aca3806 FASE 6: mapa satelite Leaflet MA3 + fallback   ← (era a produção)
 351b451 FASE 5: sem assessor/multi-mundos/TEMA MA3/fix CSS   ← (era a produção)
 d9018a5 FASE 4: cores/sair/mapa/notif/sem-sidebar/compra-venda/dificil/3s   ← (era a produção)
@@ -31,7 +32,7 @@ e1cc9f1 47 construcoes / 6 abas / 5 niveis + borracha
 ```
 
 - Repositório: `/home/user/presidente-online`, branch `main`
-- Produção (Render): `https://arena-sete-chamas-online.onrender.com` — LIVE em `421d3ad` (verificado: pág 175799B + m-inc/m-ap2/m-ideo/m-rel + stat-h + data-card + MINISTÉRIOS + /flags 200).
+- Produção (Render): `https://arena-sete-chamas-online.onrender.com` — LIVE em `8f270a5` (verificado: pág 181475B + btn-tech/btn-war + PESQUISAS + EXÉRCITO E GUERRAS + data-tres/rec/atk + /flags 200).
 - git status (na sessão antiga): `public/index.html` modificado (não commitado) — continha as 140 construções.
 
 ### ✅ BUG CRÍTICO DO np-flag (CORRIGIDO em 8041ed1)
@@ -249,6 +250,7 @@ if (typeof o === 'string') { try { o = JSON.parse(o); } catch { return; } }
 | fix_css_order.py | NOVO 2026-09-08 | move blocos Q3+M1 p/ fim do style (cascata correta); idempotente via asserts |
 | patch_fase6.py | NOVO 2026-09-08 | FASE 6: Leaflet satélite + fallback SVG (só cliente, +61/-0) |
 | patch_fase7.py | NOVO 2026-09-08 | FASE 7: topo MA3, stats seções, ministérios MA3 (só cliente) |
+| patch_fase8.py | NOVO 2026-09-08 | FASE 8: telas tech + guerra MA3 na toolbar (só cliente) |
 
 Regressão verde: 160 verificações / 0 falhas. Esse é o baseline a proteger.
 
@@ -277,7 +279,7 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 ## 9. COMO DEPLOYAR (Render)
 
 - Serviço: `srv-da95mkpf2nfc73eccqjg` (único correto; srv-d43... não existe)
-- Último deploy: `dep-dafp1t8n74is73b0rq90` (commit 421d3ad, live)
+- Último deploy: `dep-dafp3tad0e5s73dcdu8g` (commit 8f270a5, live)
 - `POST /v1/services/srv-da95mkpf2nfc73eccqjg/deploys` body: `{}` (qualquer clearCache dá 400)
 - Chave: `export RENDER_API_KEY=$(grep RENDER_API_KEY /home/user/.chaves | cut -d= -f2)` (nunca gravar valor em arquivo commitado).
 - Não deployar enquanto houver bug de sintaxe.
@@ -310,3 +312,4 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (FASE 5 — LIVE dep-daforbn40ujc73c8cii0/351b451, SÓ CLIENTE): assessor deletado (html+js, css morto); po_worlds (até 8: code+nome+dia+data, atualiza por state) + modal MEUS MUNDOS (papel, data-w, tem_save; código digitado pula modal); MA3 (referência: screenshots apk.dog/apkaward): toolbar .ma3-tools esquerda (9 HUD + market/help/snd, 46px papel, !important p/ vencer ids), pausa/velocidade prepend no bottom-bar, topo navy só chips+ sair, hcat removidos, painéis papel #f3ead1 + h3 vermelho #7a2e1f + seções .np-sub teal + botões teal #145a6b + ✕ vermelho + Fechar verde #2e7d32 + textos escuros (help/market/notif), side-tools display:none. F5b: usuário pediu MA3 idêntico/original no site — RECUSADO c/ explicação (app fechado Oxiwyle, sem fonte; copiar arte = pirataria); caminho = recriação fiel c/ código próprio. INCIDENTE: blocos Q3/M1 no topo perdiam cascata (Fase 4 sem efeito visual!) — fix_css_order.py moveu p/ fim (base=206<Q3=294<M1=310). Smoke: dias+fundar verdes (server intocado).
 - 2026-09-08 (FASE 6 — LIVE dep-dafougqd0e5s73dblq0g/aca3806, SÓ CLIENTE +61/-0): mapa satélite Leaflet 1.9.4 (unpkg css+js) + Esri World_Imagery (atribuição ok); #leafmap z1, body.leaf-on esconde SVG; flags 30x21 divIcon (real=img, custom=PALETTE+emoji, sel=brilho, morto=opaco); lat/lon via cbid (state.world tem customs); zoom 2-7, maxBounds, zoom bottomright; linhas aliança = polyline ouro; navios animados SÓ no SVG (perdidos no satélite); pan/zoom antigos desligam c/ __leaf; fallback automático p/ SVG se CDN falhar. Smoke: dias+fundar verdes.
 - 2026-09-08 (FASE 7 — LIVE dep-dafp1t8n74is73b0rq90/421d3ad, SÓ CLIENTE): topo MA3 completo — chips renda/dia (dailyIncome), AP, doutrina (IDEOLOGIES nome), religião curta; updates em renderGame E applyDay (2 blocos atualizam mesmos chips); stats 📈 em seções teal NAÇÃO/POVO (pseudo-row ['H',..]); ministérios 🏛️ viraram cards MA3 (header teal + barra ouro 4 segs + stepper −/+ atualiza barra); serif Georgia nos h3; .seg/.segs/.stat-h no fim do style. Smoke: dias+fundar verdes.
+- 2026-09-08 (FASE 8 — LIVE dep-dafp3tad0e5s73dcdu8g/8f270a5, SÓ CLIENTE): 🔬 PESQUISAS (modal papel: 5 abas TECH_TREES, 125 techs c/ nome+efeito+5 segs ouro, botão Nv+Custo, otimista m.techLv) + ⚔️ EXÉRCITO E GUERRAS (poder, 7 unidades c/ 3 segs + recrutar 1⚡+4⚙️+$custo, guerras ativas c/ poder + Atacar 2⚡/Paz); botoes na toolbar (14, scroll); techLv(pl,k)=pl.techLv[k]||0; recruit action=próprio key da unidade. Refs MA3: telas oxiwyle oficial + memuplay. Smoke: dias+fundar verdes.
