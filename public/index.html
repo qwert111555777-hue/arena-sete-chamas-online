@@ -2199,15 +2199,17 @@ $('btn-rel').onclick = () => {
   secH += '<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:6px">';
   secH += '<div style="font-size:12px">Fe: <b>' + Math.round(m.fe||0) + '/60</b> (hegemonia religiosa) - Conversoes: <b>' + ((m.stats&&m.stats.conversoes)||0) + '</b></div>';
   secH += '<div style="background:#d8cba0;border:1px solid #8a6a1f;border-radius:4px;height:12px;margin:4px 0"><div style="width:' + Math.min(100,Math.round((m.fe||0)/60*100)) + '%;height:100%;background:#7b1fa2;border-radius:3px"></div></div>';
-  secH += '<button id="rl-templo" style="padding:6px 12px;cursor:pointer" ' + ((m.ap>=1&&m.money>=200)?'':'disabled') + '>Erguer templo (1AP + $200 = +4 fe, +2 coracao)</button></div>';
+  secH += '<button id="rl-templo" style="padding:6px 12px;cursor:pointer" ' + ((m.ap>=1&&m.money>=200)?'':'disabled') + '>Erguer templo (1AP + $200 = +4 fe, +2 coracao)</button> <button id="rl-dizimo" style="padding:6px 12px;cursor:pointer" ' + ((m.ap>=1&&(m.fe||0)>=5)?'':'disabled') + '>⛪ Dízimo (+$'+Math.round((m.fe||0)*8)+')</button></div>';
   secH += '<div class="stat-h">MISSIONARIOS (1AP + $300)</div>';
-  secH += state.players.filter(o=>o.alive&&o.id!==m.id&&o.religion!==m.religion).map(o=>'<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px"><b>' + o.name + '</b> <span style="color:#6b5a33">' + (R[o.religion]||o.religion||'?') + '</span></div><button data-miss="' + o.id + '" style="padding:6px 10px;cursor:pointer" ' + ((!m.religion||m.religion==='laico'||m.ap<1||m.money<300)?'disabled':'') + '>Enviar</button></div>').join('');
+  secH += state.players.filter(o=>o.alive&&o.id!==m.id&&o.religion!==m.religion).map(o=>'<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px"><b>' + o.name + '</b> <span style="color:#6b5a33">' + (R[o.religion]||o.religion||'?') + '</span></div><button data-miss="' + o.id + '" style="padding:6px 10px;cursor:pointer" ' + ((!m.religion||m.religion==='laico'||m.ap<1||m.money<300)?'disabled':'') + '>Enviar</button><button data-santa="' + o.id + '" style="padding:6px 10px;cursor:pointer" ' + ((m.ap>=2&&m.money>=200&&(m.fe||0)>=15)?'':'disabled') + '>🕌 Santa</button></div>').join('');
   secDiv.innerHTML = secH;
   paper.insertBefore(secDiv, paper.lastChild);
   document.body.appendChild(ov);
   ov.onclick = e => { if (e.target===ov || e.target.id==='rl-x') ov.remove(); };
   const tp = ov.querySelector('#rl-templo'); if (tp) tp.onclick = () => { send({t:'action',action:'templo'}); tp.disabled = true; };
+  const dz = ov.querySelector('#rl-dizimo'); if (dz) dz.onclick = () => { send({t:'action',action:'dizimo'}); ov.remove(); };
   ov.querySelectorAll('[data-miss]').forEach(b=>b.onclick=()=>{ send({t:'action',action:'espalhar_religiao',target:b.dataset.miss}); b.disabled=true; });
+  ov.querySelectorAll('[data-santa]').forEach(b=>b.onclick=()=>{ send({t:'action',action:'guerra_santa',target:b.dataset.santa}); ov.remove(); });
 };
 $('btn-tax').onclick = () => {
   const m = me(); if (!m) return;

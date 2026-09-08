@@ -1128,6 +1128,8 @@ function aiTurn(room) {
     if (b.money > 3000 && room.turn % 7 === 0 && (b.leis || []).length < 6) { b.leis = b.leis || []; const _lk = Object.keys(LEIS).find(k => !b.leis.includes(k)); if (_lk) { b.leis.push(_lk); b.money -= LEIS[_lk].cost; } }
     if (b.crise) resolverCrise(room, b, (b.money > 500) ? 0 : 2);
     if (b.religion && b.religion !== 'laico' && b.money > 500 && Math.random() < 0.25) { const tgts = room.players.filter(o => o.alive && o !== b && o.religion !== b.religion); if (tgts.length) { const t3 = tgts[Math.floor(Math.random() * tgts.length)]; if (Math.random() < 0.3 + relBetween(b, t3) / 200) { t3.religion = b.religion; bumpRel(b, t3, 10); b.stats.conversoes = (b.stats.conversoes || 0) + 1; log(room, `🛐 ${cname(b)} espalhou sua religião para ${cname(t3)}!`); } } }
+    if ((b.fe || 0) >= 10 && b.money < 1000) { b.money += Math.round((b.fe || 0) * 8); b.aprov = Math.max(0, b.aprov - 3); }
+    if ((b.fe || 0) >= 20 && b.religion && b.religion !== 'laico' && b.money > 800 && Math.random() < 0.06) { const fs = room.players.find(o => o.alive && o !== b && o.religion !== b.religion); if (fs && Math.random() < 0.5) { b.money -= 200; b.mil += 12; bumpRel(b, fs, -15); log(room, `🕌 ${cname(b)} conclama GUERRA SANTA contra ${cname(fs)}!`); } }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -1287,6 +1289,25 @@ function performAction(room, p, msg) {
       p.religion = msg.value; p.aprov = Math.max(0, p.aprov - 5);
       log(room, `🛐 ${cname(p)} adota a religião de Estado ${RELIGIONS[msg.value].name}.`);
       break;
+    case 'dizimo': {
+      if ((p.fe || 0) < 5) { err(p.conn, '⛪ Precisa de 5+ fé para recolher o dízimo.'); return; }
+      if (!spend(p, 1, 0)) return;
+      const dz = Math.round((p.fe || 0) * 8);
+      p.money += dz; p.aprov = Math.max(0, p.aprov - 3);
+      log(room, `⛪ ${cname(p)} recolheu o DÍZIMO dos fiéis (+$${dz}, −3 aprovação).`);
+      break;
+    }
+    case 'guerra_santa': {
+      if (!target || target === p || !target.alive) return;
+      if ((p.fe || 0) < 15) { err(p.conn, '🕌 Precisa de 15+ fé para conclamar a Guerra Santa.'); return; }
+      if (!p.religion || p.religion === 'laico' || target.religion === p.religion) { err(p.conn, '🕌 Guerra Santa exige alvo de OUTRA fé.'); return; }
+      if (!spend(p, 2, 200)) return;
+      p.mil += 12; p.aprov = Math.min(100, p.aprov + 3);
+      bumpRel(p, target, -15);
+      for (const o of room.players) { if (o.alive && o !== p && o.religion === p.religion) bumpRel(p, o, 5); }
+      log(room, `🕌 ${cname(p)} conclama GUERRA SANTA contra ${cname(target)}! (+12 voluntários da fé, fiéis aprovam).`);
+      break;
+    }
     case 'ministro':
       if (!MINISTERS[msg.post] || !MINISTERS[msg.post][msg.value]) return;
       if (!spend(p, 1, 100)) return;
