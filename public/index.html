@@ -2228,10 +2228,13 @@ $('btn-tax').onclick = () => {
   const row = (k,lb) => `<div style="display:flex;align-items:center;gap:10px;margin:10px 0"><span style="width:170px;font-weight:700">${lb}</span><input type="range" min="0" max="30" value="${t[k]}" data-k="${k}" style="flex:1"><b id="tv-${k}" style="width:44px">${t[k]}%</b></div>`;
   ov.innerHTML = '<div class="paper" style="width:min(560px,92vw)"><h1 style="font-size:22px">🧾 IMPOSTOS</h1><div style="font-size:12px;margin:6px 0">Como no MA3: cada alíqueta muda sua receita e a aprovação do povo. Ambiental alta (+12%) melhora a aprovação.</div>'
     + row('corp','🏢 Empresas') + row('rend','💵 Renda pessoal') + row('prod','🏭 Produção') + row('amb','🌳 Ambiental')
+    + '<div style="text-align:center;margin:8px 0"><button data-aud style="padding:6px 12px;cursor:pointer" '+((m.ap>=1&&m.money>=200)?'':'disabled')+'>Auditoria (1AP+$200)</button> <button data-inc style="padding:6px 12px;cursor:pointer" '+((m.ap>=1&&m.money>=400)?'':'disabled')+'>Incentivo (1AP+$400)</button></div>'
     + '<div style="text-align:center;margin-top:10px"><button id="tx-ok" style="padding:6px 22px;cursor:pointer">Aplicar</button> <button id="tx-x" style="padding:6px 14px;cursor:pointer">Fechar</button></div></div>';
   document.body.appendChild(ov);
   ov.querySelectorAll('input').forEach(i => i.oninput = () => { document.getElementById('tv-'+i.dataset.k).textContent = i.value+'%'; });
   ov.onclick = e => { if (e.target===ov || e.target.id==='tx-x') ov.remove(); };
+  const ad = ov.querySelector('[data-aud]'); if (ad) ad.onclick=()=>{ send({t:'action',action:'auditoria_fiscal'}); ov.remove(); };
+  const ic = ov.querySelector('[data-inc]'); if (ic) ic.onclick=()=>{ send({t:'action',action:'incentivo_fiscal'}); ov.remove(); };
   ov.querySelector('#tx-ok').onclick = () => {
     const g = k => +ov.querySelector(`input[data-k="${k}"]`).value;
     send({t:'impostos', taxes:{corp:g('corp'), rend:g('rend'), prod:g('prod'), amb:g('amb')}});

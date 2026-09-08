@@ -932,7 +932,7 @@ function dayTick(room) {
     if (dep.includes('terras_raras')) p.rec.terras_raras += 1 / DAY_DIV;
     if (dep.includes('uranio')) p.rec.uranio += 1 / DAY_DIV;
     const need = Math.ceil(p.pop / 10) / DAY_DIV;
-    let g = (4 + infra * 2 + (p.sectors.saude || 0)) / DAY_DIV;
+    let g = (4 + infra * 2 + (p.sectors.saude || 0)) / DAY_DIV * (p.taxRate === 2 ? 0.7 : p.taxRate === 0 ? 1.2 : 1);
     if (p.rec.comida >= need) p.rec.comida -= need; else { p.rec.comida = 0; g = g / 3; }
     p.pop += g;
     if (p.rec.comida === 0 && p.pop > 0) {
@@ -1142,6 +1142,8 @@ function aiTurn(room) {
     if (b.money < 1000 && room.market) { const rk = Object.keys(room.market).find(k => (b.rec[k] || 0) >= 20); if (rk) { b.rec[rk] -= 20; b.money += Math.round(room.market[rk] * 20 * Math.min(1.2, 1 + 0.03 * b.trades.length)); } }
     if (b.blackout && b.money > 600) { b.money -= 300; b.rec.energia += 40; }
     if (!b.solar && b.money > 3000 && Math.random() < 0.08) { b.money -= 500; b.solar = true; }
+    if (b.money < 800 && b.money > 300) { b.money += 100 + (b.eco || 0) * 30 - 200; }
+    if (b.money > 5000 && Math.random() < 0.06) { b.money -= 400; b.eco += 1; }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -1406,6 +1408,19 @@ function performAction(room, p, msg) {
       p.rec.energia += 60; p.pollution = Math.min(100, (p.pollution || 0) + 3);
       p.aprov = Math.max(0, p.aprov - 2);
       log(room, `☢️ ${cname(p)} inaugurou uma USINA NUCLEAR civil (+60 energia, +3 poluição, −2❤️).`);
+      break;
+    }
+    case 'auditoria_fiscal': {
+      if (!spend(p, 1, 200)) return;
+      const rec = 100 + (p.eco || 0) * 30;
+      p.money += rec;
+      log(room, `🧾 ${cname(p)} fez AUDITORIA FISCAL contra sonegadores (+$${rec} recuperados).`);
+      break;
+    }
+    case 'incentivo_fiscal': {
+      if (!spend(p, 1, 400)) return;
+      p.eco += 1; p.aprov = Math.min(100, p.aprov + 2);
+      log(room, `🏭 ${cname(p)} deu INCENTIVO FISCAL à indústria (+1 economia, +2❤️).`);
       break;
     }
     case 'ministro':
