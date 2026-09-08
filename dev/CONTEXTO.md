@@ -418,3 +418,5 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (FASE 62 — LIVE dep-dag9mgajnfac73feq480/7a7768a, SERVER+CLIENTE): 💸 EMPRÉSTIMOS: EMPRESTAR (1⚡+$1000 alvo: volta $1200 em 28d, cobrança automática, CALOTE −10 rel) + PERDOAR (1⚡: +15 rel) + bots emprestam a amigos pobres.
 - 2026-09-08 (ESTUDO doações/soberania 100x real: MA2 Play — "donate territories" (doar territórios), "support sovereignty" (apoiar soberania), pedir/oferecer ajuda; ajuda humanitária em desastres — base da Fase 63.
 - 2026-09-08 (FASE 63 — LIVE dep-dag9n7rl550s73adq070/4df571e, SERVER+CLIENTE): 🎁 DIPLOMACIA 3.0: DOAR PROVÍNCIA (1⚡: +20 rel, req 2+) + AJUDA CRISE (1⚡+$300 alvo em crise) + APOIAR SOBERANIA (1⚡+$200) + bots ajudam amigos em crise.
+- 2026-09-08 (ESTUDO veteranos 100x real: MA2 mumu/Steam — soldados ganham experiência em combate, condecorações, paradas militares, prestígio nacional; veteranos de guerra — base da Fase 64.
+- 2026-09-08 (FASE 64 — LIVE dep-dag9ntijnfac73feufrg/2cd87a9, SERVER+CLIENTE): 🎖️ VETERANOS: CONDECORAR (req 1 vitória, 1⚡+$200: +1 mil+3❤️) + PARADA MILITAR (1⚡+$300: +5❤️+2 doutrina+3XP) + bots condecoram.
