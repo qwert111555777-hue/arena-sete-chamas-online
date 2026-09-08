@@ -20,7 +20,7 @@ const MAGIC = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 /* ===== tempo real: 1 dia = 1 segundo em 1x; semana = 7 dias ===== */
 const DAY_DIV = 7;            // economia diária = valores semanais / 7
 const WEEK_DAYS = 7;          // dias por semana (ciclo estratégico)
-const dayMsFor = mul => Math.round(1000 / ([1, 2, 3, 5].includes(mul) ? mul : 1));
+const dayMsFor = mul => Math.round(3000 / ([1, 2, 3, 5].includes(mul) ? mul : 1));
 const buildDays = cost => Math.min(30, Math.max(4, 3 + Math.round(cost / 40)));  // dias p/ concluir obra (varia por construção)
 function restartDayTimer(room){ if (room.timer){ try{ clearInterval(room.timer); }catch{} } room.timer = setInterval(() => dayTick(room), room.dayMs || 1000); }
 function ensureDayTimer(room){ if (room.phase === 'game' && !room.paused && !room.timer) restartDayTimer(room); }
@@ -506,7 +506,7 @@ function makeCode() {
 }
 function newRoom() {
   const room = {
-    code: makeCode(), phase: 'lobby', turn: 0, day: 1, dayMs: 1000, speedMul: 1, timerEnd: 0, speed: 45,
+    code: makeCode(), phase: 'lobby', turn: 0, day: 1, dayMs: 3000, speedMul: 1, timerEnd: 0, speed: 45,
     players: [], hostId: null, proposals: [], log: [], winner: null, timer: null,
     un: null, noWarUntil: 0, noArmsUntil: 0, embargo: null, paused: false, pausedRemaining: 0,
     world: COUNTRIES.slice(), market: { comida: 8, minerio: 12, energia: 10, concreto: 10, madeira: 7, terras_raras: 20, uranio: 25, borracha: 14 }, missionIdx: 0, warAuth: null, paused: false, pausedRemaining: 0,
@@ -991,10 +991,10 @@ function botAttack(room, a, d) {
   if (a.leis.includes('servico_militar')) aM += 0.05;
   if (d.leis.includes('guarda_nacional')) dM += 0.05;
   const aP = a.mil * aM * (0.85 + Math.random() * 0.45);
-  const dP = d.mil * dM * (0.9 + Math.random() * 0.45) * 1.08;
-  const sup = (a.mil * aM) > (d.mil * dM) * 1.3;
-  if (aP > dP) {
-    const loot = Math.round(d.money * 0.12);
+  const dP = d.mil * dM * (0.9 + Math.random() * 0.45) * 1.3;
+  const sup = (a.mil * aM) > (d.mil * dM) * 1.5;
+  if (aP > dP * 1.15) {
+    const loot = Math.round(d.money * 0.08);
     d.money -= loot; a.money += loot;
     d.mil = Math.max(1, Math.round(d.mil * 0.8)); a.mil = Math.max(1, Math.round(a.mil * 0.9));
     d.aprov = Math.max(0, d.aprov - 4); a.stats.vitorias++;
@@ -1050,8 +1050,8 @@ function aiTurn(room) {
         log(room, `🤝 A IA ${cname(b)} enviou ajuda humanitária para ${cname(em)} (+$200).`);
       }
     }
-    if (room.turn > 20 && humans.length && b.mil >= 6 && Math.random() * botsAlive < 0.12 && room.turn >= room.noWarUntil) {
-      const ts = humans.filter(h => !b.allies.includes(h.id) && !b.wars.includes(h.id) && !(((b.pacts && b.pacts[h.id]) || 0) > room.turn) && relBetween(b, h) < 45 && b.mil >= h.mil * 1.5 && h.wars.length < 2 && ownProvinces(h).length > 1 && h.money > 500);
+    if (room.turn > 20 && humans.length && b.mil >= 8 && Math.random() * botsAlive < 0.08 && room.turn >= room.noWarUntil) {
+      const ts = humans.filter(h => !b.allies.includes(h.id) && !b.wars.includes(h.id) && !(((b.pacts && b.pacts[h.id]) || 0) > room.turn) && relBetween(b, h) < 45 && b.mil >= h.mil * 1.75 && h.wars.length < 2 && ownProvinces(h).length > 1 && h.money > 500);
       if (ts.length) {
         const h = ts[Math.floor(Math.random() * ts.length)];
         b.wars.push(h.id); h.wars.push(b.id);
@@ -2109,7 +2109,7 @@ function btFinalizar(room, recuou) {
   }
 
   if (atkGanhou) {
-    const loot = Math.round(def.money * 0.12);
+    const loot = Math.round(def.money * 0.08);
     def.money -= loot; atk.money += loot;
     def.mil = Math.max(1, Math.round(def.mil * 0.8));
     atk.mil = Math.max(1, Math.round(atk.mil * 0.9));
@@ -2118,7 +2118,7 @@ function btFinalizar(room, recuou) {
     atk.stats.vitorias++; atk.xp += 15;
     const provs = ownProvinces(def);
     let capturou = null;
-    if (provs.length && vivosD === 0) {
+    if (provs.length && vivosD === 0 && atk.mil >= def.mil) {
       const pr = provs[Math.floor(Math.random() * provs.length)];
       pr.owner = atk.id; capturou = pr.name;
     }

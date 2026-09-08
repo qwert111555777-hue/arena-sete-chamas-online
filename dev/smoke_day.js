@@ -24,7 +24,7 @@ setTimeout(() => {
   const d = seq1x.map(s=>s.day);
   console.log('--- 1x: msgs=', seq1x.length, '| dias', d[0], '->', d[d.length-1], '| ordem:', audit(seq1x));
   send({t:'velocidade', speed:5}); phase5x = true; console.log('>> 5x ativado');
-}, 7000);
+}, 10000);
 setTimeout(() => {
   const d = seq5x.map(s=>s.day);
   const span = seq5x.length > 1 ? (seq5x[seq5x.length-1].t - seq5x[0].t) / Math.max(1, (d[d.length-1]-d[0])) : 0;
@@ -35,5 +35,5 @@ setTimeout(() => {
   const ok = audit(seq1x) === 'OK' && audit(seq5x) === 'OK' && cobre >= 1 && me && me.rec.comida > 0;
   console.log(ok ? '✅ TESTE DIAS PASSOU' : '❌ TESTE DIAS FALHOU');
   process.exit(ok ? 0 : 1);
-}, 13000);
-setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 22000);
+}, 22000);
+setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 30000);

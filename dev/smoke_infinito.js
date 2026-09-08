@@ -13,9 +13,8 @@ setTimeout(() => send({t:'fundar', name:'Império Eterno', flag:'🐯', color:59
 setTimeout(() => { send({t:'start'}); started = true; }, 1400);
 const tick = setInterval(() => {
   if (!started || !last || last.phase !== 'game') return;
-  const me = last.players.find(p => p.id === myId);
-  if (me && me.ap >= 1 && me.money >= 250 && me.eco < 70) send({t:'action', action:'investir'});
-}, 300);
+  send({t:'action', action:'investir'});
+}, 400);
 setTimeout(() => {
   clearInterval(tick);
   const me = last && last.players.find(p => p.id === myId);

@@ -35,6 +35,22 @@
   .hcat{font-size:10px;font-weight:800;color:var(--gold2);letter-spacing:1px;align-self:center;margin:0 2px 0 10px;}
   .px{float:right;background:#1a2440;border:1px solid var(--border);color:#fff;border-radius:6px;font-size:12px;line-height:1;padding:4px 8px;cursor:pointer;margin:0 0 4px 4px;}
   .px:hover{background:#5a1620;border-color:#ff6b6b;}
+  .rank-panel{right:12px;top:60px;width:330px;max-height:calc(100% - 150px);background:#101830;border:2px solid #8a6a1f;z-index:6;}
+  .rank-panel h3{color:#ffd76a;font-size:12px;}
+  .nation-panel{position:absolute;left:12px;top:100px;width:340px;max-height:calc(100% - 220px);overflow-y:auto;background:#101830;color:#e8e4d8;border:2px solid #8a6a1f;border-radius:12px;padding:12px;z-index:6;box-shadow:0 12px 32px rgba(0,0,0,.6);}
+  .nation-panel button{background:#1a2440;border:1px solid #2a3a5f;color:#fff;border-radius:8px;padding:8px 4px;cursor:pointer;}
+  .nation-panel button:hover:not(:disabled){border-color:#8a6a1f;}
+  .nation-panel button:disabled{opacity:.45;cursor:default;}
+  .rank-row{background:#0c1324;border:1px solid #2a3a5f;border-radius:8px;padding:7px 9px;margin-bottom:6px;}
+  .rank-row:hover{border-color:#8a6a1f;}
+  .nbadge{position:absolute;top:-7px;right:-7px;background:#c62828;color:#fff;font-size:10px;font-weight:800;border-radius:9px;padding:1px 6px;line-height:1.5;}
+  .rank-panel::-webkit-scrollbar,.nation-panel::-webkit-scrollbar,#newspaper .paper::-webkit-scrollbar{width:8px;}
+  .rank-panel::-webkit-scrollbar-thumb,.nation-panel::-webkit-scrollbar-thumb,#newspaper .paper::-webkit-scrollbar-thumb{background:#8a6a1f;border-radius:4px;}
+  #newspaper .cols p{border-bottom:1px solid #d9c795;padding:6px 0;margin:0;font-size:13px;line-height:1.45;}
+  .round-btn{border-color:#8a6a1f;}
+  .round-btn:hover:not(:disabled){box-shadow:0 0 12px rgba(217,169,60,.5);}
+  .hcat{color:#ffd76a;}
+  .tool-btn{border:2px solid #2a3a5f;}
   h1,h2,h3{font-weight:800;}
 
   /* ---------- TOAST ---------- */
@@ -108,19 +124,19 @@
   .hud .res b{font-family:ui-monospace,monospace; color:#ffe9a8;}
   .hud .spacer{flex:1;}
   .hud .timer-big{font-size:20px; font-weight:900; font-family:ui-monospace,monospace; color:#ffe9a8;}
-  #btn-pause,#btn-speed2,#btn-endturn,#btn-rank,#btn-news,#btn-build{width:38px;height:38px;border-radius:10px;border:2px solid #8a6a1f;background:linear-gradient(#ffe9a8,#d9a93c);color:#3a2a05;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.5);}
+  #btn-pause,#btn-speed2,#btn-endturn,#btn-rank,#btn-news,#btn-notif,#btn-build{width:38px;height:38px;border-radius:10px;border:2px solid #8a6a1f;background:linear-gradient(#ffe9a8,#d9a93c);color:#3a2a05;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.5);}
   #advisor{position:absolute;left:12px;top:12px;z-index:5;display:flex;gap:10px;align-items:flex-start;pointer-events:none;}
   #advisor img{width:64px;height:64px;border-radius:50%;border:3px solid #d9a93c;box-shadow:0 3px 10px rgba(0,0,0,.6);background:#e8d9b0;}
   #advisor-bubble{max-width:300px;background:linear-gradient(#fdf6e3,#ecd9a8);color:#3a2f14;border:2px solid #8a6a1f;border-radius:12px;padding:8px 12px;font-size:12px;font-weight:600;box-shadow:0 3px 10px rgba(0,0,0,.5);position:relative;margin-top:8px;}
   #advisor-bubble:before{content:'';position:absolute;left:-11px;top:20px;border:6px solid transparent;border-right-color:#8a6a1f;}
-  .nation-panel{background:linear-gradient(#f6eed8,#ead9b4)!important;color:#2b2416!important;border:2px solid #8a6a1f!important;box-shadow:0 8px 30px rgba(0,0,0,.6)!important;}
-  .nation-panel .np-head .nm{color:#2b2416;} .nation-panel .np-head .nm small{color:#6b5a33;}
-  .nation-panel .ms{background:#fff8e6!important;border-color:#c9b98b!important;} .nation-panel .ms span{color:#4a3d20!important;} .nation-panel .ms b{color:#7a5a10!important;}
+
+
+
   .nation-panel .xrow{background:#fff8e6;border:1px solid #d9c795;border-radius:6px;margin:3px 0;padding:4px 6px;} .nation-panel .xn{color:#2b2416;}
-  .nation-panel .np-note{color:#4a3d20;} .nation-panel button{background:linear-gradient(#fdf6e3,#e2cd96);color:#3a2a05;border:1px solid #8a6a1f;border-radius:6px;}
-  .sidebar{background:linear-gradient(#f2e8cf,#e6d5ae)!important;color:#2b2416!important;border-left:2px solid #8a6a1f!important;}
-  .sidebar h3{color:#6b5a33!important;} .sidebar .feed-item{background:#fff8e6!important;border:1px solid #d9c795!important;color:#2b2416!important;}
-  .sidebar input{background:#fff8e6!important;color:#2b2416!important;border:1px solid #b7a578!important;}
+
+
+
+
   #np-banner{height:70px;display:flex;align-items:center;justify-content:center;font-size:50px;background:linear-gradient(120deg,#e8f0f8,#fbf7ea,#e8f0f8);border:2px solid #8a6a1f;border-radius:8px;margin-bottom:8px;overflow:hidden;}
   #np-banner span{display:inline-block;animation:wave 2.4s ease-in-out infinite;transform-origin:bottom center;filter:drop-shadow(0 4px 6px rgba(0,0,0,.35));}
   @keyframes wave{0%,100%{transform:rotate(-5deg) skewY(-3deg)}50%{transform:rotate(5deg) skewY(3deg)}}
@@ -397,7 +413,7 @@
     <div class="res">❤️ <b id="m-aprov">50%</b></div>
     <div class="res">👥 <b id="m-pop">0</b></div>
     <div class="res">🌾 <b id="m-comida">0</b></div>
-    <div class="res" title="Missão atual">🎯 <b id="m-mission" style="font-size:11px;">—</b></div>
+    
     <div class="spacer"></div>
     <span class="timer-big" id="g-timer">--:--</span>
     <span class="date-badge" id="g-code" title="Código da sala">----</span>
@@ -405,6 +421,7 @@
     <button id="btn-pause" title="Pausar/retomar (anfitrião)">⏸️</button>
     <button id="btn-rank" title="Ranking mundial (renda, militar, população, indústria)">📊</button>
     <button id="btn-news" title="Jornal mundial">📰</button>
+    <button id="btn-notif" title="Notificações" style="position:relative">🔔<b id="notif-n" class="nbadge hidden">0</b></button>
     <span class="hcat">PAÍS</span>
     <button id="btn-tax" title="Impostos (4 sliders, estilo MA3)">🧾</button>
     <button id="btn-stats" title="Estatísticas do país">📈</button>
@@ -413,7 +430,7 @@
     <button id="btn-rel" title="Religiões do mundo">🕌</button>
     <button id="btn-build" title="Construir (suas construções)">🏗️</button>
     <button id="btn-speed2" title="Velocidade: 1x, 2x, 3x ou 5x (anfitrião)">⏱️ 1x</button>
-    <button id="btn-sair" title="Sair do jogo (o anfitrião salva automaticamente)" style="background:radial-gradient(circle at 35% 30%, #ffd0d0, #d98a8a 60%, #8a3040);">⏻</button>
+    <button id="btn-sair" title="Sair do jogo (o anfitrião salva automaticamente)" style="background:linear-gradient(#ffd0d0,#d98a8a);border:2px solid #8a3040;border-radius:10px;width:38px;height:38px;font-size:16px;cursor:pointer;">⏻</button>
   </div>
 
   <div class="game-body">
@@ -469,23 +486,22 @@
       <div class="side-tools">
         <button class="tool-btn" id="btn-snd" title="Som liga/desliga">🔊</button>
         <button class="tool-btn" id="btn-rank2" title="Ranking das nações">📊</button>
-        <button class="tool-btn" id="btn-market" title="Mercado de recursos">🛒</button>
+        <button class="tool-btn" id="btn-market" title="Compras e vendas">🛒</button>
         <button class="tool-btn" id="btn-help" title="Como jogar">❓</button>
       </div>
       <div class="rank-panel hidden" id="rank-panel"></div>
       <div class="rank-panel hidden" id="market-panel"></div>
+      <div class="rank-panel hidden" id="notif-panel"></div>
       <div class="rank-panel hidden" id="help-panel">
         <button class="px" title="Fechar">✕</button>
         <h3>❓ Como jogar</h3>
-        <div style="font-size:11.5px; line-height:1.55; color:var(--text);">
-          ♾️ <b>Jogo infinito:</b> nunca termina — eco/influência/fé 60+ rendem MARCOS 🏆 e o mundo continua.<br>
-          ⚡ 4 pontos de ação por dia · 1 dia passa a cada segundo (1x).<br>
-          ❤️ Aprovação 0% = governo REFORMADO (perde metade do caixa) — humanos nunca caem.<br>
-          🏗️ Províncias geram $6/semana por ponto de infra; só ANIQUILAR o exército inimigo ocupa província.<br>
-          ☢️ Nível nuclear 3+ libera míssil (3⚡) — devastador, mas o mundo te condena.<br>
-          🚫 Sanções drenam $50/semana do alvo e $20/semana de quem aplica.<br>
-          🤝 Aliados não se atacam e rendem +$25/semana cada.<br>
-          🗺️ Clique num país no mapa para ver dados e agir sobre ele.
+        <div style="font-size:12px; line-height:1.7; color:var(--text);">
+          ♾️ <b>Infinito:</b> 60+ vira MARCO 🏆, o jogo nunca acaba.<br>
+          ⚡ 4 ações/dia · 1 dia = 3s (1x) · ⏱️ acelera até 5x.<br>
+          🏗️ Construir: botão 🏗️ · obras levam dias.<br>
+          💰 🛒 lotes de 10 · ⚔️ declare guerra antes de atacar.<br>
+          ❤️ 0% = reforma (-50% caixa) · ☢️ nv3+ = míssil.<br>
+          📰 Jornal: tudo que acontece · 🔔 seus avisos.
         </div>
       </div>
 
@@ -515,11 +531,6 @@
       </div>
     </div>
 
-    <div class="sidebar">
-      <h3>📰 Notícias do mundo</h3>
-      <div class="feed" id="feed"></div>
-
-    </div>
   </div>
 </div>
 
@@ -896,7 +907,7 @@ function isoOf(id){ const m = String(id || '').toLowerCase().match(/^([a-z]{2})\
 function flagHTML(id, cls){ const iso = isoOf(id); return iso ? `<img class="${cls || 'flimg'}" src="flags/${iso}.svg" alt="">` : ''; }
 const PORTRAITS = { br:'portraits/br.jpg', us:'portraits/us.jpg', ru:'portraits/ru.jpg', cn:'portraits/cn.jpg', gb:'portraits/gb.jpg', fr:'portraits/fr.jpg', de:'portraits/de.jpg', in:'portraits/in.jpg', jp:'portraits/jp.jpg', mx:'portraits/mx.jpg', ng:'portraits/ng.jpg', au:'portraits/au.jpg' };
 const proj = c => ({ x:(c.lon+180)/360*1000, y:(90-c.lat)/180*520 });
-const PALETTE = Array.from({length:60},(_,i)=>'hsl('+((i*137)%360)+' 55% '+(42+(i%4)*8)+'%)');
+const PALETTE = Array.from({length:60},(_,i)=>'hsl('+(i*6)+',72%,'+(i%2?58:44)+'%)');
 /* territórios estilizados (mesma projeção do mapa) */
 const PROV_POS = {
   us: [[170,150],[230,175],[290,140]],
@@ -997,12 +1008,25 @@ function setConn(txt, bad){
 function send(obj){ if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
 
 /* ================= toast ================= */
+const NOTIFS = [];
 function toast(msg, kind){
-  const d = document.createElement('div');
-  d.className = 'toast ' + (kind||'');
-  d.textContent = msg;
-  $('toasts').appendChild(d);
-  setTimeout(()=>d.remove(), 3800);
+  if (!state || state.phase !== 'game'){
+    const d = document.createElement('div');
+    d.className = 'toast ' + (kind||'');
+    d.textContent = msg;
+    $('toasts').appendChild(d);
+    setTimeout(()=>d.remove(), 3800);
+    return;
+  }
+  NOTIFS.unshift({day: state.day||1, msg, kind: kind||''});
+  if (NOTIFS.length > 60) NOTIFS.length = 60;
+  const p = $('notif-panel');
+  if (p && !p.classList.contains('hidden')) renderNotifs();
+  else { const b = $('notif-n'); const n = parseInt(b.textContent||'0',10)+1; b.textContent = n > 9 ? '9+' : n; b.classList.remove('hidden'); }
+}
+function renderNotifs(){
+  const p = $('notif-panel'); if (!p || p.classList.contains('hidden')) return;
+  p.innerHTML = '<button class="px" title="Fechar">✕</button><h3>🔔 Notificações</h3>' + (NOTIFS.length ? NOTIFS.map(n => '<div class="rank-row"><span class="rs" style="flex:1;white-space:normal;">dia ' + n.day + ' · ' + String(n.msg).replace(/[<>&]/g,'') + '</span></div>').join('') : '<div style="color:var(--muted);font-size:12px">Nenhuma notificação.</div>');
 }
 
 /* ================= som (WebAudio, sem assets) ================= */
@@ -1194,12 +1218,12 @@ function renderLobby(){
     b.onclick = () => send({t:'fundar', name: inp.value || (mine?mine.name:''), flag: f});
     fl.appendChild(b);
   });
-  const lbCor = document.createElement('div'); lbCor.style.cssText = 'font-weight:700;font-size:12px;color:var(--muted)'; lbCor.textContent = 'Cor da nação:'; wrap.appendChild(lbCor);
+  const lbCor = document.createElement('div'); lbCor.style.cssText = 'font-weight:700;font-size:12px;color:var(--muted)'; lbCor.textContent = 'Cor da nação (60 em ordem):'; wrap.appendChild(lbCor);
   const corRow = document.createElement('div'); corRow.style.cssText = 'display:flex; flex-wrap:wrap; gap:6px;';
   const selCor = (mine && mine.color != null) ? mine.color : 0;
   for (let ci = 0; ci < 60; ci++){
     const cb = document.createElement('button');
-    cb.style.cssText = 'width:22px;height:22px;border-radius:6px;cursor:pointer;border:2px solid ' + (ci===selCor?'var(--gold2)':'#000') + ';background:hsl(' + ((ci*137)%360) + ',55%,' + (42+(ci%4)*8) + '%);';
+    cb.style.cssText = 'width:22px;height:22px;border-radius:6px;cursor:pointer;border:2px solid ' + (ci===selCor?'var(--gold2)':'#000') + ';background:' + PALETTE[ci] + ';';
     cb.title = 'Cor ' + (ci+1);
     cb.onclick = () => send({t:'fundar', name: inp.value || (mine?mine.name:''), flag: selFlag, color: ci});
     corRow.appendChild(cb);
@@ -1237,7 +1261,6 @@ function renderGame(){
   $('m-money').textContent = fmt(m.money);
   $('m-pop').textContent = m.pop;
   $('m-comida').textContent = m.rec ? m.rec.comida : 0;
-  $('m-mission').textContent = state.mission ? state.mission.desc + ' (+$' + state.mission.reward + ')' : '—';
   $('m-eco').textContent = m.eco;
   $('m-mil').textContent = m.mil;
   $('m-aprov').textContent = m.aprov + '%';
@@ -1251,7 +1274,7 @@ function renderGame(){
     adv.classList.remove('hidden');
     const DICAS = ['construa a Fábrica de concreto primeiro — quase tudo exige 🧱.','sem ⚡ suficiente seus prédios apagam: produção pela metade.','jazidas naturais definem o que seu país produz de graça.','relações 85+ garantem anexação pacífica de nações da IA.','embaixadas custam $10/semana de manutenção — escolha bem.','o programa nuclear exige 10 de ☢️ urânio no mercado.'];
     const k = Math.floor(state.turn/2) % (DICAS.length+1);
-    $('advisor-bubble').textContent = 'Senhor Presidente: ' + (state.mission ? 'missão — ' + state.mission.desc + ' (+$' + state.mission.reward + '). ' : '') + (k < DICAS.length ? DICAS[k] : '');
+    $('advisor-bubble').textContent = 'Senhor Presidente: ' + (k < DICAS.length ? DICAS[k] : '');
   } else adv.classList.add('hidden');
 
   document.querySelectorAll('.round-btn').forEach(b => {
@@ -1304,14 +1327,6 @@ function renderGame(){
   renderPanel();
   renderRanking();
 
-  // feed
-  const feed = $('feed'); feed.innerHTML = '';
-  state.log.forEach(item => {
-    const div = document.createElement('div'); div.className='item';
-    const t = document.createElement('span'); t.className='turn'; t.textContent = gameDate(item.turn) + ' ·';
-    div.appendChild(t); div.appendChild(document.createTextNode(item.msg));
-    feed.appendChild(div);
-  });
 }
 
 /* separa bandeiras sobrepostas (Europa etc.) — relaxamento simples, 10 iteracoes */
@@ -1913,7 +1928,8 @@ $('btn-speed2').onclick = () => {
   document.body.appendChild(menu);
 };
 $('btn-sair').onclick = () => {
-  if (!confirm(m && m.isHost ? 'Salvar o jogo e encerrar a sala? Todos sairão.' : 'Sair da partida?')) return;
+  const meS = me();
+  if (!confirm(meS && meS.isHost ? 'Salvar o jogo e encerrar a sala? Todos sairão.' : 'Sair da partida?')) return;
   send({t:'sair'});
 };
 document.querySelectorAll('.round-btn').forEach(b => b.onclick = () => { sfx('click'); send({t:'action', action:b.dataset.act}); });
@@ -1926,7 +1942,7 @@ function renderMarket(){
   if (panel.classList.contains('hidden') || !state || !state.market) return;
   const m = me(); if (!m) return;
   const names = { comida:'🌾 Comida', minerio:'⛏️ Minério', energia:'⚡ Energia', concreto:'🧱 Concreto', madeira:'🪵 Madeira', terras_raras:'⚙️ Terras raras', uranio:'☢️ Urânio', borracha:'🌳 Borracha' };
-  panel.innerHTML = '<button class="px" title="Fechar">✕</button><h3>🛒 Mercado global de recursos</h3><div style="color:var(--muted);font-size:11px;margin-bottom:8px;line-height:1.5;">Os preços oscilam a cada semana. Suas províncias produzem recursos todo dia: comida alimenta a população (sem comida, ela cresce 3x mais devagar); minério e energia podem ser vendidos por lucro.</div>';
+  panel.innerHTML = '<button class="px" title="Fechar">✕</button><h3>💰 Compras e vendas</h3><div style="color:var(--muted);font-size:11px;margin-bottom:8px;line-height:1.5;">Preços mudam toda semana. Compre barato, venda caro — lotes de 10.</div>';
   Object.keys(state.market).forEach(k => {
     const row = document.createElement('div'); row.className = 'rank-row'; row.style.gap = '6px';
     const rn = document.createElement('span'); rn.className = 'rn'; rn.textContent = names[k];
@@ -2046,7 +2062,7 @@ $('btn-stats').onclick = () => {
 };
 $('btn-miss').onclick = () => {
   if (!state) return;
-  const MS = [['construir_3','🏗️','Conclua 3 construções',500],['vender_30','🛒','Venda 30 unidades no mercado',400],['pop_50','👥','Alcance 50 habitantes',500],['leis_2','📜','Aprove 2 leis nacionais',450],['vencer_1','⚔️','Vença 1 batalha',600],['educacao_2','🎓','Leve Educação ao nível 2',400],['presente_2','🎁','Envie 2 presentes diplomáticos',350],['anexar','🏴','Ocupe território inimigo',700],['blindados_1','🛡️','Produza forças blindadas',400],['treinar_3','🪖','Treine o exército 3 vezes',400]];
+  const MS = [['construir_3','🏗️','Conclua 3 construções',500],['vender_30','🛒','Venda 30 unidades',400],['pop_50','👥','Alcance 50 habitantes',500],['leis_2','📜','Aprove 2 leis nacionais',450],['vencer_1','⚔️','Vença 1 batalha',600],['educacao_2','🎓','Leve Educação ao nível 2',400],['presente_2','🎁','Envie 2 presentes diplomáticos',350],['anexar','🏴','Ocupe território inimigo',700],['blindados_1','🛡️','Produza forças blindadas',400],['treinar_3','🪖','Treine o exército 3 vezes',400]];
   const cur = state.mission && state.mission.id;
   const G = ['linear-gradient(135deg,#7a4a1f,#d9a93c)','linear-gradient(135deg,#1f4a7a,#39d98a)','linear-gradient(135deg,#5a1f7a,#ff6b6b)','linear-gradient(135deg,#145a52,#ffd76a)'];
   const ov = document.createElement('div'); ov.id='newspaper';
@@ -2058,7 +2074,7 @@ $('btn-miss').onclick = () => {
 };
 $('btn-news').onclick = () => {
   if (!state || state.phase!=='game') return;
-  const itens = (state.log||[]).filter(l=>/^(🗞️|🌍|️|📈||🕊️|🤝|⚔️|☢️|||️)/.test(l.msg)).slice(0,24);
+  const itens = (state.log||[]).slice(0,60);
   const ov = document.createElement('div'); ov.id='newspaper';
   ov.innerHTML = '<div class="paper"><h1>A ERA MODERNA — NOTÍCIAS</h1><div style="text-align:center;font-size:11px;margin-bottom:10px">Edição do dia '+state.day+' · '+document.getElementById('g-date').textContent+'</div><div class="cols">'+
     (itens.length? itens.map(l=>'<p>'+l.msg+'</p>').join('') : '<p>Sem manchetes hoje. O mundo observa em silêncio.</p>') +
@@ -2078,6 +2094,13 @@ $('ov-btn').onclick = () => {
 };
 $('ov-x').onclick = () => { if (state && state.phase === 'over') location.reload(); else $('overlay').classList.add('hidden'); };
 $('btn-rank2').onclick = () => $('btn-rank').click();
+$('btn-notif').onclick = () => {
+  const p = $('notif-panel'); p.classList.toggle('hidden');
+  $('rank-panel').classList.add('hidden'); $('market-panel').classList.add('hidden'); $('help-panel').classList.add('hidden');
+  $('btn-rank').classList.remove('active'); $('btn-market').classList.remove('active'); $('btn-help').classList.remove('active');
+  if (!p.classList.contains('hidden')){ $('notif-n').textContent = '0'; $('notif-n').classList.add('hidden'); renderNotifs(); }
+};
+['btn-rank','btn-market','btn-help'].forEach(id => { const prev = $(id).onclick; $(id).onclick = e => { $('notif-panel').classList.add('hidden'); if (prev) prev.call($(id), e); }; });
 document.addEventListener('click', e => {
   const x = e.target.closest('.px'); if (!x || x.id === 'ov-x') return;
   const p = x.closest('.rank-panel,.nation-panel'); if (!p) return;
@@ -2094,6 +2117,11 @@ document.addEventListener('click', e => {
 const view = { s:1, tx:0, ty:0 };
 let dragged = false;
 function applyView(){
+  if (view.s <= 1){ view.s = 1; view.tx = 0; view.ty = 0; }
+  else {
+    view.tx = Math.min(100, Math.max(1000*(1-view.s)-100, view.tx));
+    view.ty = Math.min(60, Math.max(520*(1-view.s)-60, view.ty));
+  }
   const g = document.getElementById('map-root');
   if (g) g.setAttribute('transform', `translate(${view.tx},${view.ty}) scale(${view.s})`);
 }
