@@ -253,9 +253,9 @@ const RELIGIONS = {
   hindu:     { name: 'Hindu',        desc: '+1 fé/turno' },
 };
 const MINISTERS = {
-  eco: { tec: { name: 'Tecocrata', desc: '+10% renda' }, pop: { name: 'Populista', desc: '+1 aprovação/turno, -5% renda' } },
-  def: { fal: { name: 'Falcão', desc: '+10% ataque' }, estr: { name: 'Estrategista', desc: '+10% defesa' } },
-  dip: { neg: { name: 'Negociador', desc: 'diplomacia -50% custo' }, inf: { name: 'Influenciador', desc: '+1 influência/turno' } },
+  eco: { tec: { name: 'Tecocrata', desc: '+10% renda' }, pop: { name: 'Populista', desc: '+1 aprovação/turno, -5% renda' }, ind: { name: 'Industrialista', desc: '+20% renda de prédios' } },
+  def: { fal: { name: 'Falcão', desc: '+10% ataque' }, estr: { name: 'Estrategista', desc: '+10% defesa' }, pac: { name: 'Pacifista', desc: '+2 aprovação/semana, -10% renda' } },
+  dip: { neg: { name: 'Negociador', desc: 'diplomacia -50% custo' }, inf: { name: 'Influenciador', desc: '+1 influência/turno' }, esp: { name: 'Mestre-Espião', desc: '+10% sabotagem' } },
 };
 // Cinco árvores de desenvolvimento, 25 tecnologias cada, 5 níveis.
 // Custos por nível medidos nas capturas do MA3: 50 / 99 / 198 / 396 / 797.
@@ -634,7 +634,7 @@ function addPlayer(room, conn, name, isHost) {
     taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, budget: {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: 0, ideology: null, religion: 'laico',
     customName: null, customFlag: '🏳️', bot: false, pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 25, madeira: 0, terras_raras: 12, uranio: 0, borracha: 0 },
     xp: 0, blackout: false, depositos: [], upgrades: {}, pacts: {},
-    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0 }, famine: false,
+    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0, mandatos: 0 }, famine: false,
     ministers: { eco: null, def: null, dip: null },
     techs: [], techLv: {}, sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
@@ -663,7 +663,7 @@ function makeAIBot(c) {
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
     units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 },
     builds: [], emergencyUntil: 0, leis: [],
-    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0 }, famine: false,
+    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0, mandatos: 0 }, famine: false,
     ideology: Object.keys(IDEOLOGIES)[h % 6], religion: Object.keys(RELIGIONS)[h % 5],
     seguranca: { defesa: h % 2, secreto: (h >> 1) % 2, policia: (h >> 2) % 3, guarda: (h >> 3) % 2 },
   };
@@ -763,7 +763,7 @@ function incomeOf(room, p) {
   for (const k in p.buildings) {
     const n = p.buildings[k] || 0; if (!n) continue;
     const o = BUILD_OUT[k]; if (!o || !o.money) continue;
-    bldMoney += n * o.money * upM(p, k);
+    bldMoney += n * o.money * upM(p, k) * (p.ministers.eco === 'ind' ? 1.2 : 1);
   }
   let base = p.eco * 10 + prov + Math.floor(p.pop / 8) + bldMoney
     + p.allies.length * 25
@@ -782,6 +782,7 @@ function incomeOf(room, p) {
   if (p.ideology === 'comunismo') mult -= 0.10;
   if (p.ministers.eco === 'tec') mult += 0.10;
   if (p.ministers.eco === 'pop') mult -= 0.05;
+  if (p.ministers.def === 'pac') mult -= 0.10;
   if (p.taxRate === 2) mult += 0.15;
   if (p.taxRate === 0) mult -= 0.10;
   if (room.embargo && room.embargo.target === p.id && room.turn < room.embargo.until) mult *= 0.7;
@@ -866,6 +867,7 @@ function dayTick(room) {
     if (p.ideology === 'autoritarismo') dAprov -= 1;
     if (p.ideology === 'monarquia') dAprov += 1;
     if (p.ministers.eco === 'pop') dAprov += 1;
+    if (p.ministers.def === 'pac') dAprov += 2;
     if (p.taxRate === 0) dAprov += 1;
     if (p.taxRate === 2) dAprov -= 2;
     if (p.taxes && p.taxes.amb >= 12) dAprov += 1;
@@ -933,6 +935,17 @@ function dayTick(room) {
 }
 
 /* ciclo estratégico semanal: mercado, diplomacia, IA, missões, ONU */
+function eleicoes(room) {
+  for (const p of room.players) {
+    if (!p.alive || p.bot) continue;
+    p.stats = p.stats || {};
+    p.stats.mandatos = p.stats.mandatos || 0;
+    if (p.aprov >= 50) { p.stats.mandatos++; p.money += 300; p.aprov = Math.min(100, p.aprov + 3); log(room, `🗳️ ${cname(p)} foi REELEITO com ${Math.round(p.aprov)}% de aprovação! (+$300, +3 ❤️, ${p.stats.mandatos}º mandato)`); }
+    else if (p.aprov >= 35) { p.aprov = Math.min(100, p.aprov + 1); log(room, `🗳️ ${cname(p)} vence a eleição no aperto (${Math.round(p.aprov)}%) — a oposição cresce.`); }
+    else { p.aprov = Math.max(0, p.aprov - 5); p.emergencyUntil = room.turn + 2; log(room, `🗳️ DERROTA nas urnas para ${cname(p)} (${Math.round(p.aprov)}%)! Protestos tomam as ruas — EMERGÊNCIA.`); }
+  }
+}
+
 function resolveWeek(room) {
   room.turn++;
   for (const k of Object.keys(room.market)) room.market[k] = Math.max(3, Math.min(40, Math.round(room.market[k] * (0.88 + Math.random() * 0.3))));
@@ -952,6 +965,7 @@ function resolveWeek(room) {
   }
   if ((room.day - 1) % 14 === 0){ randomEvent(room); worldNews(room); }
   if ((room.day - 1) % 28 === 0 && !room.un) openUN(room);
+  if ((room.day - 1) % 56 === 0) eleicoes(room);
   if ((room.day - 1) % 14 === 0) aiTurn(room);
   const mNow = MISSIONS[room.missionIdx % MISSIONS.length];
   if (mNow) {
@@ -1251,7 +1265,7 @@ function performAction(room, p, msg) {
       if (!spend(p, 1, dipCost(p, 150))) return;
       const sAtk = (p.seguranca && p.seguranca.secreto) || 0;   // serviço secreto de quem ataca
       const sDef = (target.seguranca && target.seguranca.secreto) || 0; // de quem se defende
-      const chance = Math.min(0.85, 0.5 + 0.08 * sAtk);
+      const chance = Math.min(0.85, 0.5 + 0.08 * sAtk + (p.ministers.dip === 'esp' ? 0.1 : 0));
       const r = Math.random();
       if (r < chance) {
         if (sDef >= 2 && Math.random() < 0.15 * sDef) {
