@@ -12,7 +12,8 @@
 ### Branch / commits
 
 ```
-4905085 140 construcoes (47->140) cliente+servidor + pasta dev/   ← DEPLOY EM ANDAMENTO (dep-dafn2bn40ujc73c0tjd0)
+d2d6318 Atualiza contexto dev   ← HEAD (docs)
+4905085 140 construcoes (47->140) cliente+servidor + pasta dev/   ← PRODUÇÃO (dep-dafn2bn40ujc73c0tjd0 LIVE ✅)
 8041ed1 Bandeiras oficiais dos 195 paises + fix np-flag   ← validado, no GitHub
 7b648b0 Sair salva automatico + velocidade 1x-5x   ← era a PRODUÇÃO (cliente quebrado!)
 56682b3 (NUNCA chegou no GitHub — perdido com workspace antigo; refeito como 8041ed1)
@@ -22,7 +23,7 @@ e1cc9f1 47 construcoes / 6 abas / 5 niveis + borracha
 ```
 
 - Repositório: `/home/user/presidente-online`, branch `main`
-- Produção (Render) está em `7b648b0` e está FUNCIONANDO. O commit das bandeiras (`56682b3`) não foi deployado, então o bug não chegou no ar.
+- Produção (Render): `https://arena-sete-chamas-online.onrender.com` — LIVE em `4905085` (verificado: página 200 + helpers + prédios novos + /flags/br.svg 200). O bug do cliente foi ao ar junto com o fix.
 - git status (na sessão antiga): `public/index.html` modificado (não commitado) — continha as 140 construções.
 
 ### ✅ BUG CRÍTICO DO np-flag (CORRIGIDO em 8041ed1)
