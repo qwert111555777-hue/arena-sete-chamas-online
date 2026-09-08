@@ -1807,7 +1807,7 @@ function renderPanel(){
     // forças armadas
     sub2('🎖️ Unidades (1⚡ + 4⚙️ terras raras cada)');
     const ug=document.createElement('div'); ug.className='ugrid'; extra.appendChild(ug);
-    [['infantaria','🪖','Infantaria',200],['blindados','🛡️','Blindados',300],['artilharia','💥','Artilharia',350],['aviacao','✈️','Aviação',400],['submarinos','🌊','Submarinos',450],['frota','⚓','Frota',500],['porta_avioes','🛳️','Porta-aviões',700]].forEach(([k,em,lb,cost])=>{
+    [['infantaria','🪖','Infantaria',200],['blindados','🛡️','Blindados',300],['artilharia','💥','Artilharia',350],['aviacao','✈️','Aviação',400],['submarinos','🌊','Submarinos',450],['frota','⚓','Frota',500],['porta_avioes','🛳️','Porta-aviões',700],['fuzileiros','🪂','Fuzileiros Navais',350],['defesa_aerea','🎯','Defesa Aérea',450]].forEach(([k,em,lb,cost])=>{
       const r=document.createElement('div'); r.className='ucard'; r.title=lb+' — 1⚡ + 4⚙️ terras raras';
       r.innerHTML='<span style="font-size:20px">'+em+'</span><b>'+(p.units[k]||0)+'</b><small>'+lb+' '+ '▪'.repeat(p.units[k]||0)+'▫'.repeat(3-(p.units[k]||0))+'</small>';
       const b=document.createElement('button'); b.textContent='+ $'+cost;
@@ -2680,7 +2680,7 @@ $('btn-tech').onclick = () => {
 $('btn-war').onclick = () => {
   const m = me(); if (!m || !state) return;
   const poder = p => p.mil*10 + Object.values(p.units||{}).reduce((a,b)=>a+b,0)*15 + (p.nuclear||0)*20;
-  const UNITS = [['infantaria','🪖','Infantaria',200],['blindados','🛡️','Blindados',300],['artilharia','💥','Artilharia',350],['aviacao','✈️','Aviação',400],['submarinos','🌊','Submarinos',450],['frota','⚓','Frota',500],['porta_avioes','🛳️','Porta-aviões',700]];
+  const UNITS = [['infantaria','🪖','Infantaria',200],['blindados','🛡️','Blindados',300],['artilharia','💥','Artilharia',350],['aviacao','✈️','Aviação',400],['submarinos','🌊','Submarinos',450],['frota','⚓','Frota',500],['porta_avioes','🛳️','Porta-aviões',700],['fuzileiros','🪂','Fuzileiros Navais',350],['defesa_aerea','🎯','Defesa Aérea',450]];
   const esc = s => String(s==null?'':s).replace(/[<>&]/g,'');
   const wars = (m.wars||[]).map(id=>state.players.find(p=>p.id===id)).filter(Boolean);
   const ov = document.createElement('div'); ov.id='newspaper';
@@ -2834,11 +2834,11 @@ connect();
 
 /* ================= batalha tática (cliente) ================= */
 const UNIT_EM  = { infantaria:'🪖', blindados:'🛡️', artilharia:'💥', aviacao:'✈️',
-                   frota:'⚓', submarinos:'🌊', porta_avioes:'🛳️', milicia:'🔰' };
+                   frota:'⚓', submarinos:'🌊', porta_avioes:'🛳️', fuzileiros:'🪂', defesa_aerea:'🎯', milicia:'🔰' };
 const UNIT_IMG = { infantaria:'unidades/infantaria.jpg', blindados:'unidades/blindados.jpg',
                    artilharia:'unidades/artilharia.jpg', aviacao:'unidades/aviacao.jpg',
                    frota:'unidades/frota.jpg', submarinos:'unidades/submarinos.jpg',
-                   porta_avioes:'unidades/porta_avioes.jpg', milicia:'unidades/milicia.jpg' };
+                   porta_avioes:'unidades/porta_avioes.jpg', fuzileiros:'unidades/fuzileiros.jpg', defesa_aerea:'unidades/defesa_aerea.jpg', milicia:'unidades/milicia.jpg' };
 function btSprite(tipo, cls){
   const src = UNIT_IMG[tipo];
   return src ? '<img class="bt-sprite ' + (cls || '') + '" src="' + src + '" alt="' +
