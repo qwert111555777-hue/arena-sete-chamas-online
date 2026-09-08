@@ -1244,13 +1244,15 @@ function novaCrise(room, pick, tipo) {
   if (pick.crise || (pick.lastCrisis && room.day - pick.lastCrisis < 21)) { pick.money += 40; log(room, `📦 ${cname(pick)} recebe doações de rotina (+$40).`); return; }
   pick.crise = { tipo, desde: room.day };
   pick.lastCrisis = room.day;
-  const dmg = { terremoto: '🏚️ TERREMOTO', pandemia: '🦠 PANDEMIA', seca: '🏜️ SECA SEVERA', enchente: '🌊 ENCHENTE', motim: '🔥 MOTIM POPULAR', escandalo: '🤬 ESCÂNDALO POLÍTICO' }[tipo];
+  const dmg = { terremoto: '🏚️ TERREMOTO', pandemia: '🦠 PANDEMIA', seca: '🏜️ SECA SEVERA', enchente: '🌊 ENCHENTE', motim: '🔥 MOTIM POPULAR', escandalo: '🤬 ESCÂNDALO POLÍTICO', piratas: '🏴‍☠️ ATAQUE PIRATA', terroristas: '💣 ATENTADO TERRORISTA' }[tipo];
   if (tipo === 'terremoto') { const prs = ownProvinces(pick).filter(pr => pr.infra > 0); if (prs.length) prs[0].infra -= 1; pick.aprov = Math.max(0, pick.aprov - 4); }
   if (tipo === 'pandemia') { pick.pop = Math.max(0, (pick.pop || 0) - 15); pick.aprov = Math.max(0, pick.aprov - 5); }
   if (tipo === 'seca') { pick.rec.comida = 0; pick.aprov = Math.max(0, pick.aprov - 3); }
   if (tipo === 'enchente') { pick.money = Math.max(0, pick.money - 200); pick.aprov = Math.max(0, pick.aprov - 3); }
   if (tipo === 'motim') { pick.money = Math.max(0, pick.money - 100); pick.aprov = Math.max(0, pick.aprov - 8); }
   if (tipo === 'escandalo') { pick.aprov = Math.max(0, pick.aprov - 10); }
+  if (tipo === 'piratas') { pick.money = Math.max(0, pick.money - 300); pick.aprov = Math.max(0, pick.aprov - 4); }
+  if (tipo === 'terroristas') { pick.pop = Math.max(0, (pick.pop || 0) - 5); pick.aprov = Math.max(0, pick.aprov - 6); }
   log(room, `${dmg} atinge ${cname(pick)}! Abra 🚨 CRISES e escolha como responder.`);
 }
 
@@ -1282,6 +1284,14 @@ function resolverCrise(room, p, ch) {
     if (ch === 0) { if (!spend(p, 1, 200)) return; p.aprov = Math.min(100, p.aprov + 5); done(`📺 ${cname(p)} se explicou em rede nacional (+5 ❤️).`); }
     else if (ch === 1) { if (!spend(p, 2, 0)) return; p.money = Math.max(0, p.money - 100); p.aprov = Math.min(100, p.aprov + 6); done(`🔍 CPI em ${cname(p)} puniu culpados (+6 ❤️, −$100).`); }
     else { p.aprov = Math.max(0, p.aprov - 8); p.money = Math.max(0, p.money - 200); done(`🤬 O escândalo afundou ${cname(p)} (−8 ❤️, −$200).`); }
+  } else if (t === 'piratas') {
+    if (ch === 0) { if (!spend(p, 1, 400)) return; p.aprov = Math.min(100, p.aprov + 2); done(`💰 ${cname(p)} pagou resgate aos piratas (−$400, +2 ❤️).`); }
+    else if (ch === 1) { if (!spend(p, 2, 100)) return; const v = ((p.units && p.units.frota) || 0) >= 1 || Math.random() < 0.5; if (v) { p.aprov = Math.min(100, p.aprov + 4); p.xp += 5; done(`⚓ ${cname(p)} DESTRUIU os piratas em operação naval (+4 ❤️, +5 XP)!`); } else { p.money = Math.max(0, p.money - 200); done(`⚓ A operação naval de ${cname(p)} falhou (−$200).`); } }
+    else { p.money = Math.max(0, p.money - 500); p.aprov = Math.max(0, p.aprov - 8); done(`🏴‍☠️ Piratas saquearam ${cname(p)} (−$500, −8 ❤️).`); }
+  } else if (t === 'terroristas') {
+    if (ch === 0) { if (!spend(p, 2, 200)) return; p.aprov = Math.min(100, p.aprov + 5); p.xp += 5; done(`🎯 ${cname(p)} neutralizou os terroristas em operação especial (+5 ❤️, +5 XP)!`); }
+    else if (ch === 1) { if (!spend(p, 1, 300)) return; p.money = Math.max(0, p.money - 200); p.aprov = Math.min(100, p.aprov + 2); done(`🤝 ${cname(p)} negociou com os terroristas (−$500 total, +2 ❤️).`); }
+    else { p.pop = Math.max(0, (p.pop || 0) - 8); p.aprov = Math.max(0, p.aprov - 10); done(`💣 Onda de atentados em ${cname(p)} (−8 pop, −10 ❤️).`); }
   } else p.crise = null;
 }
 
@@ -1290,7 +1300,7 @@ function randomEvent(room) {
   const alive = room.players.filter(p => p.alive);
   if (!alive.length) return;
   const pick = alive[Math.floor(Math.random() * alive.length)];
-  switch (Math.floor(Math.random() * 16)) {
+  switch (Math.floor(Math.random() * 18)) {
     case 0: alive.forEach(p => p.money += 80); log(room, '📈 Boom das commodities: todas as nações recebem +$80.'); break;
     case 1: pick.money = Math.max(0, pick.money - 150); log(room, `📉 Crise financeira atinge ${cname(pick)}: -$150.`); break;
     case 2: alive.forEach(p => p.aprov = Math.min(100, p.aprov + 3)); log(room, '🕊️ Cúpula de paz global: aprovação +3 para todos.'); break;
@@ -1314,6 +1324,8 @@ function randomEvent(room) {
     case 13: novaCrise(room, pick, 'enchente'); break;
     case 14: novaCrise(room, pick, 'motim'); break;
     case 15: novaCrise(room, pick, 'escandalo'); break;
+    case 16: novaCrise(room, pick, 'piratas'); break;
+    case 17: novaCrise(room, pick, 'terroristas'); break;
   }
 }
 
