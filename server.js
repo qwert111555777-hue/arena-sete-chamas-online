@@ -1154,6 +1154,7 @@ function aiTurn(room) {
     if (b.aprov < 45 && ((b.sectors && b.sectors.habitacao) || 0) >= 1 && b.money > 500) { b.money -= 200; b.pop += 2; b.aprov = Math.min(100, b.aprov + 5); }
     if (b.money > 4000 && ((b.sectors && b.sectors.justica) || 0) < 5 && Math.random() < 0.08) { b.money -= 600; b.sectors.justica = ((b.sectors && b.sectors.justica) || 0) + 1; b.money += 150; }
     if (((b.sectors && b.sectors.justica) || 0) >= 2 && b.money > 500 && Math.random() < 0.1) { b.money += 200 + 50 * b.sectors.justica - 250; b.aprov = Math.min(100, b.aprov + 4); }
+    if (b.crise && b.money > 500) resolverCrise(room, b, 0); else if (b.crise && Math.random() < 0.1) resolverCrise(room, b, 2);
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -1221,11 +1222,13 @@ function novaCrise(room, pick, tipo) {
   if (pick.crise || (pick.lastCrisis && room.day - pick.lastCrisis < 21)) { pick.money += 40; log(room, `📦 ${cname(pick)} recebe doações de rotina (+$40).`); return; }
   pick.crise = { tipo, desde: room.day };
   pick.lastCrisis = room.day;
-  const dmg = { terremoto: '🏚️ TERREMOTO', pandemia: '🦠 PANDEMIA', seca: '🏜️ SECA SEVERA', enchente: '🌊 ENCHENTE' }[tipo];
+  const dmg = { terremoto: '🏚️ TERREMOTO', pandemia: '🦠 PANDEMIA', seca: '🏜️ SECA SEVERA', enchente: '🌊 ENCHENTE', motim: '🔥 MOTIM POPULAR', escandalo: '🤬 ESCÂNDALO POLÍTICO' }[tipo];
   if (tipo === 'terremoto') { const prs = ownProvinces(pick).filter(pr => pr.infra > 0); if (prs.length) prs[0].infra -= 1; pick.aprov = Math.max(0, pick.aprov - 4); }
   if (tipo === 'pandemia') { pick.pop = Math.max(0, (pick.pop || 0) - 15); pick.aprov = Math.max(0, pick.aprov - 5); }
   if (tipo === 'seca') { pick.rec.comida = 0; pick.aprov = Math.max(0, pick.aprov - 3); }
   if (tipo === 'enchente') { pick.money = Math.max(0, pick.money - 200); pick.aprov = Math.max(0, pick.aprov - 3); }
+  if (tipo === 'motim') { pick.money = Math.max(0, pick.money - 100); pick.aprov = Math.max(0, pick.aprov - 8); }
+  if (tipo === 'escandalo') { pick.aprov = Math.max(0, pick.aprov - 10); }
   log(room, `${dmg} atinge ${cname(pick)}! Abra 🚨 CRISES e escolha como responder.`);
 }
 
@@ -1249,6 +1252,14 @@ function resolverCrise(room, p, ch) {
     if (ch === 0) { if (!spend(p, 1, 200)) return; p.aprov = Math.min(100, p.aprov + 4); done(`🚤 ${cname(p)} fez resgates na enchente (+4 ❤️).`); }
     else if (ch === 1) { if (!spend(p, 2, 450)) return; const prs = ownProvinces(p).filter(pr => pr.infra < 5); if (prs.length) prs[0].infra = Math.min(5, prs[0].infra + 1); p.aprov = Math.min(100, p.aprov + 6); done(`🏗️ ${cname(p)} fez obras de drenagem (+1 infra, +6 ❤️).`); }
     else { p.money = Math.max(0, p.money - 150); p.aprov = Math.max(0, p.aprov - 8); done(`🌊 A enchente causou prejuízos em ${cname(p)} (−$150, −8 ❤️).`); }
+  } else if (t === 'motim') {
+    if (ch === 0) { if (!spend(p, 1, 300)) return; p.aprov = Math.min(100, p.aprov + 6); done(`🤝 ${cname(p)} negociou com os manifestantes (+6 ❤️).`); }
+    else if (ch === 1) { if (!spend(p, 1, 100)) return; p.aprov = Math.min(100, p.aprov + 2); p.pop = Math.max(0, (p.pop || 0) - 3); done(`🪖 ${cname(p)} reprimiu o motim (+2 ❤️, −3 pop).`); }
+    else { p.aprov = Math.max(0, p.aprov - 12); p.mil = Math.max(1, p.mil - 2); done(`🔥 O motim virou revolta em ${cname(p)} (−12 ❤️, −2 militar).`); }
+  } else if (t === 'escandalo') {
+    if (ch === 0) { if (!spend(p, 1, 200)) return; p.aprov = Math.min(100, p.aprov + 5); done(`📺 ${cname(p)} se explicou em rede nacional (+5 ❤️).`); }
+    else if (ch === 1) { if (!spend(p, 2, 0)) return; p.money = Math.max(0, p.money - 100); p.aprov = Math.min(100, p.aprov + 6); done(`🔍 CPI em ${cname(p)} puniu culpados (+6 ❤️, −$100).`); }
+    else { p.aprov = Math.max(0, p.aprov - 8); p.money = Math.max(0, p.money - 200); done(`🤬 O escândalo afundou ${cname(p)} (−8 ❤️, −$200).`); }
   } else p.crise = null;
 }
 
@@ -1257,7 +1268,7 @@ function randomEvent(room) {
   const alive = room.players.filter(p => p.alive);
   if (!alive.length) return;
   const pick = alive[Math.floor(Math.random() * alive.length)];
-  switch (Math.floor(Math.random() * 14)) {
+  switch (Math.floor(Math.random() * 16)) {
     case 0: alive.forEach(p => p.money += 80); log(room, '📈 Boom das commodities: todas as nações recebem +$80.'); break;
     case 1: pick.money = Math.max(0, pick.money - 150); log(room, `📉 Crise financeira atinge ${cname(pick)}: -$150.`); break;
     case 2: alive.forEach(p => p.aprov = Math.min(100, p.aprov + 3)); log(room, '🕊️ Cúpula de paz global: aprovação +3 para todos.'); break;
@@ -1279,6 +1290,8 @@ function randomEvent(room) {
     case 11: novaCrise(room, pick, 'pandemia'); break;
     case 12: novaCrise(room, pick, 'seca'); break;
     case 13: novaCrise(room, pick, 'enchente'); break;
+    case 14: novaCrise(room, pick, 'motim'); break;
+    case 15: novaCrise(room, pick, 'escandalo'); break;
   }
 }
 
