@@ -584,7 +584,7 @@ function snapshot(room) {
       dailyIncome: Math.round(incomeOf(room, p) / DAY_DIV),
       buildings: p.buildings, stats: p.stats, famine: p.famine, blackout: p.blackout,
       depositos: p.depositos || [], upgrades: p.upgrades || {}, pacts: p.pacts || {},
-      seguranca: p.seguranca || { defesa: 0, secreto: 0, policia: 0, guarda: 0 }, espioes: p.espioes || 0,
+      seguranca: p.seguranca || { defesa: 0, secreto: 0, policia: 0, guarda: 0 }, espioes: p.espioes || 0, spyShieldUntil: p.spyShieldUntil || 0,
     })),
     world: room.world, market: room.market, mission: MISSIONS[room.missionIdx % MISSIONS.length], missionIdx: room.missionIdx, paused: room.paused, speedMul: room.speedMul || 1, temSave: temSave(room.code),
   };
@@ -1133,6 +1133,8 @@ function aiTurn(room) {
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
     if (b.debt > 0 && b.money > 1500) { const bx = Math.min(b.debt, Math.floor(b.money * 0.4)); b.money -= bx; b.debt -= bx; }
     if ((b.espioes || 0) < 3 && b.money > 800) { b.money -= 150; b.espioes = (b.espioes || 0) + 1; }
+    if ((b.spyShieldUntil || 0) < room.day && b.money > 1500 && Math.random() < 0.1) { b.money -= 250; b.spyShieldUntil = room.day + 14; }
+    if ((b.espioes || 0) >= 2 && b.money > 1200 && Math.random() < 0.08) { const fn = room.players.find(o => o.alive && o !== b && (o.nuclear || 0) > 0 && relBetween(b, o) < 30); if (fn && Math.random() < 0.5) { b.money -= 400; fn.nuclear = Math.max(0, fn.nuclear - 1); log(room, `☢️ STUXNET! Agentes de ${cname(b)} sabotaram o programa nuclear de ${cname(fn)}!`); } }
     if ((b.espioes || 0) >= 2 && b.money > 600 && Math.random() < 0.2) { const fs = room.players.filter(o => o.alive && o !== b && relBetween(b, o) < 40); if (fs.length) { const ft = fs[Math.floor(Math.random() * fs.length)]; b.money -= 150; const sAb = (b.seguranca && b.seguranca.secreto) || 0; const sDb = (ft.seguranca && ft.seguranca.secreto) || 0; if (Math.random() < Math.min(0.9, 0.5 + 0.08 * sAb + 0.05 * (b.espioes || 0))) { if (sDb >= 2 && Math.random() < 0.15 * sDb) { b.espioes = Math.max(0, (b.espioes || 0) - 1); log(room, `🕵️ O Serviço Secreto de ${cname(ft)} DETECTOU e conteve a sabotagem de ${cname(b)}! Um agente foi capturado.`); } else { const prs = ownProvinces(ft).filter(pr => pr.infra > 0); if (prs.length) { const pr = prs[Math.floor(Math.random() * prs.length)]; pr.infra -= 1; log(room, `🧨 Sabotagem de ${cname(b)} destrói infraestrutura em ${cname(ft)}!`); } else { ft.mil = Math.max(1, ft.mil - 3); log(room, `🧨 Sabotagem de ${cname(b)} danifica o arsenal de ${cname(ft)} (-3 militar)!`); } } bumpRel(b, ft, -5); } } }
     if (!room.un && Math.random() < 0.12 && b.money > 400) { const foes = room.players.filter(o => o.alive && o !== b && relBetween(b, o) < 35); if (foes.length) { const fe = foes[Math.floor(Math.random() * foes.length)]; const tp2 = Math.random() < 0.5 ? 'condenar' : 'embargo'; b.money -= 300; room.un = { type: tp2, desc: (tp2 === 'condenar' ? 'Condenação internacional de ' : 'Embargo econômico contra ') + cname(fe) + (tp2 === 'condenar' ? ' (-6 aprovação)' : ' por 3 turnos'), target: fe.id, proposer: b.id, votes: {}, deadline: Date.now() + 20000 }; room.un.votes[b.id] = true; for (const bb of room.players) if (bb.bot && bb.alive && bb.id !== b.id) room.un.votes[bb.id] = relBetween(bb, fe) < 50; log(room, `🇺🇳 ${cname(b)} propôs resolução na ONU: ${room.un.desc}. Votação aberta!`); } }
     for (const pr of room.proposals.filter(x => x.to === b.id)) {
@@ -1394,7 +1396,7 @@ function performAction(room, p, msg) {
       if (!spend(p, 1, dipCost(p, 150))) return;
       const sAtk = (p.seguranca && p.seguranca.secreto) || 0;   // serviço secreto de quem ataca
       const sDef = (target.seguranca && target.seguranca.secreto) || 0; // de quem se defende
-      const chance = Math.min(0.9, 0.5 + 0.08 * sAtk + 0.05 * (p.espioes || 0) + (p.ministers.dip === 'esp' ? 0.1 : 0));
+      const chance = Math.min(0.9, 0.5 + 0.08 * sAtk + 0.05 * (p.espioes || 0) + (p.ministers.dip === 'esp' ? 0.1 : 0) - ((target.spyShieldUntil || 0) > room.day ? 0.25 : 0));
       const r = Math.random();
       if (r < chance) {
         if (sDef >= 2 && Math.random() < 0.15 * sDef) {
@@ -1424,7 +1426,7 @@ function performAction(room, p, msg) {
       if (!target || target === p || !target.alive) return;
       if (!spend(p, 1, dipCost(p, 200))) return;
       const sA2 = (p.seguranca && p.seguranca.secreto) || 0;
-      const ch = Math.min(0.7, 0.3 + 0.07 * (p.espioes || 0) + 0.08 * sA2 + (p.ministers.dip === 'esp' ? 0.1 : 0));
+      const ch = Math.min(0.7, 0.3 + 0.07 * (p.espioes || 0) + 0.08 * sA2 + (p.ministers.dip === 'esp' ? 0.1 : 0) - ((target.spyShieldUntil || 0) > room.day ? 0.25 : 0));
       const pool = Object.keys(target.techLv || {}).filter(k => (target.techLv[k] || 0) > (((p.techLv || {}))[k] || 0) && TECHS[k]);
       if (Math.random() < ch && pool.length) {
         const k = pool[Math.floor(Math.random() * pool.length)];
@@ -1447,6 +1449,30 @@ function performAction(room, p, msg) {
       target.espioes = tem - kill;
       bumpRel(p, target, -4);
       log(room, `🔍 Caça-espiões de ${cname(p)} eliminaram ${kill} agente(s) em ${cname(target)}!`);
+      break;
+    }
+    case 'sabotar_nuke': {
+      if (!target || target === p || !target.alive) return;
+      if (!(target.nuclear > 0)) { err(p.conn, '☢️ O alvo não tem programa nuclear.'); return; }
+      if ((p.espioes || 0) < 2) { err(p.conn, '☢️ Precisa de 2+ agentes para a operação STUXNET.'); return; }
+      if (!spend(p, 2, dipCost(p, 400))) return;
+      const sA4 = (p.seguranca && p.seguranca.secreto) || 0;
+      const chN = Math.min(0.7, 0.3 + 0.07 * (p.espioes || 0) + 0.08 * sA4 - ((target.spyShieldUntil || 0) > room.day ? 0.25 : 0));
+      if (Math.random() < chN) {
+        target.nuclear = Math.max(0, (target.nuclear || 0) - 1);
+        bumpRel(p, target, -10);
+        log(room, `☢️ STUXNET! Agentes de ${cname(p)} sabotaram o programa nuclear de ${cname(target)} (Nv ${target.nuclear})!`);
+      } else {
+        p.aprov = Math.max(0, p.aprov - 8); target.aprov = Math.min(100, target.aprov + 2);
+        bumpRel(p, target, -5);
+        log(room, `☢️ Tentativa de sabotagem nuclear de ${cname(p)} contra ${cname(target)} foi DESMASCARADA!`);
+      }
+      break;
+    }
+    case 'contraespionagem': {
+      if (!spend(p, 1, 250)) return;
+      p.spyShieldUntil = room.day + 14;
+      log(room, `🛡️ ${cname(p)} ativa CONTRA-ESPIONAGEM total por 14 dias (−25% nas operações inimigas).`);
       break;
     }
     case 'sancao': {
