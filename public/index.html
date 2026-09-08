@@ -109,7 +109,7 @@
   .hud .res b{font-family:ui-monospace,monospace; color:#ffe9a8;}
   .hud .spacer{flex:1;}
   .hud .timer-big{font-size:20px; font-weight:900; font-family:ui-monospace,monospace; color:#ffe9a8;}
-  #btn-pause,#btn-speed2,#btn-endturn,#btn-rank,#btn-news,#btn-notif,#btn-build,#btn-tech,#btn-war,#btn-leis,#btn-dip,#btn-spy{width:38px;height:38px;border-radius:10px;border:2px solid #8a6a1f;background:linear-gradient(#ffe9a8,#d9a93c);color:#3a2a05;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.5);}
+  #btn-pause,#btn-speed2,#btn-endturn,#btn-rank,#btn-news,#btn-notif,#btn-build,#btn-tech,#btn-war,#btn-leis,#btn-dip,#btn-spy,#btn-nuke{width:38px;height:38px;border-radius:10px;border:2px solid #8a6a1f;background:linear-gradient(#ffe9a8,#d9a93c);color:#3a2a05;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.5);}
   #advisor{position:absolute;left:12px;top:12px;z-index:5;display:flex;gap:10px;align-items:flex-start;pointer-events:none;}
   #advisor img{width:64px;height:64px;border-radius:50%;border:3px solid #d9a93c;box-shadow:0 3px 10px rgba(0,0,0,.6);background:#e8d9b0;}
   #advisor-bubble{max-width:300px;background:linear-gradient(#fdf6e3,#ecd9a8);color:#3a2f14;border:2px solid #8a6a1f;border-radius:12px;padding:8px 12px;font-size:12px;font-weight:600;box-shadow:0 3px 10px rgba(0,0,0,.5);position:relative;margin-top:8px;}
@@ -514,6 +514,7 @@
     <button id="btn-leis" title="Leis nacionais">📜</button>
     <button id="btn-dip" title="Diplomacia">🤝</button>
     <button id="btn-spy" title="Operações secretas">🕵️</button>
+    <button id="btn-nuke" title="Programa nuclear">☢️</button>
     <button id="btn-speed2" title="Velocidade: 1x, 2x, 3x ou 5x (anfitrião)">⏱️ 1x</button>
     <button id="btn-sair" title="Sair do jogo (o anfitrião salva automaticamente)" style="background:linear-gradient(#ffd0d0,#d98a8a);border:2px solid #8a3040;border-radius:10px;width:38px;height:38px;font-size:16px;cursor:pointer;">⏻</button>
   </div>
@@ -2196,6 +2197,31 @@ $('btn-tax').onclick = () => {
     ov.remove();
   };
 };
+$('btn-nuke').onclick = () => {
+  const m = me(); if (!m || !state) return;
+  const nv = m.nuclear || 0;
+  const prog = (m.builds||[]).filter(b=>b.kind==='nuclear');
+  const ura = (m.rec && m.rec.uranio) || 0;
+  const wars = state.players.filter(p=>p.alive && (m.wars||[]).includes(p.id) && p.country);
+  const ov = document.createElement('div'); ov.id='newspaper';
+  const esc = s => String(s==null?'':s).replace(/[<>&]/g,'');
+  const segs = [0,1,2,3,4].map(i=>'<span style="display:inline-block;width:34px;height:12px;margin-right:3px;border-radius:2px;background:'+(i<nv?'#c9a227':'#d8cba0')+';border:1px solid #8a6a1f"></span>').join('');
+  let s = '<div class="paper" style="width:min(640px,94vw)"><h1 style="font-size:20px">☢️ PROGRAMA NUCLEAR</h1>';
+  s += '<div style="background:#fff8e6;border:2px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:8px"><b style="font-size:13px">Nível '+nv+'/5</b><div style="margin:4px 0">'+segs+'</div>';
+  s += '<div style="font-size:11px;color:#6b5a33">🟡 Urânio em estoque: <b>'+ura+'</b> (cada etapa consome 10) · ⏳ Etapas em construção: <b>'+prog.length+'</b>'+(prog.length?' (pronta dia '+prog[0].untilDay+')':'')+'</div>';
+  const podeEtapa = (nv + prog.length) < 5 && m.ap >= 2 && m.money >= 600 && ura >= 10;
+  s += '<div style="margin-top:6px"><button data-nukestep style="padding:8px 12px;cursor:pointer" '+(podeEtapa?'':'disabled')+'>☢️ Nova etapa (2⚡ + $600 + 10 urânio, 18 dias)</button></div></div>';
+  s += '<div style="font-size:11px;color:#6b5a33;margin-bottom:6px">🚀 Lançar exige <b>guerra + Nv 3+</b> e <b>consome 1 nível</b> (3⚡). Efeito: militar do alvo ×0.4, −20 aprovação dele, −2 infra em 2 províncias, −10 sua aprovação. Defesa antiaérea reduz o dano.</div>';
+  s += '<div>' + (wars.length ? wars.map(p=>'<div style="background:#fff8e6;border:2px solid #a33;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1"><b style="font-size:13px">⚔️ '+esc(p.country)+'</b></div><button data-nukefire="'+p.id+'" style="padding:6px 10px;cursor:pointer;background:#a33;color:#fff;font-weight:800" '+((nv>=3&&m.ap>=3)?'':'disabled')+'>☢️💥 LANÇAR</button></div>').join('') : '<div style="font-size:12px;color:#6b5a33">Sem guerras ativas. Declare guerra para liberar o botão.</div>') + '</div>';
+  s += '<div style="text-align:center;margin-top:10px"><button id="nk-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
+  ov.innerHTML = s;
+  document.body.appendChild(ov);
+  ov.querySelector('#nk-x').onclick=()=>ov.remove();
+  ov.onclick = e => { if (e.target===ov) ov.remove(); };
+  const st = ov.querySelector('[data-nukestep]');
+  if (st) st.onclick = () => { send({t:'action',action:'nuclear'}); ov.remove(); };
+  ov.querySelectorAll('[data-nukefire]').forEach(b=>b.onclick=()=>{ if (confirm('LANÇAR MÍSSIL NUCLEAR? Isso consome 1 nível do programa e terá graves consequências.')) { send({t:'action',action:'nuke',target:b.dataset.nukefire}); ov.remove(); } });
+};
 $('btn-spy').onclick = () => {
   const m = me(); if (!m || !state) return;
   const sec = (m.seguranca && m.seguranca.secreto) || 0;
@@ -2379,7 +2405,7 @@ $('btn-notif').onclick = () => {
 };
 ['btn-rank','btn-market','btn-help'].forEach(id => { const prev = $(id).onclick; $(id).onclick = e => { $('notif-panel').classList.add('hidden'); if (prev) prev.call($(id), e); }; });
 /* MA3: widgets na barra esquerda, pausa/velocidade na barra inferior (handlers preservados) */
-['btn-rank','btn-news','btn-notif','btn-tax','btn-stats','btn-miss','btn-orc','btn-rel','btn-build','btn-tech','btn-war','btn-leis','btn-dip','btn-spy'].forEach(id => { const b = $(id); if (b) $('ma3-tools').appendChild(b); });
+['btn-rank','btn-news','btn-notif','btn-tax','btn-stats','btn-miss','btn-orc','btn-rel','btn-build','btn-tech','btn-war','btn-leis','btn-dip','btn-spy','btn-nuke'].forEach(id => { const b = $(id); if (b) $('ma3-tools').appendChild(b); });
 ['btn-market','btn-help','btn-snd'].forEach(id => { const b = $(id); if (b) { b.classList.remove('tool-btn'); $('ma3-tools').appendChild(b); } });
 ['btn-speed2','btn-pause'].forEach(id => { const b = $(id); if (b) document.querySelector('.bottom-bar').prepend(b); });
 document.addEventListener('click', e => {
