@@ -109,7 +109,7 @@
   .hud .res b{font-family:ui-monospace,monospace; color:#ffe9a8;}
   .hud .spacer{flex:1;}
   .hud .timer-big{font-size:20px; font-weight:900; font-family:ui-monospace,monospace; color:#ffe9a8;}
-  #btn-pause,#btn-speed2,#btn-endturn,#btn-rank,#btn-news,#btn-notif,#btn-build,#btn-tech,#btn-war,#btn-leis,#btn-dip,#btn-spy,#btn-nuke{width:38px;height:38px;border-radius:10px;border:2px solid #8a6a1f;background:linear-gradient(#ffe9a8,#d9a93c);color:#3a2a05;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.5);}
+  #btn-pause,#btn-speed2,#btn-endturn,#btn-rank,#btn-news,#btn-notif,#btn-build,#btn-tech,#btn-war,#btn-leis,#btn-dip,#btn-spy,#btn-nuke,#btn-onu,#btn-win{width:38px;height:38px;border-radius:10px;border:2px solid #8a6a1f;background:linear-gradient(#ffe9a8,#d9a93c);color:#3a2a05;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.5);}
   #advisor{position:absolute;left:12px;top:12px;z-index:5;display:flex;gap:10px;align-items:flex-start;pointer-events:none;}
   #advisor img{width:64px;height:64px;border-radius:50%;border:3px solid #d9a93c;box-shadow:0 3px 10px rgba(0,0,0,.6);background:#e8d9b0;}
   #advisor-bubble{max-width:300px;background:linear-gradient(#fdf6e3,#ecd9a8);color:#3a2f14;border:2px solid #8a6a1f;border-radius:12px;padding:8px 12px;font-size:12px;font-weight:600;box-shadow:0 3px 10px rgba(0,0,0,.5);position:relative;margin-top:8px;}
@@ -515,6 +515,8 @@
     <button id="btn-dip" title="Diplomacia">🤝</button>
     <button id="btn-spy" title="Operações secretas">🕵️</button>
     <button id="btn-nuke" title="Programa nuclear">☢️</button>
+    <button id="btn-onu" title="ONU">🇺🇳</button>
+    <button id="btn-win" title="Caminhos da vitória">🏆</button>
     <button id="btn-speed2" title="Velocidade: 1x, 2x, 3x ou 5x (anfitrião)">⏱️ 1x</button>
     <button id="btn-sair" title="Sair do jogo (o anfitrião salva automaticamente)" style="background:linear-gradient(#ffd0d0,#d98a8a);border:2px solid #8a3040;border-radius:10px;width:38px;height:38px;font-size:16px;cursor:pointer;">⏻</button>
   </div>
@@ -2197,6 +2199,63 @@ $('btn-tax').onclick = () => {
     ov.remove();
   };
 };
+$('btn-onu').onclick = () => {
+  const m = me(); if (!m || !state) return;
+  const ov = document.createElement('div'); ov.id='newspaper';
+  const esc = s => String(s==null?'':s).replace(/[<>&]/g,'');
+  const un = state.un;
+  let s = '<div class="paper" style="width:min(600px,94vw)"><h1 style="font-size:20px">🇺🇳 ORGANIZAÇÃO DAS NAÇÕES</h1>';
+  if (un) {
+    const vs = Object.values(un.votes||{});
+    const fav = vs.filter(v=>v===true).length, con = vs.filter(v=>v===false).length;
+    const meuVoto = un.votes ? un.votes[myId] : null;
+    const pro = state.players.find(p=>p.id===un.proposer);
+    s += '<div style="background:#fff8e6;border:2px solid #145a6b;border-radius:8px;padding:8px 10px;margin-bottom:8px"><b style="font-size:13px">🗳️ EM VOTAÇÃO</b><div style="font-size:13px;margin:4px 0">'+esc(un.desc)+'</div><div style="font-size:11px;color:#6b5a33">Proposta por '+(pro?esc(pro.country):'?')+' · 👍 '+fav+' a favor · 👎 '+con+' contra'+(meuVoto==null?' · <b>você ainda não votou</b>':' · seu voto: <b>'+(meuVoto?'A FAVOR':'CONTRA')+'</b>')+'</div>';
+    if (meuVoto==null && m.alive) s += '<div style="margin-top:6px"><button data-vsim style="padding:8px 16px;cursor:pointer;background:#2e7d32;color:#fff;font-weight:800">👍 A FAVOR</button> <button data-vnao style="padding:8px 16px;cursor:pointer;background:#a33;color:#fff;font-weight:800">👎 CONTRA</button></div>';
+    if (un.proposer===myId && un.type==='autorizar') s += '<div style="margin-top:6px"><button data-sub style="padding:6px 12px;cursor:pointer" '+(m.money>=200?'':'disabled')+'>💰 Comprar apoio ($200, vira metade dos NÃO)</button></div>';
+    s += '</div>';
+  } else {
+    const TIPOS = [['autorizar','⚔️ Autorizar minha intervenção militar (precisa de alvo)'],['proibir_guerra','🕊️ Proibir novas guerras (3 turnos)'],['proibir_armas','🔫 Proibir recrutamento (3 turnos)'],['embargo','📦 Embargo econômico (alvo, 3 turnos)'],['condenar','📢 Condenar nação (alvo, −6 aprovação dele)']];
+    const others = state.players.filter(p=>p.alive && p.id!==myId && p.country);
+    s += '<div style="background:#fff8e6;border:2px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:8px"><b style="font-size:13px">📝 Propor resolução (1⚡ + $300)</b>';
+    s += '<div style="margin:6px 0"><select id="un-tipo" style="width:100%;padding:6px">'+TIPOS.map(t=>'<option value="'+t[0]+'">'+t[1]+'</option>').join('')+'</select></div>';
+    s += '<div style="margin:6px 0"><select id="un-alvo" style="width:100%;padding:6px">'+others.map(p=>'<option value="'+p.id+'">🎯 '+esc(p.country)+'</option>').join('')+'</select><div style="font-size:11px;color:#6b5a33">Alvo usado em: autorizar, embargo e condenar.</div></div>';
+    const podeP = m.ap>=1 && m.money>=300;
+    s += '<button data-unprop style="padding:8px 16px;cursor:pointer" '+(podeP?'':'disabled')+'>🇺🇳 Propor e abrir votação</button></div>';
+  }
+  s += '<div style="text-align:center;margin-top:6px"><button id="un-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
+  ov.innerHTML = s;
+  document.body.appendChild(ov);
+  ov.querySelector('#un-x').onclick=()=>ov.remove();
+  ov.onclick = e => { if (e.target===ov) ov.remove(); };
+  const vs = ov.querySelector('[data-vsim]'); if (vs) vs.onclick=()=>{ send({t:'voto_un',accept:true}); ov.remove(); };
+  const vn = ov.querySelector('[data-vnao]'); if (vn) vn.onclick=()=>{ send({t:'voto_un',accept:false}); ov.remove(); };
+  const sb = ov.querySelector('[data-sub]'); if (sb) sb.onclick=()=>{ send({t:'action',action:'subornar'}); ov.remove(); };
+  const pr = ov.querySelector('[data-unprop]');
+  if (pr) pr.onclick=()=>{ const tp=ov.querySelector('#un-tipo').value, al=ov.querySelector('#un-alvo').value; send({t:'action',action:'propor_resolucao',tipo:tp,target:al}); ov.remove(); };
+};
+$('btn-win').onclick = () => {
+  const m = me(); if (!m || !state) return;
+  const ov = document.createElement('div'); ov.id='newspaper';
+  const alive = state.players.filter(p=>p.alive);
+  const bar = (pct,ok) => '<div style="background:#d8cba0;border:1px solid #8a6a1f;border-radius:4px;height:12px;margin-top:3px"><div style="height:100%;width:'+Math.min(100,Math.round(pct))+'%;background:'+(ok?'#2e7d32':'#c9a227')+';border-radius:3px"></div></div>';
+  const row = (ic,nm,desc,pct,ok) => '<div style="background:#fff8e6;border:2px solid '+(ok?'#2e7d32':'#c9b98b')+';border-radius:8px;padding:8px 10px;margin-bottom:6px"><b style="font-size:13px">'+ic+' '+nm+(ok?' ✓':'')+'</b><div style="font-size:11px;color:#6b5a33">'+desc+'</div>'+bar(pct,ok)+'</div>';
+  const shareR = (m.religion && m.religion!=='laico') ? alive.filter(o=>o.religion===m.religion).length/Math.max(1,alive.length)*100 : 0;
+  const shareI = m.ideology ? alive.filter(o=>o.ideology===m.ideology).length/Math.max(1,alive.length)*100 : 0;
+  let s = '<div class="paper" style="width:min(600px,94vw)"><h1 style="font-size:20px">🏆 CAMINHOS DA VITÓRIA</h1>';
+  s += '<div style="font-size:11px;color:#6b5a33;margin-bottom:8px">O jogo é infinito: cada caminho vira um MARCO comemorativo. Espalhe religião/doutrina pela diplomacia, cresça a economia e vença guerras.</div>';
+  s += row('🌍','Última nação de pé','Elimine ou anexe todas as outras ('+alive.length+' vivas)', state.players.length>1&&alive.length===1?100:Math.max(0,100-alive.length*10), state.players.length>1&&alive.length===1);
+  s += row('💰','Hegemonia econômica','Economia 60+ (atual '+(m.eco||0)+')', (m.eco||0)/60*100, (m.eco||0)>=60);
+  s += row('⚖️','Hegemonia ideológica','Doutrina 60+ (atual '+(m.influencia||0)+')', (m.influencia||0)/60*100, (m.influencia||0)>=60);
+  s += row('🕌','Hegemonia religiosa','Fé 60+ (atual '+(m.fe||0)+')', (m.fe||0)/60*100, (m.fe||0)>=60);
+  s += row('🛐','Conversão religiosa','Sua religião em +50% das nações vivas ('+Math.round(shareR)+'%)', shareR/50*100, shareR>50);
+  s += row('📣','Conversão ideológica','Sua doutrina em +50% das nações vivas ('+Math.round(shareI)+'%)', shareI/50*100, shareI>50);
+  s += '<div style="text-align:center;margin-top:6px"><button id="wn-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
+  ov.innerHTML = s;
+  document.body.appendChild(ov);
+  ov.querySelector('#wn-x').onclick=()=>ov.remove();
+  ov.onclick = e => { if (e.target===ov) ov.remove(); };
+};
 $('btn-nuke').onclick = () => {
   const m = me(); if (!m || !state) return;
   const nv = m.nuclear || 0;
@@ -2405,7 +2464,7 @@ $('btn-notif').onclick = () => {
 };
 ['btn-rank','btn-market','btn-help'].forEach(id => { const prev = $(id).onclick; $(id).onclick = e => { $('notif-panel').classList.add('hidden'); if (prev) prev.call($(id), e); }; });
 /* MA3: widgets na barra esquerda, pausa/velocidade na barra inferior (handlers preservados) */
-['btn-rank','btn-news','btn-notif','btn-tax','btn-stats','btn-miss','btn-orc','btn-rel','btn-build','btn-tech','btn-war','btn-leis','btn-dip','btn-spy','btn-nuke'].forEach(id => { const b = $(id); if (b) $('ma3-tools').appendChild(b); });
+['btn-rank','btn-news','btn-notif','btn-tax','btn-stats','btn-miss','btn-orc','btn-rel','btn-build','btn-tech','btn-war','btn-leis','btn-dip','btn-spy','btn-nuke','btn-onu','btn-win'].forEach(id => { const b = $(id); if (b) $('ma3-tools').appendChild(b); });
 ['btn-market','btn-help','btn-snd'].forEach(id => { const b = $(id); if (b) { b.classList.remove('tool-btn'); $('ma3-tools').appendChild(b); } });
 ['btn-speed2','btn-pause'].forEach(id => { const b = $(id); if (b) document.querySelector('.bottom-bar').prepend(b); });
 document.addEventListener('click', e => {
