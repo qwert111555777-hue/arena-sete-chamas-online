@@ -993,6 +993,9 @@ function premiosSemanais(room) {
     ['maior fe', p => p.fe || 0, p => { p.aprov = Math.min(100, p.aprov + 2); }],
     ['maior doutrina', p => p.influencia || 0, p => { p.influencia = Math.min(100, (p.influencia || 0) + 2); }],
     ['maior ciencia', p => (p.techs || []).length, p => { p.xp += 15; p.money += 100; }],
+    ['maior riqueza', p => p.money, p => { p.money += 150; }],
+    ['mais provincias', p => ownProvinces(p).length, p => { const prs = ownProvinces(p).filter(pr => pr.infra < 5); if (prs.length) prs[0].infra += 1; }],
+    ['melhor diplomacia', p => (p.allies || []).length + (p.trades || []).length + (p.embassies || []).length, p => { p.aprov = Math.min(100, p.aprov + 2); }],
   ];
   for (const [nm, f, prize] of cats) {
     const win = alive.slice().sort((x, y) => f(y) - f(x))[0];
