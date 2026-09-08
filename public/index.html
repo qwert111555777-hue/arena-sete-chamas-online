@@ -35,22 +35,6 @@
   .hcat{font-size:10px;font-weight:800;color:var(--gold2);letter-spacing:1px;align-self:center;margin:0 2px 0 10px;}
   .px{float:right;background:#1a2440;border:1px solid var(--border);color:#fff;border-radius:6px;font-size:12px;line-height:1;padding:4px 8px;cursor:pointer;margin:0 0 4px 4px;}
   .px:hover{background:#5a1620;border-color:#ff6b6b;}
-  .rank-panel{right:12px;top:60px;width:330px;max-height:calc(100% - 150px);background:#101830;border:2px solid #8a6a1f;z-index:6;}
-  .rank-panel h3{color:#ffd76a;font-size:12px;}
-  .nation-panel{position:absolute;left:12px;top:100px;width:340px;max-height:calc(100% - 220px);overflow-y:auto;background:#101830;color:#e8e4d8;border:2px solid #8a6a1f;border-radius:12px;padding:12px;z-index:6;box-shadow:0 12px 32px rgba(0,0,0,.6);}
-  .nation-panel button{background:#1a2440;border:1px solid #2a3a5f;color:#fff;border-radius:8px;padding:8px 4px;cursor:pointer;}
-  .nation-panel button:hover:not(:disabled){border-color:#8a6a1f;}
-  .nation-panel button:disabled{opacity:.45;cursor:default;}
-  .rank-row{background:#0c1324;border:1px solid #2a3a5f;border-radius:8px;padding:7px 9px;margin-bottom:6px;}
-  .rank-row:hover{border-color:#8a6a1f;}
-  .nbadge{position:absolute;top:-7px;right:-7px;background:#c62828;color:#fff;font-size:10px;font-weight:800;border-radius:9px;padding:1px 6px;line-height:1.5;}
-  .rank-panel::-webkit-scrollbar,.nation-panel::-webkit-scrollbar,#newspaper .paper::-webkit-scrollbar{width:8px;}
-  .rank-panel::-webkit-scrollbar-thumb,.nation-panel::-webkit-scrollbar-thumb,#newspaper .paper::-webkit-scrollbar-thumb{background:#8a6a1f;border-radius:4px;}
-  #newspaper .cols p{border-bottom:1px solid #d9c795;padding:6px 0;margin:0;font-size:13px;line-height:1.45;}
-  .round-btn{border-color:#8a6a1f;}
-  .round-btn:hover:not(:disabled){box-shadow:0 0 12px rgba(217,169,60,.5);}
-  .hcat{color:#ffd76a;}
-  .tool-btn{border:2px solid #2a3a5f;}
   h1,h2,h3{font-weight:800;}
 
   /* ---------- TOAST ---------- */
@@ -308,7 +292,63 @@
   .bt-log div{padding:3px 0;border-bottom:1px solid #172138;color:var(--muted);font-size:12px;}
   @media(max-width:560px){ .bt-cell{font-size:17px;} #bt-titulo{font-size:15px;} }
 
-  </style>
+    .rank-panel{right:12px;top:60px;width:330px;max-height:calc(100% - 150px);background:#101830;border:2px solid #8a6a1f;z-index:6;}
+  .rank-panel h3{color:#ffd76a;font-size:12px;}
+  .nation-panel{position:absolute;left:12px;top:100px;width:340px;max-height:calc(100% - 220px);overflow-y:auto;background:#101830;color:#e8e4d8;border:2px solid #8a6a1f;border-radius:12px;padding:12px;z-index:6;box-shadow:0 12px 32px rgba(0,0,0,.6);}
+  .nation-panel button{background:#1a2440;border:1px solid #2a3a5f;color:#fff;border-radius:8px;padding:8px 4px;cursor:pointer;}
+  .nation-panel button:hover:not(:disabled){border-color:#8a6a1f;}
+  .nation-panel button:disabled{opacity:.45;cursor:default;}
+  .rank-row{background:#0c1324;border:1px solid #2a3a5f;border-radius:8px;padding:7px 9px;margin-bottom:6px;}
+  .rank-row:hover{border-color:#8a6a1f;}
+  .nbadge{position:absolute;top:-7px;right:-7px;background:#c62828;color:#fff;font-size:10px;font-weight:800;border-radius:9px;padding:1px 6px;line-height:1.5;}
+  .rank-panel::-webkit-scrollbar,.nation-panel::-webkit-scrollbar,#newspaper .paper::-webkit-scrollbar{width:8px;}
+  .rank-panel::-webkit-scrollbar-thumb,.nation-panel::-webkit-scrollbar-thumb,#newspaper .paper::-webkit-scrollbar-thumb{background:#8a6a1f;border-radius:4px;}
+  #newspaper .cols p{border-bottom:1px solid #d9c795;padding:6px 0;margin:0;font-size:13px;line-height:1.45;}
+  .round-btn{border-color:#8a6a1f;}
+  .round-btn:hover:not(:disabled){box-shadow:0 0 12px rgba(217,169,60,.5);}
+  .hcat{color:#ffd76a;}
+  .tool-btn{border:2px solid #2a3a5f;}
+  /* ===== TEMA MA3: papel bege + teal + ouro ===== */
+  .hud{background:linear-gradient(180deg,#1c2438,#121829);border-bottom:2px solid #8a6a1f;}
+  .hud .res{background:#0c1324;border:1px solid #2a3a5f;color:#ffe9a8;}
+  .hud .res b{color:#ffd76a;}
+  .hud .date-badge{background:#0c1324;border:1px solid #2a3a5f;color:#ffe9a8;border-radius:8px;padding:5px 10px;font-size:13px;}
+  .ma3-tools{position:absolute;left:8px;top:12px;display:flex;flex-direction:column;gap:6px;z-index:6;}
+  .ma3-tools button{width:46px!important;height:46px!important;font-size:20px!important;background:linear-gradient(#fdf6e3,#e2cd96)!important;border:2px solid #8a6a1f!important;border-radius:10px!important;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.5);position:relative;padding:0!important;}
+  .ma3-tools button:hover{transform:translateX(2px);}
+  .ma3-tools button.active{background:linear-gradient(#ffe9a8,#d9a93c)!important;}
+  .rank-panel{right:12px;top:60px;width:340px;max-height:calc(100% - 150px);background:#f3ead1;color:#2b2416;border:2px solid #8a6a1f;border-radius:10px;z-index:6;box-shadow:0 12px 32px rgba(0,0,0,.6);}
+  .rank-panel h3{color:#7a2e1f;font-size:12px;}
+  .rank-row{background:#fff8e6;border:1px solid #c9b98b;color:#2b2416;border-radius:8px;padding:7px 9px;margin-bottom:6px;}
+  .rank-row:hover{border-color:#8a6a1f;}
+  .rank-row .rn{color:#2b2416;}
+  .rank-row .rs{color:#6b5a33;}
+  .rank-row .rk{color:#8a6a1f;}
+  .rank-panel button:not(.px){background:#145a6b;color:#fff;border:1px solid #0d3d47;border-radius:6px;padding:6px 10px;font-weight:700;cursor:pointer;}
+  .rank-panel button:not(.px):disabled{opacity:.45;cursor:default;}
+  .rank-panel button:not(.px):hover:not(:disabled){background:#1f7a8c;}
+  .rank-panel .px,.nation-panel .px{background:#7a2e1f;border-color:#5a1f14;}
+  .rank-panel .px:hover,.nation-panel .px:hover{background:#5a1f14;border-color:#3d130c;}
+  .nation-panel{position:absolute;left:66px;top:12px;width:340px;max-height:calc(100% - 130px);overflow-y:auto;background:#f3ead1;color:#2b2416;border:2px solid #8a6a1f;border-radius:10px;padding:12px;z-index:6;box-shadow:0 12px 32px rgba(0,0,0,.6);}
+  .nation-panel .np-head .nm{color:#2b2416;}
+  .nation-panel .np-head .nm small{color:#6b5a33;}
+  .nation-panel .ms{background:#fff8e6;border-color:#c9b98b;}
+  .nation-panel .ms span{color:#4a3d20;}
+  .nation-panel .ms b{color:#7a5a10;}
+  .nation-panel .np-note{color:#6b5a33;}
+  .nation-panel button:not(.px){background:#145a6b;color:#fff;border:1px solid #0d3d47;border-radius:6px;padding:8px 4px;cursor:pointer;font-weight:700;}
+  .nation-panel button:not(.px):hover:not(:disabled){background:#1f7a8c;}
+  .nation-panel button:not(.px):disabled{opacity:.45;cursor:default;}
+  .np-sub{background:linear-gradient(#1f7a8c,#145a6b);color:#fff;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;border-radius:6px;padding:5px 10px;margin:10px 0 6px;}
+  .np-provs .prov{background:#fff8e6;border:1px solid #c9b98b;border-radius:6px;padding:4px 8px;color:#2b2416;}
+  .np-provs .prov .pips{color:#8a6a1f;}
+  .np-provs .prov .owner{color:#7a2e1f;}
+  .bottom-bar{flex-wrap:wrap;justify-content:center;max-width:96vw;}
+  .round-btn small{color:#ffd76a;}
+  #newspaper .paper button{background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:8px 22px;font-weight:800;cursor:pointer;}
+  #newspaper .paper button:hover{background:#256b29;}
+  .side-tools{display:none;}
+</style>
 </head>
 <body>
 
@@ -417,12 +457,10 @@
     <div class="spacer"></div>
     <span class="timer-big" id="g-timer">--:--</span>
     <span class="date-badge" id="g-code" title="Código da sala">----</span>
-    <span class="hcat">MUNDO</span>
     <button id="btn-pause" title="Pausar/retomar (anfitrião)">⏸️</button>
     <button id="btn-rank" title="Ranking mundial (renda, militar, população, indústria)">📊</button>
     <button id="btn-news" title="Jornal mundial">📰</button>
     <button id="btn-notif" title="Notificações" style="position:relative">🔔<b id="notif-n" class="nbadge hidden">0</b></button>
-    <span class="hcat">PAÍS</span>
     <button id="btn-tax" title="Impostos (4 sliders, estilo MA3)">🧾</button>
     <button id="btn-stats" title="Estatísticas do país">📈</button>
     <button id="btn-miss" title="Missões do presidente">🎯</button>
@@ -435,7 +473,7 @@
 
   <div class="game-body">
     <div class="map-wrap">
-      <div id="advisor" class="hidden"><img src="assessor.jpg" alt="assessor"><div id="advisor-bubble"></div></div>
+      
       <svg id="map" viewBox="0 0 1000 520" preserveAspectRatio="xMidYMid slice">
         <defs>
           <linearGradient id="ocean" x1="0" y1="0" x2="0" y2="1">
@@ -482,6 +520,7 @@
       </svg>
 
       <div id="propose-bar"></div>
+      <div class="ma3-tools" id="ma3-tools"></div>
 
       <div class="side-tools">
         <button class="tool-btn" id="btn-snd" title="Som liga/desliga">🔊</button>
@@ -495,7 +534,7 @@
       <div class="rank-panel hidden" id="help-panel">
         <button class="px" title="Fechar">✕</button>
         <h3>❓ Como jogar</h3>
-        <div style="font-size:12px; line-height:1.7; color:var(--text);">
+        <div style="font-size:12px; line-height:1.7; color:#2b2416;">
           ♾️ <b>Infinito:</b> 60+ vira MARCO 🏆, o jogo nunca acaba.<br>
           ⚡ 4 ações/dia · 1 dia = 3s (1x) · ⏱️ acelera até 5x.<br>
           🏗️ Construir: botão 🏗️ · obras levam dias.<br>
@@ -1026,7 +1065,7 @@ function toast(msg, kind){
 }
 function renderNotifs(){
   const p = $('notif-panel'); if (!p || p.classList.contains('hidden')) return;
-  p.innerHTML = '<button class="px" title="Fechar">✕</button><h3>🔔 Notificações</h3>' + (NOTIFS.length ? NOTIFS.map(n => '<div class="rank-row"><span class="rs" style="flex:1;white-space:normal;">dia ' + n.day + ' · ' + String(n.msg).replace(/[<>&]/g,'') + '</span></div>').join('') : '<div style="color:var(--muted);font-size:12px">Nenhuma notificação.</div>');
+  p.innerHTML = '<button class="px" title="Fechar">✕</button><h3>🔔 Notificações</h3>' + (NOTIFS.length ? NOTIFS.map(n => '<div class="rank-row"><span class="rs" style="flex:1;white-space:normal;">dia ' + n.day + ' · ' + String(n.msg).replace(/[<>&]/g,'') + '</span></div>').join('') : '<div style="color:#6b5a33;font-size:12px">Nenhuma notificação.</div>');
 }
 
 /* ================= som (WebAudio, sem assets) ================= */
@@ -1253,7 +1292,14 @@ function renderGame(){
   $('g-meflag').textContent = cflag(m);
   $('g-mename').textContent = m.name + ' · 👑 Nv ' + (1 + Math.floor((m.xp||0)/60));
   $('g-code').textContent = state.code;
-  try{localStorage.setItem('po_room',state.code);}catch(e){}
+  try{localStorage.setItem('po_room',state.code);
+    const ws0 = JSON.parse(localStorage.getItem('po_worlds')||'[]');
+    const nm0 = (m&&(m.customName||m.name))||'';
+    const rec0 = {code:state.code, name:nm0, day:state.day||1, at:Date.now()};
+    const ix0 = ws0.findIndex(w=>w.code===state.code);
+    if (ix0>=0) ws0[ix0]=rec0; else ws0.unshift(rec0);
+    localStorage.setItem('po_worlds', JSON.stringify(ws0.slice(0,8)));
+  }catch(e){}
   $('btn-pause').classList.toggle('hidden', !m.isHost || state.phase!=='game');
   $('btn-speed2').classList.toggle('hidden', !m.isHost || state.phase!=='game');
   if (state.phase==='game') $('btn-speed2').textContent = '⏱️ ' + (state.speedMul || 1) + 'x';
@@ -1268,14 +1314,6 @@ function renderGame(){
   // dock de AP removido a pedido: o jogo nao e mais por turno
   const apDock = $('m-ap'); if (apDock && apDock.parentNode) apDock.parentNode.style.display = 'none';
 
-  // assessor presidencial com balão de dicas (tutorial estilo MA)
-  const adv = $('advisor');
-  if (state.phase==='game' && m && m.alive){
-    adv.classList.remove('hidden');
-    const DICAS = ['construa a Fábrica de concreto primeiro — quase tudo exige 🧱.','sem ⚡ suficiente seus prédios apagam: produção pela metade.','jazidas naturais definem o que seu país produz de graça.','relações 85+ garantem anexação pacífica de nações da IA.','embaixadas custam $10/semana de manutenção — escolha bem.','o programa nuclear exige 10 de ☢️ urânio no mercado.'];
-    const k = Math.floor(state.turn/2) % (DICAS.length+1);
-    $('advisor-bubble').textContent = 'Senhor Presidente: ' + (k < DICAS.length ? DICAS[k] : '');
-  } else adv.classList.add('hidden');
 
   document.querySelectorAll('.round-btn').forEach(b => {
     const costs = { investir:[1,250], militar:[1,300], propaganda:[1,150], nuclear:[2,600], ideologia:[1,200], fe:[1,200], treinar:[1,150] };
@@ -1861,9 +1899,23 @@ $('btn-join').onclick = () => {
   send({t:'join', code, name:$('inp-name').value.trim()});
 };
 $('btn-load').onclick = () => {
-  const code = $('inp-code').value.trim().toUpperCase() || (localStorage.getItem('po_room')||'').toUpperCase();
-  if (code.length < 4) return toast('Nenhum jogo salvo neste navegador. Crie ou entre numa sala primeiro.', 'error');
-  send({t:'tem_save', code});
+  const typed = $('inp-code').value.trim().toUpperCase();
+  if (typed.length >= 4) return send({t:'tem_save', code: typed});
+  let ws = [];
+  try{ ws = JSON.parse(localStorage.getItem('po_worlds')||'[]'); }catch(e){}
+  const solo = (localStorage.getItem('po_room')||'').toUpperCase();
+  if (solo && !ws.some(w=>w.code===solo)) ws.unshift({code:solo, name:'', day:0, at:0});
+  if (!ws.length) return toast('Nenhum mundo salvo neste navegador. Crie ou entre numa sala primeiro.', 'error');
+  const ov = document.createElement('div'); ov.id='newspaper';
+  ov.innerHTML = '<div class="paper" style="width:min(480px,92vw)"><h1 style="font-size:20px">🌍 MEUS MUNDOS</h1><div style="font-size:11px;text-align:center;margin-bottom:10px">Escolha qual mundo carregar:</div>' +
+    ws.map(w=>'<button data-w="'+w.code+'" style="display:block;width:100%;margin-bottom:8px;padding:10px;cursor:pointer;text-align:left;background:#fff8e6;border:2px solid #8a6a1f;border-radius:8px;color:#2b2416"><b>'+String(w.name||'Mundo sem nome').replace(/[<>&]/g,'')+'</b><br><span style="font-size:11px">sala '+w.code+(w.day?' · dia '+w.day:'')+(w.at?' · '+new Date(w.at).toLocaleDateString('pt-BR'):'')+'</span></button>').join('') +
+    '<div style="text-align:center"><button id="np-close" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
+  document.body.appendChild(ov);
+  ov.onclick = e => {
+    if (e.target.id==='np-close' || e.target===ov) return ov.remove();
+    const b = e.target.closest('[data-w]'); if (!b) return;
+    $('inp-code').value = b.dataset.w; ov.remove(); send({t:'tem_save', code: b.dataset.w});
+  };
 };
 $('inp-name').value = myName();
 const urlSala = new URLSearchParams(location.search).get('sala');
@@ -1942,7 +1994,7 @@ function renderMarket(){
   if (panel.classList.contains('hidden') || !state || !state.market) return;
   const m = me(); if (!m) return;
   const names = { comida:'🌾 Comida', minerio:'⛏️ Minério', energia:'⚡ Energia', concreto:'🧱 Concreto', madeira:'🪵 Madeira', terras_raras:'⚙️ Terras raras', uranio:'☢️ Urânio', borracha:'🌳 Borracha' };
-  panel.innerHTML = '<button class="px" title="Fechar">✕</button><h3>💰 Compras e vendas</h3><div style="color:var(--muted);font-size:11px;margin-bottom:8px;line-height:1.5;">Preços mudam toda semana. Compre barato, venda caro — lotes de 10.</div>';
+  panel.innerHTML = '<button class="px" title="Fechar">✕</button><h3>💰 Compras e vendas</h3><div style="color:#6b5a33;font-size:11px;margin-bottom:8px;line-height:1.5;">Preços mudam toda semana. Compre barato, venda caro — lotes de 10.</div>';
   Object.keys(state.market).forEach(k => {
     const row = document.createElement('div'); row.className = 'rank-row'; row.style.gap = '6px';
     const rn = document.createElement('span'); rn.className = 'rn'; rn.textContent = names[k];
@@ -2101,6 +2153,10 @@ $('btn-notif').onclick = () => {
   if (!p.classList.contains('hidden')){ $('notif-n').textContent = '0'; $('notif-n').classList.add('hidden'); renderNotifs(); }
 };
 ['btn-rank','btn-market','btn-help'].forEach(id => { const prev = $(id).onclick; $(id).onclick = e => { $('notif-panel').classList.add('hidden'); if (prev) prev.call($(id), e); }; });
+/* MA3: widgets na barra esquerda, pausa/velocidade na barra inferior (handlers preservados) */
+['btn-rank','btn-news','btn-notif','btn-tax','btn-stats','btn-miss','btn-orc','btn-rel','btn-build'].forEach(id => { const b = $(id); if (b) $('ma3-tools').appendChild(b); });
+['btn-market','btn-help','btn-snd'].forEach(id => { const b = $(id); if (b) { b.classList.remove('tool-btn'); $('ma3-tools').appendChild(b); } });
+['btn-speed2','btn-pause'].forEach(id => { const b = $(id); if (b) document.querySelector('.bottom-bar').prepend(b); });
 document.addEventListener('click', e => {
   const x = e.target.closest('.px'); if (!x || x.id === 'ov-x') return;
   const p = x.closest('.rank-panel,.nation-panel'); if (!p) return;
