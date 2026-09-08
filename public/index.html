@@ -2180,13 +2180,26 @@ $('btn-rel').onclick = () => {
   const counts = {};
   state.players.filter(p=>p.alive&&p.religion&&p.religion!=='laico').forEach(p=>{ counts[p.religion]=(counts[p.religion]||0)+1; });
   const tot = Object.values(counts).reduce((a,b)=>a+b,0)||1;
-  const R = {islamismo:'🕌 Islamismo', cristianismo:'✝️ Cristianismo', budismo:'☸️ Budismo', hinduismo:'🕉️ Hinduísmo', judaismo:'✡️ Judaísmo'};
+  const R = {laico:'Estado Laico', cristao:'Crista', muculmano:'Islamica', budista:'Budista', hindu:'Hindu'};
   const ov = document.createElement('div'); ov.id='newspaper';
-  ov.innerHTML = '<div class="paper" style="width:min(560px,92vw)"><h1 style="font-size:22px">🕌 FÉ NO MUNDO</h1><div style="font-size:12px;margin:6px 0">Sua religião de Estado: <b>' + (m && m.religion!=='laico' ? (R[m.religion]||m.religion) : '️ Laico') + '</b> · hegemonia com 60 🕌</div>'
+  ov.innerHTML = '<div class="paper" style="width:min(560px,92vw)"><h1 style="font-size:22px">🕌 FÉ NO MUNDO</h1><img src=\"headers/templo.jpg" style="width:100%;height:100px;object-fit:cover;border-radius:8px;border:2px solid #8a6a1f;margin-bottom:8px"><div style="font-size:12px;margin:6px 0">Sua religião de Estado: <b>' + (m && m.religion!=='laico' ? (R[m.religion]||m.religion) : '️ Laico') + '</b> · hegemonia com 60 🕌</div>'
     + Object.entries(counts).sort((a,b2)=>b2[1]-a[1]).map(([r,n])=>`<div style="margin:7px 0"><div style="display:flex;justify-content:space-between;font-size:13px"><b>${R[r]||r}</b><span>${n} nações · ${Math.round(n/tot*100)}%</span></div><div style="height:10px;background:#d9c795;border-radius:5px"><div style="height:10px;width:${Math.round(n/tot*100)}%;background:${m&&m.religion===r?'#2e7d32':'#8a6a1f'};border-radius:5px"></div></div></div>`).join('')
     + '<div style="text-align:center;margin-top:10px"><button id="rl-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
+  const paper = ov.querySelector('.paper');
+  const secDiv = document.createElement('div');
+  let secH = '<div class="stat-h">SUA FE</div>';
+  secH += '<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:6px">';
+  secH += '<div style="font-size:12px">Fe: <b>' + Math.round(m.fe||0) + '/60</b> (hegemonia religiosa) - Conversoes: <b>' + ((m.stats&&m.stats.conversoes)||0) + '</b></div>';
+  secH += '<div style="background:#d8cba0;border:1px solid #8a6a1f;border-radius:4px;height:12px;margin:4px 0"><div style="width:' + Math.min(100,Math.round((m.fe||0)/60*100)) + '%;height:100%;background:#7b1fa2;border-radius:3px"></div></div>';
+  secH += '<button id="rl-templo" style="padding:6px 12px;cursor:pointer" ' + ((m.ap>=1&&m.money>=200)?'':'disabled') + '>Erguer templo (1AP + $200 = +4 fe, +2 coracao)</button></div>';
+  secH += '<div class="stat-h">MISSIONARIOS (1AP + $300)</div>';
+  secH += state.players.filter(o=>o.alive&&o.id!==m.id&&o.religion!==m.religion).map(o=>'<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px"><b>' + o.name + '</b> <span style="color:#6b5a33">' + (R[o.religion]||o.religion||'?') + '</span></div><button data-miss="' + o.id + '" style="padding:6px 10px;cursor:pointer" ' + ((!m.religion||m.religion==='laico'||m.ap<1||m.money<300)?'disabled':'') + '>Enviar</button></div>').join('');
+  secDiv.innerHTML = secH;
+  paper.insertBefore(secDiv, paper.lastChild);
   document.body.appendChild(ov);
   ov.onclick = e => { if (e.target===ov || e.target.id==='rl-x') ov.remove(); };
+  const tp = ov.querySelector('#rl-templo'); if (tp) tp.onclick = () => { send({t:'action',action:'templo'}); tp.disabled = true; };
+  ov.querySelectorAll('[data-miss]').forEach(b=>b.onclick=()=>{ send({t:'action',action:'espalhar_religiao',target:b.dataset.miss}); b.disabled=true; });
 };
 $('btn-tax').onclick = () => {
   const m = me(); if (!m) return;
