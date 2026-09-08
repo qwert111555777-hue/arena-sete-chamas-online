@@ -436,3 +436,5 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (FASE 71 — LIVE dep-dag9uluq1p3s73c8nf5g/ac8c78d, SERVER+CLIENTE): 🚀 ESPAÇO 2.0: SATÉLITE (2⚡+$600: +2 ciência+3 doutrina+2❤️) + MISSÃO A MARTE (req 3 ciência, 1⚡+$1500: +8❤️+8 doutrina+3 ciência+10XP) + bots lançam.
 - 2026-09-08 (ESTUDO segurança interna 100x real: MA3 lifesimulator/soft112 — Ministério da Defesa, serviço secreto, polícia, Guarda Nacional; segurança e proteção interna; MA2 — financiar polícia/guarda/defesa — base da Fase 72.
 - 2026-09-08 (FASE 72 — LIVE dep-dag9v9740ujc73a6kqsg/e70c141, SERVER+CLIENTE): 🚔 POLÍCIA 2.0: PATRULHAS (Pol Nv1+, 1⚡+$200: +3❤️+1 pop) + OPERAÇÃO POLICIAL (2⚡+$400: +$300+$2❤️) + bots patrulham.
+- 2026-09-08 (ESTUDO rankings 100x real: MA3 mwm/aptoide/moddroid — "take first places in the world by revenue, army power, population, industrial development"; MA3 lifesimulator — vitória suprema por rankings — base da Fase 73.
+- 2026-09-08 (FASE 73 — LIVE dep-daga07uq1p3s73c8t4ug/cbbdced, SERVER): 🏆 RANKINGS 2.0: +3 categorias semanais: MAIOR RIQUEZA (+$150) + MAIS PROVÍNCIAS (+1 infra) + MELHOR DIPLOMACIA (+2❤️). 10 categorias.
