@@ -1139,6 +1139,7 @@ function aiTurn(room) {
     if (((b.seguranca && b.seguranca.policia) || 0) >= 1 && b.money < 1500 && b.money > 300) { b.money += 150 + 50 * b.seguranca.policia - 200; b.aprov = Math.min(100, b.aprov + 3); }
     if (b.aprov < 30 && ((b.seguranca && b.seguranca.guarda) || 0) >= 1 && b.money > 300) { b.money -= 100; b.aprov = Math.min(100, b.aprov + 8); }
     if (b.money > 3000 && Math.random() < 0.08) { const bk = ['policia', 'guarda'][Math.floor(Math.random() * 2)]; b.seguranca = b.seguranca || {}; if ((b.seguranca[bk] || 0) < 3) { b.money -= 350; b.seguranca[bk] = (b.seguranca[bk] || 0) + 1; } }
+    if (b.money < 1000 && room.market) { const rk = Object.keys(room.market).find(k => (b.rec[k] || 0) >= 20); if (rk) { b.rec[rk] -= 20; b.money += Math.round(room.market[rk] * 20 * Math.min(1.2, 1 + 0.03 * b.trades.length)); } }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -1747,7 +1748,7 @@ function performAction(room, p, msg) {
     case 'comprar': {
       const q = Math.max(1, Math.min(100, msg.qty | 0));
       if (room.market[msg.res] == null) return;
-      const cost = room.market[msg.res] * q;
+      const cost = Math.round(room.market[msg.res] * q * Math.max(0.8, 1 - 0.03 * p.trades.length) * (1 + 0.1 * p.sanctionedBy.length));
       if (p.money < cost) { err(p.conn, 'Dinheiro insuficiente.'); return; }
       p.money -= cost; p.rec[msg.res] += q;
       if (!p.bot) { const sup = room.world[(room.turn * 7 + msg.res.length * 13) % room.world.length]; log(room, `🚢 Carregamento de ${msg.res} chegou de ${sup.name} (+${q}).`); }
@@ -1756,7 +1757,7 @@ function performAction(room, p, msg) {
     case 'vender': {
       const q = Math.max(1, Math.min(100, msg.qty | 0));
       if (room.market[msg.res] == null || p.rec[msg.res] < q) return;
-      p.rec[msg.res] -= q; p.money += room.market[msg.res] * q; p.stats.vendidas += q;
+      p.rec[msg.res] -= q; p.money += Math.round(room.market[msg.res] * q * Math.min(1.2, 1 + 0.03 * p.trades.length)); p.stats.vendidas += q;
       break;
     }
     case 'construir': {

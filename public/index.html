@@ -2124,6 +2124,7 @@ function renderMarket(){
   const m = me(); if (!m) return;
   const names = { comida:'🌾 Comida', minerio:'⛏️ Minério', energia:'⚡ Energia', concreto:'🧱 Concreto', madeira:'🪵 Madeira', terras_raras:'⚙️ Terras raras', uranio:'☢️ Urânio', borracha:'🌳 Borracha' };
   panel.innerHTML = '<button class="px" title="Fechar">✕</button><h3>💰 Compras e vendas</h3><div style="color:#6b5a33;font-size:11px;margin-bottom:8px;line-height:1.5;">Preços mudam toda semana. Compre barato, venda caro — lotes de 10.</div>';
+  { const tn = document.createElement('div'); tn.style.cssText = 'color:#2e7d32;font-size:11px;margin-bottom:6px'; const np = (m.trades||[]).length; tn.textContent = 'Pactos: ' + np + ' = -' + Math.min(20, np*3) + '% compra / +' + Math.min(20, np*3) + '% venda' + ((m.sanctionedBy||[]).length ? ' (SANCIONADO!)' : ''); panel.appendChild(tn); }
   Object.keys(state.market).forEach(k => {
     const row = document.createElement('div'); row.className = 'rank-row'; row.style.gap = '6px';
     const rn = document.createElement('span'); rn.className = 'rn'; rn.textContent = names[k];
