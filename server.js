@@ -232,7 +232,7 @@ const COUNTRIES = [
   { id:'vu', name:'Vanuatu', flag:'🇻🇺', lat:-16.3, lon:167.0 },
 ];
 const NEWLANDS = [[12,-38],[28,-44],[-12,-25],[-33,-18],[2,-52],[33,-148],[8,-138],[-22,-112],[-42,-105],[42,-168],[-28,78],[6,66],[-36,92],[16,90],[-12,108],[8,28],[22,-28],[-48,-38],[52,-38],[65,-25],[28,-72],[-6,-92],[18,-158],[-30,-150],[0,95],[38,152],[-52,55],[70,60],[-60,-49],[35,-60]];
-const FLAGS_ALLOWED = ['🏳️','🦅','🐺','🦁','🐉','🐻','⭐','☀️','🌙','🔥','❄️','🌊','⚡','🛡️','⚔️','🌹','🌻','🍀','💎','🏴','🚩','👑','🕊️','🎌'];
+const FLAGS_ALLOWED = ['🏳️','🦅','🐺','🦁','🐉','🐻','⭐','☀️','🌙','🔥','❄️','🌊','⚡','🛡️','⚔️','🌹','🌻','🍀','💎','🏴','🚩','👑','🕊️','🎌','🐯','🐆','🦈','🐍','🦉','🦚','🐢','🐙','🦀','🐊','🦒','🦩','🦜','🐼','🦘','🌵','🌴','🌍','🔱','⚓','🚀','🛸','♛','⚜️'];
 const COUNTRY_BY_ID = Object.fromEntries(COUNTRIES.map(c => [c.id, c]));
 const DYNC = {};
 const cname = p => { const c = COUNTRY_BY_ID[p.country] || DYNC[p.country]; return c ? c.flag + ' ' + c.name : (p.customName || p.name); };
@@ -696,7 +696,7 @@ function startGame(room) {
   for (const c of COUNTRIES) room.players.push(makeAIBot(c));
   room.players.forEach((p, i) => { if (p.bot) p.color = i % 60; });
   room.phase = 'game'; room.turn = 1; room.day = 1; room.proposals = [];
-  room.un = null; room.noWarUntil = 0; room.noArmsUntil = 0; room.embargo = null;
+  room.un = null; room.noWarUntil = 20; room.noArmsUntil = 0; room.embargo = null;
   room.dayMs = dayMsFor(room.speedMul || 1);
   log(room, '🏳️ Cada jogador fundou sua própria nação: $10.000, 0 habitantes, reserva natural de 12⚙️ terras raras — tudo por construir.');
   log(room, `🤖 As ${COUNTRIES.length} nações do mundo estão sob controle da IA. É vocês contra elas!`);
@@ -707,8 +707,11 @@ function startGame(room) {
 function checkEliminations(room) {
   for (const p of room.players) {
     if (!p.alive) continue;
-    if (p.aprov <= 5) { p.alive = false; p.eliminatedReason = 'Deposto por revolta popular'; }
-    else if (p.provinces.length && ownProvinces(p).length === 0) { p.alive = false; p.eliminatedReason = 'Conquista total do território'; }
+    if (p.provinces.length && ownProvinces(p).length) p.exilio = 0;
+    if (p.aprov <= 0 && p.bot) { p.alive = false; p.eliminatedReason = 'Deposto por revolta popular'; }
+    else if (p.aprov <= 0) { p.aprov = 30; p.money = Math.round(p.money / 2); log(room, `🔄 ${cname(p)} (${p.name}) REFORMOU o governo após aprovação zerar! (-50% do caixa, o jogo continua)`); }
+    else if (p.provinces.length && ownProvinces(p).length === 0 && p.bot) { p.alive = false; p.eliminatedReason = 'Conquista total do território'; }
+    else if (p.provinces.length && ownProvinces(p).length === 0 && !p.exilio) { p.exilio = 1; log(room, `⛺ ${cname(p)} (${p.name}) perdeu todo o território — governo no exílio! Reconquiste suas províncias.`); }
     else continue;
     p.allies.forEach(aid => { const a = room.players.find(x => x.id === aid); if (a) a.allies = a.allies.filter(id => id !== p.id); });
     p.sanctioning.forEach(tid => { const t = room.players.find(x => x.id === tid); if (t) t.sanctionedBy = t.sanctionedBy.filter(id => id !== p.id); });
@@ -724,28 +727,17 @@ function checkEliminations(room) {
 }
 
 function checkVictory(room) {
+  // JOGO INFINITO: nunca termina — vitorias viraram MARCOS comemorativos (1x por nacao).
   if (room.phase !== 'game') return;
+  if (!room.marcos) room.marcos = {};
   const alive = room.players.filter(p => p.alive);
-  let winner = null, reason = '';
-  if (room.players.length > 1 && alive.length === 1) { winner = alive[0]; reason = 'Domínio global — última nação de pé'; }
-  else {
-    const ecoW = alive.find(p => p.eco >= 60);
-    if (ecoW) { winner = ecoW; reason = 'Hegemonia econômica (economia 60+)'; }
-    const ideoW = !winner && alive.find(p => p.influencia >= 60);
-    if (ideoW) { winner = ideoW; reason = 'Hegemonia ideológica — sua doutrina dominou o mundo'; }
-    const feW = !winner && alive.find(p => p.fe >= 60);
-    if (feW) { winner = feW; reason = 'Hegemonia religiosa — sua fé unificou o mundo'; }
-    const convRelW = !winner && alive.find(p => p.religion && p.religion !== 'laico' && alive.filter(o => o.religion === p.religion).length > alive.length / 2);
-    if (convRelW) { winner = convRelW; reason = '🛐 Vitória religiosa — sua fé converteu a maioria das nações do mundo'; }
-    const convIdeW = !winner && alive.find(p => p.ideology && alive.filter(o => o.ideology === p.ideology).length > alive.length / 2);
-    if (convIdeW) { winner = convIdeW; reason = '🗽 Vitória ideológica — sua doutrina governa a maioria das nações'; }
-  }
-  if (winner) {
-    room.phase = 'over';
-    room.winner = { id: winner.id, name: winner.name, country: winner.country, reason };
-    log(room, `🏆 ${cname(winner)} (${winner.name}) VENCEU: ${reason}!`);
-    if (room.timer) { clearInterval(room.timer); room.timer = null; }
-  }
+  const marco = (id, p, txt) => { if (p && !room.marcos[id + '_' + p.id]) { room.marcos[id + '_' + p.id] = 1; log(room, `🏆 MARCO: ${cname(p)} — ${txt} (o jogo continua: o mundo é infinito!)`); } };
+  if (room.players.length > 1 && alive.length === 1) marco('unica', alive[0], 'última nação de pé — o mundo é seu!');
+  marco('eco', alive.find(p => p.eco >= 60), 'hegemonia econômica (economia 60+)');
+  marco('ideo', alive.find(p => p.influencia >= 60), 'hegemonia ideológica (doutrina 60+)');
+  marco('fe', alive.find(p => p.fe >= 60), 'hegemonia religiosa (fé 60+)');
+  marco('convR', alive.find(p => p.religion && p.religion !== 'laico' && alive.filter(o => o.religion === p.religion).length > alive.length / 2), 'sua fé converteu a maioria das nações');
+  marco('convI', alive.find(p => p.ideology && alive.filter(o => o.ideology === p.ideology).length > alive.length / 2), 'sua doutrina governa a maioria das nações');
 }
 
 // Aparato de segurança interna (nível 0..3 cada). Custo cresce por nível.
@@ -1000,14 +992,15 @@ function botAttack(room, a, d) {
   if (d.leis.includes('guarda_nacional')) dM += 0.05;
   const aP = a.mil * aM * (0.85 + Math.random() * 0.45);
   const dP = d.mil * dM * (0.9 + Math.random() * 0.45) * 1.08;
+  const sup = (a.mil * aM) > (d.mil * dM) * 1.3;
   if (aP > dP) {
-    const loot = Math.round(d.money * 0.25);
+    const loot = Math.round(d.money * 0.12);
     d.money -= loot; a.money += loot;
     d.mil = Math.max(1, Math.round(d.mil * 0.8)); a.mil = Math.max(1, Math.round(a.mil * 0.9));
-    d.aprov = Math.max(0, d.aprov - 8); a.stats.vitorias++;
+    d.aprov = Math.max(0, d.aprov - 4); a.stats.vitorias++;
     log(room, `🤖⚔️ ${cname(a)} atacou ${cname(d)} e VENCEU! Saque: $${loot}.`);
     const provs = ownProvinces(d);
-    if (provs.length) { const pr = provs[Math.floor(Math.random() * provs.length)]; pr.owner = a.id; log(room, `🏴 ${cname(a)} OCUPA a província de ${pr.name}!`); }
+    if (provs.length && sup) { const pr = provs[Math.floor(Math.random() * provs.length)]; pr.owner = a.id; log(room, `🏴 ${cname(a)} OCUPA a província de ${pr.name}!`); }
   } else {
     a.mil = Math.max(1, Math.round(a.mil * 0.7)); d.mil = Math.max(1, Math.round(d.mil * 0.92));
     log(room, `🛡️ ${cname(d)} repeliu o ataque da IA ${cname(a)}!`);
@@ -1057,13 +1050,13 @@ function aiTurn(room) {
         log(room, `🤝 A IA ${cname(b)} enviou ajuda humanitária para ${cname(em)} (+$200).`);
       }
     }
-    if (room.turn > 12 && humans.length && b.mil >= 4 && Math.random() * botsAlive < 0.3 && room.turn >= room.noWarUntil) {
-      const ts = humans.filter(h => !b.allies.includes(h.id) && !b.wars.includes(h.id) && !(((b.pacts && b.pacts[h.id]) || 0) > room.turn));
+    if (room.turn > 20 && humans.length && b.mil >= 6 && Math.random() * botsAlive < 0.12 && room.turn >= room.noWarUntil) {
+      const ts = humans.filter(h => !b.allies.includes(h.id) && !b.wars.includes(h.id) && !(((b.pacts && b.pacts[h.id]) || 0) > room.turn) && relBetween(b, h) < 45 && b.mil >= h.mil * 1.5 && h.wars.length < 2 && ownProvinces(h).length > 1 && h.money > 500);
       if (ts.length) {
         const h = ts[Math.floor(Math.random() * ts.length)];
         b.wars.push(h.id); h.wars.push(b.id);
         log(room, `🤖⚔️ ${cname(b)} declarou GUERRA a ${cname(h)}!`);
-        if (Math.random() < 0.6) botAttack(room, b, h);
+        if (Math.random() < 0.25) botAttack(room, b, h);
       }
     }
     if (humans.length && b.trades.length < 3 && Math.random() * botsAlive < 0.2) {
@@ -2116,16 +2109,16 @@ function btFinalizar(room, recuou) {
   }
 
   if (atkGanhou) {
-    const loot = Math.round(def.money * 0.25);
+    const loot = Math.round(def.money * 0.12);
     def.money -= loot; atk.money += loot;
     def.mil = Math.max(1, Math.round(def.mil * 0.8));
     atk.mil = Math.max(1, Math.round(atk.mil * 0.9));
-    def.aprov = Math.max(0, def.aprov - 8);
+    def.aprov = Math.max(0, def.aprov - 4);
     atk.aprov = Math.max(0, atk.aprov - 3);
     atk.stats.vitorias++; atk.xp += 15;
     const provs = ownProvinces(def);
     let capturou = null;
-    if (provs.length) {
+    if (provs.length && vivosD === 0) {
       const pr = provs[Math.floor(Math.random() * provs.length)];
       pr.owner = atk.id; capturou = pr.name;
     }
@@ -2135,7 +2128,7 @@ function btFinalizar(room, recuou) {
   } else {
     atk.mil = Math.max(1, Math.round(atk.mil * 0.7));
     def.mil = Math.max(1, Math.round(def.mil * 0.92));
-    atk.aprov = Math.max(0, atk.aprov - 6);
+    atk.aprov = Math.max(0, atk.aprov - 3);
     def.aprov = Math.min(100, def.aprov + 4);
     b.resultado = { vencedor: 'def', loot: 0, provincia: null };
     log(room, `🛡️ ${cname(def)} REPELIU a ofensiva de ${cname(atk)}!`);
