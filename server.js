@@ -17,7 +17,13 @@ const zlib = require('zlib');
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const MAGIC = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
-const TICK_BASE = 45;   // segundos de um ciclo em 1x
+/* ===== tempo real: 1 dia = 1 segundo em 1x; semana = 7 dias ===== */
+const DAY_DIV = 7;            // economia diária = valores semanais / 7
+const WEEK_DAYS = 7;          // dias por semana (ciclo estratégico)
+const dayMsFor = mul => Math.round(1000 / ([1, 2, 3, 5].includes(mul) ? mul : 1));
+const buildDays = cost => cost >= 800 ? 4 : cost >= 500 ? 3 : cost >= 300 ? 2 : 1;  // dias p/ concluir obra
+function restartDayTimer(room){ if (room.timer){ try{ clearInterval(room.timer); }catch{} } room.timer = setInterval(() => dayTick(room), room.dayMs || 1000); }
+function ensureDayTimer(room){ if (room.phase === 'game' && !room.paused && !room.timer) restartDayTimer(room); }
 const AP_PER_TURN = 4;
 // limite real de jogadores humanos por sala (o mapa só tem 30 posições para nações novas)
 const MAX_PLAYERS = 12;
@@ -500,7 +506,7 @@ function makeCode() {
 }
 function newRoom() {
   const room = {
-    code: makeCode(), phase: 'lobby', turn: 0, timerEnd: 0, speed: 45,
+    code: makeCode(), phase: 'lobby', turn: 0, day: 1, dayMs: 1000, speedMul: 1, timerEnd: 0, speed: 45,
     players: [], hostId: null, proposals: [], log: [], winner: null, timer: null,
     un: null, noWarUntil: 0, noArmsUntil: 0, embargo: null, paused: false, pausedRemaining: 0,
     world: COUNTRIES.slice(), market: { comida: 8, minerio: 12, energia: 10, concreto: 10, madeira: 7, terras_raras: 20, uranio: 25, borracha: 14 }, missionIdx: 0, warAuth: null, paused: false, pausedRemaining: 0,
@@ -542,6 +548,9 @@ function carregarJogo(code){
     const room = JSON.parse(fs.readFileSync(p, 'utf8'));
     room.timer = null; room.timerEnd = 0;
     room.paused = true;               // volta pausado
+    if (!room.day) room.day = 1;
+    if (!room.dayMs) room.dayMs = 1000;
+    for (const pl of (room.players || [])) for (const b of (pl.builds || [])) if (b.untilDay == null) b.untilDay = room.day + 1;
     for (const pl of room.players) pl.conn = null;
     // rooms e um Map, mas aceita os dois para nao quebrar se mudar
     if (typeof rooms.set === 'function') rooms.set(room.code, room); else rooms[room.code] = room;
@@ -550,26 +559,27 @@ function carregarJogo(code){
 }
 function temSave(code){ try { return require('fs').existsSync(savePath(code)); } catch { return false; } }
 
+function floorRec(rec){ const o = {}; for (const k of ['comida','minerio','energia','concreto','madeira','terras_raras','uranio','borracha']) o[k] = Math.floor((rec && rec[k]) || 0); return o; }
 function snapshot(room) {
   return {
-    t: 'state', phase: room.phase, code: room.code, turn: room.turn,
-    timerEnd: room.timerEnd, speed: room.speed, winner: room.winner,
+    t: 'state', phase: room.phase, code: room.code, turn: room.turn, day: room.day || 1,
+    winner: room.winner,
     log: room.log.slice(0, 60), proposals: room.proposals,
     un: room.un, noWarUntil: room.noWarUntil, noArmsUntil: room.noArmsUntil, embargo: room.embargo,
     players: room.players.map(p => ({
       id: p.id, name: p.name, country: p.country, color: p.color,
-      money: Math.round(p.money), eco: p.eco, mil: p.mil, aprov: p.aprov, ap: p.ap,
+      money: Math.round(p.money), eco: p.eco, mil: p.mil, aprov: Math.round(p.aprov), ap: p.ap,
       alive: p.alive, allies: p.allies, connected: p.connected,
       isHost: p.id === room.hostId, reason: p.eliminatedReason,
-      nuclear: p.nuclear, influencia: p.influencia, fe: p.fe, wars: p.wars,
+      nuclear: p.nuclear, influencia: Math.round(p.influencia), fe: Math.round(p.fe), wars: p.wars,
       provinces: p.provinces, sanctioning: p.sanctioning, sanctionedBy: p.sanctionedBy,
       taxRate: p.taxRate, taxes: p.taxes || {corp:10, rend:10, prod:10, amb:5}, budget: p.budget || {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: p.debt, ideology: p.ideology, religion: p.religion,
       ministers: p.ministers, techs: p.techs, techLv: p.techLv || {}, sectors: p.sectors, space: p.space,
       relations: p.bot ? {} : p.relations, embassies: p.embassies, trades: p.trades,
       blockading: p.blockading, blockadedBy: p.blockadedBy,
       units: p.units, builds: p.builds, emergencyUntil: p.emergencyUntil, leis: p.leis,
-      pop: p.pop, rec: p.rec, xp: p.xp, bot: p.bot, customName: p.customName, customFlag: p.customFlag,
-      dailyIncome: Math.round(incomeOf(room, p)),
+      pop: Math.round(p.pop), rec: floorRec(p.rec), xp: p.xp, bot: p.bot, customName: p.customName, customFlag: p.customFlag,
+      dailyIncome: Math.round(incomeOf(room, p) / DAY_DIV),
       buildings: p.buildings, stats: p.stats, famine: p.famine, blackout: p.blackout,
       depositos: p.depositos || [], upgrades: p.upgrades || {}, pacts: p.pacts || {},
       seguranca: p.seguranca || { defesa: 0, secreto: 0, policia: 0, guarda: 0 },
@@ -593,6 +603,19 @@ function broadcast(room) {
       if (text === null) text = JSON.stringify(base);
       p.conn.sendText('{"you":"' + p.id + '",' + text.slice(1));
     }
+  }
+}
+/* atualização leve diária: dia + números de cada jogador (sem re-render pesado) */
+function broadcastDay(room) {
+  const light = { t: 'day', day: room.day, turn: room.turn, phase: room.phase,
+    players: room.players.map(p => ({ id: p.id, money: Math.round(p.money), eco: p.eco, mil: p.mil,
+      aprov: Math.round(p.aprov), ap: p.ap, alive: p.alive, pop: Math.round(p.pop),
+      nuclear: p.nuclear, influencia: Math.round(p.influencia), fe: Math.round(p.fe),
+      rec: floorRec(p.rec), builds: p.builds })) };
+  const msg = JSON.stringify(light);
+  for (const p of room.players) {
+    if (!p.conn || !p.connected) continue;
+    try { p.conn.sendText(msg); } catch {}
   }
 }
 function err(conn, msg) { if (conn) conn.send({ t: 'error', msg }); }
@@ -672,18 +695,12 @@ function startGame(room) {
   }
   for (const c of COUNTRIES) room.players.push(makeAIBot(c));
   room.players.forEach((p, i) => { if (p.bot) p.color = i % 60; });
-  room.phase = 'game'; room.turn = 1; room.proposals = [];
+  room.phase = 'game'; room.turn = 1; room.day = 1; room.proposals = [];
   room.un = null; room.noWarUntil = 0; room.noArmsUntil = 0; room.embargo = null;
-  room.timerEnd = Date.now() + room.speed * 1000;
+  room.dayMs = dayMsFor(room.speedMul || 1);
   log(room, '🏳️ Cada jogador fundou sua própria nação: $10.000, 0 habitantes, reserva natural de 12⚙️ terras raras — tudo por construir.');
   log(room, `🤖 As ${COUNTRIES.length} nações do mundo estão sob controle da IA. É vocês contra elas!`);
-  if (!room.timer) {
-    room.timer = setInterval(() => {
-      if (room.phase !== 'game' || room.paused) return;
-      if (Date.now() >= room.timerEnd) resolveTurn(room);
-      if (room.un && Date.now() >= room.un.deadline) resolveUN(room);
-    }, 1000);
-  }
+  restartDayTimer(room);
   broadcast(room);
 }
 
@@ -735,14 +752,14 @@ function checkVictory(room) {
 const SEG = {
   defesa:  { name: 'Ministério da Defesa', icon: '🛡️', desc: '+8% defesa por nível',              custos: [400, 900, 1800] },
   secreto: { name: 'Serviço Secreto',      icon: '🕵️', desc: 'espionagem mais forte, -12% dano de sabotagem por nível', custos: [350, 800, 1600] },
-  policia: { name: 'Polícia',              icon: '🚓', desc: '+1 aprovação por turno por nível',  custos: [300, 700, 1400] },
+  policia: { name: 'Polícia',              icon: '🚓', desc: '+1 aprovação por semana por nível',  custos: [300, 700, 1400] },
   guarda:  { name: 'Guarda Nacional',      icon: '🪖', desc: '+6% defesa por nível e menos golpes', custos: [350, 800, 1600] },
 };
 const LEIS = {
   servico_militar:   { name: 'Serviço Militar Obrigatório', cost: 150, desc: '+5% ataque em guerras' },
   guarda_nacional:   { name: 'Guarda Nacional',             cost: 160, desc: '+5% defesa' },
-  reforma_agraria:   { name: 'Reforma Agrária',             cost: 200, desc: '+$10/turno' },
-  abertura_comercial:{ name: 'Abertura Comercial',          cost: 180, desc: '+$10/turno' },
+  reforma_agraria:   { name: 'Reforma Agrária',             cost: 200, desc: '+$10/semana' },
+  abertura_comercial:{ name: 'Abertura Comercial',          cost: 180, desc: '+$10/semana' },
   liberdade_imprensa:{ name: 'Liberdade de Imprensa',       cost: 120, desc: '+3 aprovação' },
   campanha_patriotica:{ name: 'Campanha Patriótica',        cost: 100, desc: '+4 aprovação' },
 };
@@ -794,11 +811,11 @@ function resolveUN(room) {
   const passed = yes > no;
   const tgt = u.target ? room.players.find(p => p.id === u.target) : null;
   if (passed) {
-    if (u.type === 'proibir_guerra') { room.noWarUntil = room.turn + 3; log(room, '🇺 A ONU APROVOU: proibição de novas guerras por 3 turnos!'); }
-    if (u.type === 'proibir_armas') { room.noArmsUntil = room.turn + 3; log(room, '🇺 A ONU APROVOU: proibição de recrutamento por 3 turnos!'); }
+    if (u.type === 'proibir_guerra') { room.noWarUntil = room.turn + 3; log(room, '🇺 A ONU APROVOU: proibição de novas guerras por 3 semanas!'); }
+    if (u.type === 'proibir_armas') { room.noArmsUntil = room.turn + 3; log(room, '🇺 A ONU APROVOU: proibição de recrutamento por 3 semanas!'); }
     if (u.type === 'embargo' && tgt) { room.embargo = { target: tgt.id, until: room.turn + 3 }; log(room, `🇺🇳 A ONU APROVOU embargo econômico contra ${cname(tgt)}!`); }
     if (u.type === 'condenar' && tgt) { tgt.aprov = Math.max(0, tgt.aprov - 6); log(room, `🇺🇳 A ONU CONDENOU ${cname(tgt)} (-6 aprovação)!`); }
-    if (u.type === 'autorizar') { room.warAuth = { by: u.proposer, target: u.target, until: room.turn + 8 }; log(room, `🇺🇳 A ONU AUTORIZOU a intervenção militar! Válido por 8 turnos.`); }
+    if (u.type === 'autorizar') { room.warAuth = { by: u.proposer, target: u.target, until: room.turn + 8 }; log(room, `🇺🇳 A ONU AUTORIZOU a intervenção militar! Válido por 8 semanas.`); }
   } else {
     log(room, '🇺🇳 A ONU REJEITOU a resolução.');
   }
@@ -823,12 +840,15 @@ function openUN(room) {
   }
 }
 
-function resolveTurn(room) {
-  room.turn++;
+function dayTick(room) {
+  if (room.phase !== 'game' || room.paused) return;
+  if (room.un && Date.now() >= room.un.deadline) resolveUN(room);
+  if (room.phase !== 'game') return;
+  room.day++;
   for (const p of room.players) {
     if (!p.alive) continue;
-    const done = p.builds.filter(b => b.until <= room.turn);
-    p.builds = p.builds.filter(b => b.until > room.turn);
+    const done = p.builds.filter(b => (b.untilDay != null ? b.untilDay : room.day) <= room.day);
+    p.builds = p.builds.filter(b => (b.untilDay != null ? b.untilDay : room.day) > room.day);
     for (const b of done) {
       if (b.kind === 'infra') { const pr = p.provinces[b.prov]; if (pr && pr.owner === p.id && pr.infra < 5) { pr.infra += 1; log(room, `🏗️ Construção concluída: ${pr.name} (${cname(p)}) infraestrutura ${pr.infra}.`); } }
       if (b.kind === 'nuclear' && p.nuclear < NUKE_MAX_LEVEL) { p.nuclear += 1; log(room, `☢️ ${cname(p)} conclui etapa do programa nuclear (nível ${p.nuclear}).`); }
@@ -836,7 +856,7 @@ function resolveTurn(room) {
       if (PROD_NAMES[b.kind]) { p.buildings[b.kind] = (p.buildings[b.kind] || 0) + 1; p.stats.construidas++; log(room, `${PROD_NAMES[b.kind]} construíd${b.kind === 'mina' ? 'a' : 'o'} em ${cname(p)}.`); }
       if (b.kind === 'infra' || b.kind === 'nuclear') p.stats.construidas++;
     }
-    p.money += incomeOf(room, p);
+    p.money += incomeOf(room, p) / DAY_DIV;
     if (p.money < 0) { p.money = 0; p.mil = Math.max(1, Math.round(p.mil * 0.9)); }
     // aprovação
     let dAprov = -1;
@@ -850,11 +870,11 @@ function resolveTurn(room) {
     if (p.taxes && p.taxes.amb >= 12) dAprov += 1;
     if (p.budget){ if (p.budget.int>=2) dAprov += 1; if (p.budget.ambm>=2) dAprov += 1; if (p.budget.edu===0) dAprov -= 1; }
     if (p.seguranca) dAprov += (p.seguranca.policia || 0);
-    p.aprov = Math.max(0, Math.min(100, p.aprov + dAprov));
+    p.aprov = Math.max(0, Math.min(100, p.aprov + dAprov / DAY_DIV));
     // fé / influência passivos
-    if (p.religion && p.religion !== 'laico') p.fe += 1;
-    if (p.ministers.dip === 'inf') p.influencia += 1;
-    p.influencia += techLevel(p, 'influencia_cult');
+    if (p.religion && p.religion !== 'laico') p.fe += 1 / DAY_DIV;
+    if (p.ministers.dip === 'inf') p.influencia += 1 / DAY_DIV;
+    p.influencia += techLevel(p, 'influencia_cult') / DAY_DIV;
     p.ap = AP_PER_TURN;
   }
   // população, produção de recursos e oscilação do mercado
@@ -863,37 +883,44 @@ function resolveTurn(room) {
     let nBld = 0;
     for (const k in p.buildings) nBld += (p.buildings[k] || 0);
     const needEn = Math.ceil(nBld / 4);
-    p.rec.energia += 3 + infra * 2;
+    p.rec.energia += (3 + infra * 2) / DAY_DIV;
     let mult = 1;
-    if (nBld > 0 && p.rec.energia < needEn) {
+    if (nBld > 0 && p.rec.energia < needEn / DAY_DIV) {
       mult = 0.5;
       if (!p.blackout) { log(room, `🔌 APAGÃO em ${cname(p)}! Energia insuficiente — produção pela metade. Construa usinas.`); p.blackout = true; }
-    } else { p.blackout = false; p.rec.energia -= needEn; }
-    p.rec.comida += Math.round((4 + infra * 3) * mult);
-    p.rec.minerio += Math.round((2 + Math.round(p.eco * 0.8)) * mult);
-    p.rec.concreto += Math.round(1 * mult);
+    } else { p.blackout = false; p.rec.energia -= needEn / DAY_DIV; }
+    p.rec.comida += ((4 + infra * 3) * mult) / DAY_DIV;
+    p.rec.minerio += ((2 + Math.round(p.eco * 0.8)) * mult) / DAY_DIV;
+    p.rec.concreto += mult / DAY_DIV;
     // produção de cada prédio, direto do catálogo
     for (const k in p.buildings) {
       const n = p.buildings[k] || 0; if (!n) continue;
       const o = BUILD_OUT[k]; if (!o || !o.res) continue;
-      p.rec[o.res] = (p.rec[o.res] || 0) + Math.round(n * o.qtd * upM(p, k) * mult);
+      p.rec[o.res] = (p.rec[o.res] || 0) + (n * o.qtd * upM(p, k) * mult) / DAY_DIV;
     }
     const dep = p.depositos || [];
-    if (dep.includes('petroleo')) p.rec.energia += 2;
-    if (dep.includes('minerio')) p.rec.minerio += 2;
-    if (dep.includes('madeira')) p.rec.madeira += 3;
-    if (dep.includes('comida')) p.rec.comida += 3;
-    if (dep.includes('terras_raras')) p.rec.terras_raras += 1;
-    if (dep.includes('uranio')) p.rec.uranio += 1;
-    const need = Math.ceil(p.pop / 10);
-    let g = 4 + infra * 2;
-    if (p.rec.comida >= need) p.rec.comida -= need; else { p.rec.comida = 0; g = Math.max(1, Math.floor(g / 3)); }
+    if (dep.includes('petroleo')) p.rec.energia += 2 / DAY_DIV;
+    if (dep.includes('minerio')) p.rec.minerio += 2 / DAY_DIV;
+    if (dep.includes('madeira')) p.rec.madeira += 3 / DAY_DIV;
+    if (dep.includes('comida')) p.rec.comida += 3 / DAY_DIV;
+    if (dep.includes('terras_raras')) p.rec.terras_raras += 1 / DAY_DIV;
+    if (dep.includes('uranio')) p.rec.uranio += 1 / DAY_DIV;
+    const need = Math.ceil(p.pop / 10) / DAY_DIV;
+    let g = (4 + infra * 2) / DAY_DIV;
+    if (p.rec.comida >= need) p.rec.comida -= need; else { p.rec.comida = 0; g = g / 3; }
     p.pop += g;
     if (p.rec.comida === 0 && p.pop > 0) {
-      p.pop = Math.max(0, p.pop - 2); p.aprov = Math.max(0, p.aprov - 3);
+      p.pop = Math.max(0, p.pop - 2 / DAY_DIV); p.aprov = Math.max(0, p.aprov - 3 / DAY_DIV);
       if (!p.famine) { log(room, `🍽️ FOME em ${cname(p)}! A população está morrendo — compre comida no mercado.`); p.famine = true; }
     } else p.famine = false;
   }
+  if (room.day > 1 && (room.day - 1) % WEEK_DAYS === 0) resolveWeek(room);
+  else broadcastDay(room);
+}
+
+/* ciclo estratégico semanal: mercado, diplomacia, IA, missões, ONU */
+function resolveWeek(room) {
+  room.turn++;
   for (const k of Object.keys(room.market)) room.market[k] = Math.max(3, Math.min(40, Math.round(room.market[k] * (0.88 + Math.random() * 0.3))));
 
   // relações: decaimento + embaixadas
@@ -909,10 +936,9 @@ function resolveTurn(room) {
     v = Math.max(0, Math.min(100, v));
     a.relations[b.id] = v; b.relations[a.id] = v;
   }
-  randomEvent(room);
-  worldNews(room);
-  if (room.turn % 4 === 0 && !room.un) openUN(room);
-  aiTurn(room);
+  if ((room.day - 1) % 14 === 0){ randomEvent(room); worldNews(room); }
+  if ((room.day - 1) % 28 === 0 && !room.un) openUN(room);
+  if ((room.day - 1) % 14 === 0) aiTurn(room);
   const mNow = MISSIONS[room.missionIdx % MISSIONS.length];
   if (mNow) {
     const hero = room.players.find(p => p.alive && !p.bot && mNow.check(p));
@@ -924,7 +950,6 @@ function resolveTurn(room) {
   }
   checkEliminations(room);
   checkVictory(room);
-  if (room.phase === 'game') room.timerEnd = Date.now() + room.speed * 1000;
   broadcast(room);
 }
 
@@ -1003,9 +1028,9 @@ function aiTurn(room) {
       const kind = kinds[(room.turn + b.id.length) % kinds.length];
       if (kind === 'infra') {
         const pr = ownProvinces(b).find(x => x.infra < 5);
-        if (pr) { b.money -= 200; b.builds.push({ kind: 'infra', prov: b.provinces.indexOf(pr), until: room.turn + 1 }); }
+        if (pr) { b.money -= 200; b.builds.push({ kind: 'infra', prov: b.provinces.indexOf(pr), untilDay: room.day + 2 }); }
       } else if (b.money > PROD_BUILDS[kind] && b.rec.concreto >= (CONCRETE_NEED[kind] || 0)) {
-        b.money -= PROD_BUILDS[kind]; b.rec.concreto -= CONCRETE_NEED[kind] || 0; b.builds.push({ kind, until: room.turn + 1 });
+        b.money -= PROD_BUILDS[kind]; b.rec.concreto -= CONCRETE_NEED[kind] || 0; b.builds.push({ kind, untilDay: room.day + buildDays(PROD_BUILDS[kind] || 300) });
       }
     }
     if (b.money > 1200 && b.mil < 12 && room.turn % 4 === 0) { b.money -= 150; b.mil += 1; }
@@ -1157,7 +1182,7 @@ function performAction(room, p, msg) {
     case 'espacial': {
       if (p.space + p.builds.filter(b=>b.kind==='espacial').length >= 3) return;
       if (!spend(p, 2, SPACE_COSTS[p.space + p.builds.filter(b=>b.kind==='espacial').length])) return;
-      p.builds.push({ kind: 'espacial', until: room.turn + 1 });
+      p.builds.push({ kind: 'espacial', untilDay: room.day + 4 });
       log(room, `🚀 ${cname(p)} inicia etapa do programa espacial (conclui no próximo turno).`);
       break;
     }
@@ -1182,7 +1207,7 @@ function performAction(room, p, msg) {
       const prov = p.provinces[msg.prov];
       if (!prov || prov.owner !== p.id || prov.infra >= 5) return;
       if (!spend(p, 1, 200)) return;
-      p.builds.push({ kind: 'infra', prov: msg.prov, until: room.turn + 1 });
+      p.builds.push({ kind: 'infra', prov: msg.prov, untilDay: room.day + 2 });
       log(room, `🏗️ ${cname(p)} inicia construção em ${prov.name} (conclui no próximo turno).`);
       break;
     }
@@ -1191,7 +1216,7 @@ function performAction(room, p, msg) {
       if (p.rec.uranio < 10) { err(p.conn, '☢️ O programa nuclear exige 10 de URÂNIO — minere numa jazida própria ou compre no mercado.'); return; }
       if (!spend(p, 2, 600)) return;
       p.rec.uranio -= 10;
-      p.builds.push({ kind: 'nuclear', until: room.turn + 1 });
+      p.builds.push({ kind: 'nuclear', untilDay: room.day + 5 });
       log(room, `☢️ ${cname(p)} inicia etapa do programa nuclear (conclui no próximo turno).`);
       break;
 
@@ -1398,8 +1423,9 @@ function performAction(room, p, msg) {
       cCost = Math.ceil(cCost * (1 - 0.05 * techLevel(p, 'infra')));
       if (!spend(p, 1, cCost)) return;
       p.rec.concreto -= need;
-      p.builds.push({ kind: msg.kind, until: room.turn + 1 });
-      log(room, `🏗️ ${cname(p)} inicia ${PROD_NAMES[msg.kind]} (conclui no próximo turno).`);
+      const diasObra = buildDays(cCost);
+      p.builds.push({ kind: msg.kind, untilDay: room.day + diasObra });
+      log(room, `🏗️ ${cname(p)} inicia ${PROD_NAMES[msg.kind]} (pronto em ${diasObra} dia(s)).`);
       break;
     }
     case 'presente': {
@@ -1803,7 +1829,7 @@ function route(conn, msg) {
       broadcast(room);
       break;
     }
-    case 'velocidade': { const { room, player } = conn.meta || {}; if (!room || player.id !== room.hostId) return; const mul = [1,2,3,5].includes(msg.speed) ? msg.speed : 1; room.speedMul = mul; room.speed = Math.round(TICK_BASE / mul); if (room.phase === 'game' && !room.paused) room.timerEnd = Date.now() + room.speed * 1000; broadcast(room); break; }
+    case 'velocidade': { const { room, player } = conn.meta || {}; if (!room || player.id !== room.hostId) return; const mul = [1,2,3,5].includes(msg.speed) ? msg.speed : 1; room.speedMul = mul; room.dayMs = dayMsFor(mul); if (room.phase === 'game' && !room.paused) restartDayTimer(room); broadcast(room); break; }
     case 'salvar': {
       const { room, player } = conn.meta || {}; if (!room || player.id !== room.hostId) return;
       const okS = salvarJogo(room);
@@ -1833,13 +1859,13 @@ function route(conn, msg) {
     case 'pausar': {
       const { room, player } = conn.meta || {};
       if (!room || room.phase !== 'game' || player.id !== room.hostId) return;
-      if (!room.paused) { room.paused = true; room.pausedRemaining = Math.max(0, room.timerEnd - Date.now()); log(room, '⏸️ O anfitrião pausou a partida.'); }
-      else { room.paused = false; room.timerEnd = Date.now() + room.pausedRemaining; log(room, '▶️ Partida retomada.'); }
+      if (!room.paused) { room.paused = true; log(room, '⏸️ O anfitrião pausou a partida.'); }
+      else { room.paused = false; ensureDayTimer(room); log(room, '▶️ Partida retomada.'); }
       broadcast(room);
       break;
     }
     case 'start': { const { room, player } = conn.meta || {}; if (!room || room.phase !== 'lobby' || player.id !== room.hostId) return; startGame(room); break; }
-    case 'action': { const { room, player } = conn.meta || {}; if (!room) return; performAction(room, player, msg); break; }
+    case 'action': { const { room, player } = conn.meta || {}; if (!room) return; performAction(room, player, msg); if (room.phase === 'game') broadcastDay(room); break; }
     case 'resp_alianca': { const { room, player } = conn.meta || {}; if (!room || room.phase !== 'game') return; respondProposal(room, player, msg.from, !!msg.accept, 'alianca'); break; }
     case 'resp_paz': { const { room, player } = conn.meta || {}; if (!room || room.phase !== 'game') return; respondProposal(room, player, msg.from, !!msg.accept, 'paz'); break; }
     case 'resp_ajuda': {
@@ -1869,7 +1895,6 @@ function route(conn, msg) {
       if (alive.every(p => room.un.votes[p.id] != null)) resolveUN(room); else broadcast(room);
       break;
     }
-    case 'fim_turno': { const { room, player } = conn.meta || {}; if (!room || room.phase !== 'game' || player.id !== room.hostId) return; resolveTurn(room); break; }
     // ---- batalha tática ----
     case 'batalha_acao': {
       const { room, player } = conn.meta || {};
