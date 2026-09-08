@@ -634,7 +634,7 @@ function addPlayer(room, conn, name, isHost) {
     taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, budget: {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: 0, ideology: null, religion: 'laico',
     customName: null, customFlag: '🏳️', bot: false, pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 25, madeira: 0, terras_raras: 12, uranio: 0, borracha: 0 },
     xp: 0, blackout: false, depositos: [], upgrades: {}, pacts: {},
-    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0, mandatos: 0, conversoes: 0 }, famine: false,
+    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0, mandatos: 0, conversoes: 0, doutrinacoes: 0 }, famine: false,
     ministers: { eco: null, def: null, dip: null },
     techs: [], techLv: {}, sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
@@ -663,7 +663,7 @@ function makeAIBot(c) {
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
     units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 },
     builds: [], emergencyUntil: 0, leis: [],
-    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0, mandatos: 0, conversoes: 0 }, famine: false,
+    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0, mandatos: 0, conversoes: 0, doutrinacoes: 0 }, famine: false,
     ideology: Object.keys(IDEOLOGIES)[h % 6], religion: Object.keys(RELIGIONS)[h % 5],
     seguranca: { defesa: h % 2, secreto: (h >> 1) % 2, policia: (h >> 2) % 3, guarda: (h >> 3) % 2 },
   };
@@ -739,6 +739,7 @@ function checkVictory(room) {
   marco('fe', alive.find(p => p.fe >= 60), 'hegemonia religiosa (fé 60+)');
   marco('convR', alive.find(p => p.religion && p.religion !== 'laico' && alive.filter(o => o.religion === p.religion).length > alive.length / 2), 'sua fé converteu a maioria das nações');
   marco('convI', alive.find(p => p.ideology && alive.filter(o => o.ideology === p.ideology).length > alive.length / 2), 'sua doutrina governa a maioria das nações');
+  marco('sociedade', alive.find(p => { const s = p.sectors || {}; return ['educacao','saude','cultura','esportes','habitacao','justica','turismo'].every(k => (s[k] || 0) >= 4); }), 'sociedade perfeita (7 setores Nv4+)');
 }
 
 // Aparato de segurança interna (nível 0..3 cada). Custo cresce por nível.
@@ -1074,6 +1075,7 @@ function aiTurn(room) {
     if (b.money > 3000 && room.turn % 7 === 0 && (b.leis || []).length < 6) { b.leis = b.leis || []; const _lk = Object.keys(LEIS).find(k => !b.leis.includes(k)); if (_lk) { b.leis.push(_lk); b.money -= LEIS[_lk].cost; } }
     if (b.crise) resolverCrise(room, b, (b.money > 500) ? 0 : 2);
     if (b.religion && b.religion !== 'laico' && b.money > 500 && Math.random() < 0.25) { const tgts = room.players.filter(o => o.alive && o !== b && o.religion !== b.religion); if (tgts.length) { const t3 = tgts[Math.floor(Math.random() * tgts.length)]; if (Math.random() < 0.3 + relBetween(b, t3) / 200) { t3.religion = b.religion; bumpRel(b, t3, 10); b.stats.conversoes = (b.stats.conversoes || 0) + 1; log(room, `🛐 ${cname(b)} espalhou sua religião para ${cname(t3)}!`); } } }
+    if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     for (const pr of room.proposals.filter(x => x.to === b.id)) {
       const from = room.players.find(x => x.id === pr.from);
       if (!from) continue;
@@ -1757,12 +1759,18 @@ function performAction(room, p, msg) {
       log(room, `💰 ${cname(p)} comprou apoio diplomático (+${n} votos na ONU).`);
       break;
     }
+    case 'centro_cultural': {
+      if (!spend(p, 1, 200)) return;
+      p.influencia = Math.min(100, (p.influencia || 0) + 4); p.aprov = Math.min(100, p.aprov + 2);
+      log(room, `🗽 ${cname(p)} inaugurou um centro cultural (+4 doutrina, +2 ❤️).`);
+      break;
+    }
     case 'espalhar_ideologia': {
       if (!target || target === p || !target.alive) return;
       if (!p.ideology) { err(p.conn, 'Adote uma ideologia primeiro.'); return; }
       if (!spend(p, 1, 300)) return;
       if (Math.random() < 0.3 + relBetween(p, target) / 200) {
-        target.ideology = p.ideology; bumpRel(p, target, 10); p.xp += 5;
+        target.ideology = p.ideology; bumpRel(p, target, 10); p.xp += 5; p.stats.doutrinacoes = (p.stats.doutrinacoes || 0) + 1;
         log(room, `⚖️ ${cname(p)} espalhou sua ideologia para ${cname(target)}!`);
       } else { bumpRel(p, target, -5); log(room, `⚖️ ${cname(target)} rejeitou a propaganda de ${cname(p)} (-5 relações).`); }
       break;
