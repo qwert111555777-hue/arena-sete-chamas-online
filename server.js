@@ -425,6 +425,7 @@ const UN_TYPES = [
   { id: 'proibir_armas',  desc: 'Proibição de recrutamento militar por 3 turnos' },
   { id: 'embargo',        desc: 'Embargo econômico contra {T} por 3 turnos' },
   { id: 'condenar',       desc: 'Condenação internacional de {T} (-6 aprovação)' },
+  { id: 'manter_paz',    desc: 'Missão de paz: encerrar todas as guerras de {T}' },
 ];
 
 /* ---------------- WebSocket artesanal ---------------- */
@@ -807,6 +808,14 @@ function resolveUN(room) {
     if (u.type === 'proibir_armas') { room.noArmsUntil = room.turn + 3; log(room, '🇺 A ONU APROVOU: proibição de recrutamento por 3 semanas!'); }
     if (u.type === 'embargo' && tgt) { room.embargo = { target: tgt.id, until: room.turn + 3 }; log(room, `🇺🇳 A ONU APROVOU embargo econômico contra ${cname(tgt)}!`); }
     if (u.type === 'condenar' && tgt) { tgt.aprov = Math.max(0, tgt.aprov - 6); log(room, `🇺🇳 A ONU CONDENOU ${cname(tgt)} (-6 aprovação)!`); }
+    if (u.type === 'manter_paz' && tgt) {
+      const foes = (tgt.wars || []).slice();
+      for (const fid of foes) { const f = room.players.find(x => x.id === fid); if (!f) continue;
+        tgt.wars = tgt.wars.filter(id => id !== fid); f.wars = (f.wars || []).filter(id => id !== tgt.id);
+        tgt.blockading = (tgt.blockading || []).filter(id => id !== fid); f.blockadedBy = (f.blockadedBy || []).filter(id => id !== tgt.id);
+        f.blockading = (f.blockading || []).filter(id => id !== tgt.id); tgt.blockadedBy = (tgt.blockadedBy || []).filter(id => id !== fid); }
+      log(room, `🇺🇳🕊️ MISSÃO DE PAZ: a ONU encerrou ${foes.length} guerra(s) de ${cname(tgt)}! Capacetes azuis nas fronteiras.`);
+    }
     if (u.type === 'autorizar') { room.warAuth = { by: u.proposer, target: u.target, until: room.turn + 8 }; log(room, `🇺🇳 A ONU AUTORIZOU a intervenção militar! Válido por 8 semanas.`); }
   } else {
     log(room, '🇺🇳 A ONU REJEITOU a resolução.');
@@ -821,7 +830,7 @@ function openUN(room) {
   if (alive.length < 2) return;
   const type = UN_TYPES[Math.floor(Math.random() * UN_TYPES.length)];
   let target = null;
-  if (type.id === 'embargo' || type.id === 'condenar') target = alive[Math.floor(Math.random() * alive.length)];
+  if (type.id === 'embargo' || type.id === 'condenar' || type.id === 'manter_paz') target = alive[Math.floor(Math.random() * alive.length)];
   room.un = { type: type.id, desc: type.desc.replace('{T}', target ? cname(target) : ''), target: target ? target.id : null, votes: {}, deadline: Date.now() + 20000 };
   log(room, `🇺🇳 Sessão da ONU: ${room.un.desc}. Votação aberta!`);
   for (const b of room.players) if (b.bot && b.alive) {
@@ -1454,6 +1463,16 @@ function performAction(room, p, msg) {
       log(room, `🪖 ${cname(p)} ENVIOU TROPAS para ${cname(target)}: +${n} poder militar para o aliado.`);
       break;
     }
+    case 'convocar_reservas': {       // Emergency Reserves (pedido de players MA3)
+      if ((p.mil || 0) >= 25) { err(p.conn, 'Exército já no máximo.'); return; }
+      if (p.lastReserve && room.day - p.lastReserve < 14) { err(p.conn, 'Reservas em reorganização — tente em ' + (14 - (room.day - p.lastReserve)) + ' dias.'); return; }
+      if (!spend(p, 1, 300)) return;
+      p.lastReserve = room.day;
+      p.mil = Math.min(25, (p.mil || 0) + 3);
+      p.aprov = Math.max(0, p.aprov - 2);
+      log(room, `🛡️ ${cname(p)} CONVOCOU AS RESERVAS (+3 militar, −2 aprovação, 14 dias p/ reorganizar).`);
+      break;
+    }
     case 'treino_conjunto': {        // Joint Training (pedido de players MA3)
       if (!target || target === p || !target.alive) return;
       if (!p.allies.includes(target.id)) return err(p.conn, 'Treino conjunto exige ALIANÇA.');
@@ -1638,7 +1657,7 @@ function performAction(room, p, msg) {
       if (room.un) { err(p.conn, 'A ONU já está em sessão.'); return; }
       const UN_IDS = UN_TYPES.map(u => u.id).concat('autorizar');
       const tipo = UN_IDS.includes(msg.tipo) ? msg.tipo : 'autorizar';
-      const precisaAlvo = tipo === 'autorizar' || tipo === 'embargo' || tipo === 'condenar';
+      const precisaAlvo = tipo === 'autorizar' || tipo === 'embargo' || tipo === 'condenar' || tipo === 'manter_paz';
       // valida antes de gastar, para não comer ponto de ação à toa
       if (precisaAlvo && (!target || target === p || !target.alive)) { err(p.conn, 'Escolha uma nação-alvo viva para essa resolução.'); return; }
       if (!spend(p, 1, 300)) return;

@@ -2208,7 +2208,7 @@ $('btn-space').onclick = () => {
   const prog = (m.builds||[]).filter(b=>b.kind==='espacial');
   const ETAPAS = [['🛰️','Satélite Nacional',500],['🛸','Estação Orbital',800],['🔴','Colônia em Marte',1200]];
   const ov = document.createElement('div'); ov.id='newspaper';
-  let s = '<div class="paper" style="width:min(600px,94vw)"><h1 style="font-size:20px">🚀 PROGRAMA ESPACIAL</h1>';
+  let s = '<div class="paper" style="width:min(600px,94vw)"><h1 style="font-size:20px">🚀 PROGRAMA ESPACIAL</h1><img src="headers/space.jpg" style="width:100%;height:110px;object-fit:cover;border-radius:8px;border:2px solid #8a6a1f;margin-bottom:8px">';
   s += '<div style="font-size:11px;color:#6b5a33;margin-bottom:8px">Cada etapa: 2⚡ + dinheiro, 12 dias · +2 aprovação por etapa · Nv 3 rende +$30/semana.</div>';
   s += ETAPAS.map((e,i)=>{
     const done = i < nv, cur = (i === nv + prog.length) && prog.length>0 && i >= nv;
@@ -2232,7 +2232,7 @@ $('btn-eco').onclick = () => {
   const pol = (m.pollution != null) ? m.pollution : 10;
   const st = pol>=90 ? ['🔴 CRÍTICA','#a33'] : pol>=70 ? ['🟠 ALTA','#b36b00'] : pol>=40 ? ['🟡 MODERADA','#8a6a1f'] : ['🟢 LIMPO','#2e7d32'];
   const ov = document.createElement('div'); ov.id='newspaper';
-  let s = '<div class="paper" style="width:min(600px,94vw)"><h1 style="font-size:20px">🌍 ECOLOGIA</h1>';
+  let s = '<div class="paper" style="width:min(600px,94vw)"><h1 style="font-size:20px">🌍 ECOLOGIA</h1><img src="headers/eco.jpg" style="width:100%;height:110px;object-fit:cover;border-radius:8px;border:2px solid #8a6a1f;margin-bottom:8px">';
   s += '<div style="background:#fff8e6;border:2px solid '+st[1]+';border-radius:8px;padding:8px 10px;margin-bottom:8px"><b style="font-size:15px;color:'+st[1]+'">'+st[0]+' — '+Math.round(pol)+'%</b><div style="background:#d8cba0;border:1px solid #8a6a1f;border-radius:4px;height:14px;margin-top:4px"><div style="height:100%;width:'+Math.min(100,Math.round(pol))+'%;background:'+st[1]+';border-radius:3px"></div></div></div>';
   s += '<div style="font-size:12px;color:#2b2416;margin-bottom:8px">🏭 Cada prédio polui +0.3/semana · 🧾 Imposto ambiental 12%+ limpa −2/semana · 💼 Orçamento do meio ambiente 2+ limpa −1.5/semana<br>⚠️ 70%+: aprovação cai · 🔴 90%+: aprovação cai mais + multas diárias.</div>';
   const pode = m.ap>=1 && m.money>=250 && pol>0;
@@ -2261,11 +2261,11 @@ $('btn-onu').onclick = () => {
     if (un.proposer===myId && un.type==='autorizar') s += '<div style="margin-top:6px"><button data-sub style="padding:6px 12px;cursor:pointer" '+(m.money>=200?'':'disabled')+'>💰 Comprar apoio ($200, vira metade dos NÃO)</button></div>';
     s += '</div>';
   } else {
-    const TIPOS = [['autorizar','⚔️ Autorizar minha intervenção militar (precisa de alvo)'],['proibir_guerra','🕊️ Proibir novas guerras (3 turnos)'],['proibir_armas','🔫 Proibir recrutamento (3 turnos)'],['embargo','📦 Embargo econômico (alvo, 3 turnos)'],['condenar','📢 Condenar nação (alvo, −6 aprovação dele)']];
+    const TIPOS = [['autorizar','⚔️ Autorizar minha intervenção militar (precisa de alvo)'],['proibir_guerra','🕊️ Proibir novas guerras (3 turnos)'],['proibir_armas','🔫 Proibir recrutamento (3 turnos)'],['embargo','📦 Embargo econômico (alvo, 3 turnos)'],['condenar','📢 Condenar nação (alvo, −6 aprovação dele)'],['manter_paz','🕊️ Missão de paz (alvo: encerra TODAS as guerras dele)']];
     const others = state.players.filter(p=>p.alive && p.id!==myId && p.country);
     s += '<div style="background:#fff8e6;border:2px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:8px"><b style="font-size:13px">📝 Propor resolução (1⚡ + $300)</b>';
     s += '<div style="margin:6px 0"><select id="un-tipo" style="width:100%;padding:6px">'+TIPOS.map(t=>'<option value="'+t[0]+'">'+t[1]+'</option>').join('')+'</select></div>';
-    s += '<div style="margin:6px 0"><select id="un-alvo" style="width:100%;padding:6px">'+others.map(p=>'<option value="'+p.id+'">🎯 '+esc(p.country)+'</option>').join('')+'</select><div style="font-size:11px;color:#6b5a33">Alvo usado em: autorizar, embargo e condenar.</div></div>';
+    s += '<div style="margin:6px 0"><select id="un-alvo" style="width:100%;padding:6px">'+others.map(p=>'<option value="'+p.id+'">🎯 '+esc(p.country)+'</option>').join('')+'</select><div style="font-size:11px;color:#6b5a33">Alvo usado em: autorizar, embargo, condenar e missão de paz.</div></div>';
     const podeP = m.ap>=1 && m.money>=300;
     s += '<button data-unprop style="padding:8px 16px;cursor:pointer" '+(podeP?'':'disabled')+'>🇺🇳 Propor e abrir votação</button></div>';
   }
@@ -2360,7 +2360,7 @@ $('btn-leis').onclick = () => {
   const m = me(); if (!m || !state) return;
   const LEIS_UI = [['servico_militar','🪖 Serviço Militar Obrigatório','+5% ataque em guerras',150],['guarda_nacional','🛡️ Guarda Nacional','+5% defesa',160],['reforma_agraria','🌾 Reforma Agrária','+$10/semana',200],['abertura_comercial','💼 Abertura Comercial','+$10/semana',180],['liberdade_imprensa','📰 Liberdade de Imprensa','+3 aprovação',120],['campanha_patriotica','🎖️ Campanha Patriótica','+4 aprovação',100]];
   const ov = document.createElement('div'); ov.id='newspaper';
-  ov.innerHTML = '<div class="paper" style="width:min(560px,92vw)"><h1 style="font-size:20px">📜 LEIS NACIONAIS</h1><div style="font-size:11px;text-align:center;margin-bottom:8px;color:#6b5a33">Cada lei custa 1⚡ + dinheiro · vale para sempre</div>'
+  ov.innerHTML = '<div class="paper" style="width:min(560px,92vw)"><h1 style="font-size:20px">📜 LEIS NACIONAIS</h1><img src="headers/laws.jpg" style="width:100%;height:110px;object-fit:cover;border-radius:8px;border:2px solid #8a6a1f;margin-bottom:8px"><div style="font-size:11px;text-align:center;margin-bottom:8px;color:#6b5a33">Cada lei custa 1⚡ + dinheiro · vale para sempre</div>'
   + LEIS_UI.map(([k,nm,desc,cost])=>{ const on=(m.leis||[]).includes(k); const ok=!on&&m.ap>=1&&m.money>=cost;
     return '<div style="background:#fff8e6;border:2px solid '+(on?'#2e7d32':'#c9b98b')+';border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1"><b style="font-size:13px">'+nm+'</b><div style="font-size:11px;color:#6b5a33">'+desc+'</div></div><button data-lei="'+k+'" style="padding:8px 12px;cursor:pointer;white-space:nowrap" '+(ok?'':'disabled')+'>'+(on?'✓ Ativa':'$'+cost)+'</button></div>'; }).join('')
   + '<div style="text-align:center;margin-top:10px"><button id="le-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
@@ -2383,7 +2383,7 @@ $('btn-dip').onclick = () => {
     if (fDip==='aliados') list = list.filter(p=>m.allies.includes(p.id));
     if (fDip==='comercio') list = list.filter(p=>m.trades.includes(p.id));
     const tab = (id,lb) => '<button data-fdip="'+id+'" style="flex:1;padding:6px 4px;cursor:pointer;font-size:12px;font-weight:800;border-radius:6px;border:2px solid '+(fDip===id?'#2e7d32':'#8a6a1f')+';background:'+(fDip===id?'#e8f5e9':'#fff8e6')+';color:#2b2416">'+lb+'</button>';
-    ov.innerHTML = '<div class="paper" style="width:min(640px,94vw)"><h1 style="font-size:20px">🤝 DIPLOMACIA</h1>'
+    ov.innerHTML = '<div class="paper" style="width:min(640px,94vw)"><h1 style="font-size:20px">🤝 DIPLOMACIA</h1><img src="headers/dip.jpg" style="width:100%;height:110px;object-fit:cover;border-radius:8px;border:2px solid #8a6a1f;margin-bottom:8px">'
     + '<div style="display:flex;gap:6px;margin-bottom:8px">'+tab('todos','🌍 Todos')+tab('guerra','⚔️ Guerra')+tab('aliados','🤝 Aliados')+tab('comercio','💼 Comércio')+'</div>'
     + '<div>'+list.map(p=>{ const r=rel(p); const atWar=m.wars.includes(p.id); const ally=m.allies.includes(p.id);
       const col = r>=70?'#2e7d32':(r>=40?'#8a6a1f':'#a33');
@@ -2419,7 +2419,7 @@ $('btn-tech').onclick = () => {
   const ov = document.createElement('div'); ov.id='newspaper';
   const render = () => {
     const chaves = Object.keys(TECHS).filter(k=>TECHS[k][0]===tAba);
-    ov.innerHTML = '<div class="paper" style="width:min(620px,94vw)"><h1 style="font-size:20px">🔬 PESQUISAS</h1>'
+    ov.innerHTML = '<div class="paper" style="width:min(620px,94vw)"><h1 style="font-size:20px">🔬 PESQUISAS</h1><img src="headers/tech.jpg" style="width:100%;height:110px;object-fit:cover;border-radius:8px;border:2px solid #8a6a1f;margin-bottom:8px">'
     + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">' + TECH_TREES.map(([id,rot])=>'<button data-tree="'+id+'" style="flex:1;padding:6px 4px;cursor:pointer;font-size:12px;font-weight:800;border-radius:6px;border:2px solid '+(tAba===id?'#2e7d32':'#8a6a1f')+';background:'+(tAba===id?'#e8f5e9':'#fff8e6')+';color:#2b2416">'+rot+'</button>').join('') + '</div>'
     + '<div>' + chaves.map(k=>{ const lv = techLv(m,k); const maxed = lv>=TECH_MAX; const cost = maxed?0:TECH_COSTS[lv];
       return '<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px">'
@@ -2441,9 +2441,10 @@ $('btn-war').onclick = () => {
   const esc = s => String(s==null?'':s).replace(/[<>&]/g,'');
   const wars = (m.wars||[]).map(id=>state.players.find(p=>p.id===id)).filter(Boolean);
   const ov = document.createElement('div'); ov.id='newspaper';
-  ov.innerHTML = '<div class="paper" style="width:min(620px,94vw)"><h1 style="font-size:20px">⚔️ EXÉRCITO E GUERRAS</h1>'
+  ov.innerHTML = '<div class="paper" style="width:min(620px,94vw)"><h1 style="font-size:20px">⚔️ EXÉRCITO E GUERRAS</h1><img src="headers/war.jpg" style="width:100%;height:110px;object-fit:cover;border-radius:8px;border:2px solid #8a6a1f;margin-bottom:8px">'
   + '<div class="stat-h">🎖️ Seu exército · poder ' + poder(m) + '</div>'
   + '<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><span style="font-size:22px">🏋️</span><div style="flex:1"><b style="font-size:13px">Treino militar</b><div style="font-size:11px;color:#6b5a33">Poder militar '+m.mil+'/25 · cada treino +1</div></div><button data-trei style="padding:8px 10px;cursor:pointer;white-space:nowrap" '+((m.mil<25&&m.ap>=1&&m.money>=150)?'':'disabled')+'>🏋️ Treinar (1⚡+$150)</button></div>'
+  + '<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><span style="font-size:22px">🛡️</span><div style="flex:1"><b style="font-size:13px">Reservas de emergência</b><div style="font-size:11px;color:#6b5a33">Convocação geral: +3 militar, −2 aprovação, 1x a cada 14 dias</div></div><button data-res style="padding:8px 10px;cursor:pointer;white-space:nowrap" '+((m.mil<25&&m.ap>=1&&m.money>=300)?'':'disabled')+'>🛡️ Convocar (1⚡+$300)</button></div>'
   + UNITS.map(([k,em,lb,cost])=>{ const q=m.units?(m.units[k]||0):0; const maxed=q>=3; const ok=!maxed&&m.ap>=1&&m.money>=cost&&((m.rec&&m.rec.terras_raras||0)>=4);
     return '<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><span style="font-size:22px">'+em+'</span><div style="flex:1"><b style="font-size:13px">'+lb+'</b><div class="segs" style="margin-top:3px">'+[0,1,2].map(i=>'<span class="seg'+(i<q?' on':'')+'"></span>').join('')+'</div></div><button data-rec="'+k+'" title="1⚡ + 4⚙️ terras raras" style="padding:8px 10px;cursor:pointer;white-space:nowrap" '+(ok?'':'disabled')+'>+ $'+cost+'</button></div>'; }).join('')
   + '<div class="stat-h">🔥 Guerras (' + wars.length + ')</div>'
@@ -2454,6 +2455,7 @@ $('btn-war').onclick = () => {
   ov.querySelectorAll('[data-atk]').forEach(b=>b.onclick=()=>{ send({t:'action',action:'atacar',target:b.dataset.atk}); });
   ov.querySelectorAll('[data-blq]').forEach(b=>b.onclick=()=>{ send({t:'action',action:'bloqueio',target:b.dataset.blq}); b.disabled=true; });
   const tr = ov.querySelector('[data-trei]'); if (tr) tr.onclick=()=>{ send({t:'action',action:'treinar'}); tr.disabled=true; };
+  const rs = ov.querySelector('[data-res]'); if (rs) rs.onclick=()=>{ send({t:'action',action:'convocar_reservas'}); rs.disabled=true; };
   ov.querySelectorAll('[data-paz]').forEach(b=>b.onclick=()=>{ send({t:'action',action:'paz',target:b.dataset.paz}); b.disabled=true; b.textContent='🕊️ Pedida'; });
   ov.querySelector('#wr-x').onclick=()=>ov.remove();
   ov.onclick = e => { if (e.target===ov) ov.remove(); };
