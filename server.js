@@ -426,6 +426,7 @@ const UN_TYPES = [
   { id: 'embargo',        desc: 'Embargo econômico contra {T} por 3 turnos' },
   { id: 'condenar',       desc: 'Condenação internacional de {T} (-6 aprovação)' },
   { id: 'manter_paz',    desc: 'Missão de paz: encerrar todas as guerras de {T}' },
+  { id: 'bloqueio',       desc: 'Bloqueio total contra {T} por 3 turnos (renda -50%)' },
 ];
 
 /* ---------------- WebSocket artesanal ---------------- */
@@ -697,7 +698,7 @@ function startGame(room) {
   for (const c of COUNTRIES) room.players.push(makeAIBot(c));
   room.players.forEach((p, i) => { if (p.bot) p.color = i % 60; });
   room.phase = 'game'; room.turn = 1; room.day = 1; room.proposals = [];
-  room.un = null; room.noWarUntil = 20; room.noArmsUntil = 0; room.embargo = null;
+  room.un = null; room.noWarUntil = 20; room.noArmsUntil = 0; room.embargo = null; room.bloqueio = null;
   room.dayMs = dayMsFor(room.speedMul || 1);
   log(room, '🏳️ Cada jogador fundou sua própria nação: $10.000, 0 habitantes, reserva natural de 12⚙️ terras raras — tudo por construir.');
   log(room, `🤖 As ${COUNTRIES.length} nações do mundo estão sob controle da IA. É vocês contra elas!`);
@@ -787,6 +788,7 @@ function incomeOf(room, p) {
   if (p.taxRate === 2) mult += 0.15;
   if (p.taxRate === 0) mult -= 0.10;
   if (room.embargo && room.embargo.target === p.id && room.turn < room.embargo.until) mult *= 0.7;
+  if (room.bloqueio && room.bloqueio.target === p.id && room.turn < room.bloqueio.until) mult *= 0.5;
   if (p.blockadedBy.length) mult *= p.units.frota >= 1 ? 0.9 : 0.75;
   if (room.turn < p.emergencyUntil) mult *= 0.8;
   base *= mult;
@@ -802,13 +804,17 @@ function resolveUN(room) {
   if (!room.un) return;
   const u = room.un;
   const yes = Object.values(u.votes).filter(v => v).length;
+  const prop = u.proposer ? room.players.find(pp => pp.id === u.proposer) : null;
+  const bonusVoto = (prop && prop.influencia >= 40) ? 1 : 0;
   const no = Object.values(u.votes).filter(v => !v).length;
-  const passed = yes > no;
+  const passed = (yes + bonusVoto) > no;
   const tgt = u.target ? room.players.find(p => p.id === u.target) : null;
+  if (bonusVoto) log(room, `🕊️ Soft power de ${cname(prop)} pesou na votação (+1 voto).`);
   if (passed) {
     if (u.type === 'proibir_guerra') { room.noWarUntil = room.turn + 3; log(room, '🇺 A ONU APROVOU: proibição de novas guerras por 3 semanas!'); }
     if (u.type === 'proibir_armas') { room.noArmsUntil = room.turn + 3; log(room, '🇺 A ONU APROVOU: proibição de recrutamento por 3 semanas!'); }
     if (u.type === 'embargo' && tgt) { room.embargo = { target: tgt.id, until: room.turn + 3 }; log(room, `🇺🇳 A ONU APROVOU embargo econômico contra ${cname(tgt)}!`); }
+    if (u.type === 'bloqueio' && tgt) { room.bloqueio = { target: tgt.id, until: room.turn + 3 }; log(room, `🇺🇳 A ONU APROVOU BLOQUEIO TOTAL contra ${cname(tgt)} (renda -50% por 3 semanas)!`); }
     if (u.type === 'condenar' && tgt) { tgt.aprov = Math.max(0, tgt.aprov - 6); log(room, `🇺🇳 A ONU CONDENOU ${cname(tgt)} (-6 aprovação)!`); }
     if (u.type === 'manter_paz' && tgt) {
       const foes = (tgt.wars || []).slice();
@@ -832,7 +838,7 @@ function openUN(room) {
   if (alive.length < 2) return;
   const type = UN_TYPES[Math.floor(Math.random() * UN_TYPES.length)];
   let target = null;
-  if (type.id === 'embargo' || type.id === 'condenar' || type.id === 'manter_paz') target = alive[Math.floor(Math.random() * alive.length)];
+  if (type.id === 'embargo' || type.id === 'condenar' || type.id === 'manter_paz' || type.id === 'bloqueio') target = alive[Math.floor(Math.random() * alive.length)];
   room.un = { type: type.id, desc: type.desc.replace('{T}', target ? cname(target) : ''), target: target ? target.id : null, votes: {}, deadline: Date.now() + 20000 };
   log(room, `🇺🇳 Sessão da ONU: ${room.un.desc}. Votação aberta!`);
   for (const b of room.players) if (b.bot && b.alive) {
@@ -1076,6 +1082,7 @@ function aiTurn(room) {
     if (b.crise) resolverCrise(room, b, (b.money > 500) ? 0 : 2);
     if (b.religion && b.religion !== 'laico' && b.money > 500 && Math.random() < 0.25) { const tgts = room.players.filter(o => o.alive && o !== b && o.religion !== b.religion); if (tgts.length) { const t3 = tgts[Math.floor(Math.random() * tgts.length)]; if (Math.random() < 0.3 + relBetween(b, t3) / 200) { t3.religion = b.religion; bumpRel(b, t3, 10); b.stats.conversoes = (b.stats.conversoes || 0) + 1; log(room, `🛐 ${cname(b)} espalhou sua religião para ${cname(t3)}!`); } } }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
+    if (!room.un && Math.random() < 0.12 && b.money > 400) { const foes = room.players.filter(o => o.alive && o !== b && relBetween(b, o) < 35); if (foes.length) { const fe = foes[Math.floor(Math.random() * foes.length)]; const tp2 = Math.random() < 0.5 ? 'condenar' : 'embargo'; b.money -= 300; room.un = { type: tp2, desc: (tp2 === 'condenar' ? 'Condenação internacional de ' : 'Embargo econômico contra ') + cname(fe) + (tp2 === 'condenar' ? ' (-6 aprovação)' : ' por 3 turnos'), target: fe.id, proposer: b.id, votes: {}, deadline: Date.now() + 20000 }; room.un.votes[b.id] = true; for (const bb of room.players) if (bb.bot && bb.alive && bb.id !== b.id) room.un.votes[bb.id] = relBetween(bb, fe) < 50; log(room, `🇺🇳 ${cname(b)} propôs resolução na ONU: ${room.un.desc}. Votação aberta!`); } }
     for (const pr of room.proposals.filter(x => x.to === b.id)) {
       const from = room.players.find(x => x.id === pr.from);
       if (!from) continue;
@@ -1724,7 +1731,7 @@ function performAction(room, p, msg) {
       if (room.un) { err(p.conn, 'A ONU já está em sessão.'); return; }
       const UN_IDS = UN_TYPES.map(u => u.id).concat('autorizar');
       const tipo = UN_IDS.includes(msg.tipo) ? msg.tipo : 'autorizar';
-      const precisaAlvo = tipo === 'autorizar' || tipo === 'embargo' || tipo === 'condenar' || tipo === 'manter_paz';
+      const precisaAlvo = tipo === 'autorizar' || tipo === 'embargo' || tipo === 'condenar' || tipo === 'manter_paz' || tipo === 'bloqueio';
       // valida antes de gastar, para não comer ponto de ação à toa
       if (precisaAlvo && (!target || target === p || !target.alive)) { err(p.conn, 'Escolha uma nação-alvo viva para essa resolução.'); return; }
       if (!spend(p, 1, 300)) return;
@@ -1747,7 +1754,7 @@ function performAction(room, p, msg) {
       break;
     }
     case 'subornar': {
-      if (!room.un || room.un.type !== 'autorizar' || room.un.proposer !== p.id) { err(p.conn, 'Nenhuma resolução sua em votação.'); return; }
+      if (!room.un || room.un.proposer !== p.id) { err(p.conn, 'Nenhuma resolução sua em votação.'); return; }
       if (!spend(p, 0, 200)) return;
       const nos = Object.keys(room.un.votes).filter(k => room.un.votes[k] === false);
       const flip = Math.ceil(nos.length / 2);

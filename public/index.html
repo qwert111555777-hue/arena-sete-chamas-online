@@ -1943,6 +1943,7 @@ function renderPanel(){
     [['autorizar','🇺🇳 Autorizar intervenção contra '+p.flag],
      ['embargo','🚫 Embargo econômico da ONU contra '+p.flag],
      ['condenar','📢 Condenação internacional de '+p.flag],
+     ['bloqueio','🚫 Bloqueio TOTAL da ONU contra '+p.flag],
      ['proibir_guerra','🕊️ Proibir novas guerras (3 semanas)'],
      ['proibir_armas','🔧 Proibir recrutamento (3 semanas)']].forEach(([tp,lb])=>{
       acts.appendChild(mkBtn('🇺🇳', lb+' (1⚡, $300)', ()=>send({t:'action',action:'propor_resolucao',target:p.id,tipo:tp}), unBloq));
@@ -2405,14 +2406,15 @@ $('btn-onu').onclick = () => {
     const pro = state.players.find(p=>p.id===un.proposer);
     s += '<div style="background:#fff8e6;border:2px solid #145a6b;border-radius:8px;padding:8px 10px;margin-bottom:8px"><b style="font-size:13px">🗳️ EM VOTAÇÃO</b><div style="font-size:13px;margin:4px 0">'+esc(un.desc)+'</div><div style="font-size:11px;color:#6b5a33">Proposta por '+(pro?esc(pro.country):'?')+' · 👍 '+fav+' a favor · 👎 '+con+' contra'+(meuVoto==null?' · <b>você ainda não votou</b>':' · seu voto: <b>'+(meuVoto?'A FAVOR':'CONTRA')+'</b>')+'</div>';
     if (meuVoto==null && m.alive) s += '<div style="margin-top:6px"><button data-vsim style="padding:8px 16px;cursor:pointer;background:#2e7d32;color:#fff;font-weight:800">👍 A FAVOR</button> <button data-vnao style="padding:8px 16px;cursor:pointer;background:#a33;color:#fff;font-weight:800">👎 CONTRA</button></div>';
-    if (un.proposer===myId && un.type==='autorizar') s += '<div style="margin-top:6px"><button data-sub style="padding:6px 12px;cursor:pointer" '+(m.money>=200?'':'disabled')+'>💰 Comprar apoio ($200, vira metade dos NÃO)</button></div>';
+    if (un.proposer===myId) s += '<div style="margin-top:6px"><button data-sub style="padding:6px 12px;cursor:pointer" '+(m.money>=200?'':'disabled')+'>💰 Comprar apoio ($200, vira metade dos NÃO)</button></div>';
     s += '</div>';
   } else {
-    const TIPOS = [['autorizar','⚔️ Autorizar minha intervenção militar (precisa de alvo)'],['proibir_guerra','🕊️ Proibir novas guerras (3 turnos)'],['proibir_armas','🔫 Proibir recrutamento (3 turnos)'],['embargo','📦 Embargo econômico (alvo, 3 turnos)'],['condenar','📢 Condenar nação (alvo, −6 aprovação dele)'],['manter_paz','🕊️ Missão de paz (alvo: encerra TODAS as guerras dele)']];
+    const TIPOS = [['autorizar','⚔️ Autorizar minha intervenção militar (precisa de alvo)'],['proibir_guerra','🕊️ Proibir novas guerras (3 turnos)'],['proibir_armas','🔫 Proibir recrutamento (3 turnos)'],['embargo','📦 Embargo econômico (alvo, 3 turnos)'],['condenar','📢 Condenar nação (alvo, −6 aprovação dele)'],['manter_paz','🕊️ Missão de paz (alvo: encerra TODAS as guerras dele)'],['bloqueio','🚫 Bloqueio TOTAL (alvo: renda -50%, 3 turnos)']];
     const others = state.players.filter(p=>p.alive && p.id!==myId && p.country);
     s += '<div style="background:#fff8e6;border:2px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:8px"><b style="font-size:13px">📝 Propor resolução (1⚡ + $300)</b>';
     s += '<div style="margin:6px 0"><select id="un-tipo" style="width:100%;padding:6px">'+TIPOS.map(t=>'<option value="'+t[0]+'">'+t[1]+'</option>').join('')+'</select></div>';
     s += '<div style="margin:6px 0"><select id="un-alvo" style="width:100%;padding:6px">'+others.map(p=>'<option value="'+p.id+'">🎯 '+esc(p.country)+'</option>').join('')+'</select><div style="font-size:11px;color:#6b5a33">Alvo usado em: autorizar, embargo, condenar e missão de paz.</div></div>';
+    s += '<div style="font-size:11px;color:#6b5a33">🕊️ Soft power: '+((m.influencia||0)>=40?'ATIVO (+1 voto nas suas propostas)':'chegue a 40 de doutrina p/ +1 voto')+'</div>';
     const podeP = m.ap>=1 && m.money>=300;
     s += '<button data-unprop style="padding:8px 16px;cursor:pointer" '+(podeP?'':'disabled')+'>🇺🇳 Propor e abrir votação</button></div>';
   }
