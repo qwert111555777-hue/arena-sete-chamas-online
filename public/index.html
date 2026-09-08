@@ -626,6 +626,8 @@
         <button class="round-btn" data-act="ideologia" title="Expandir doutrina (+2 ⚖️ — marco de hegemonia aos 60) — $200 · 1⚡">⚖️<small>DOUTRINA</small></button>
         <button class="round-btn" data-act="fe" title="Enviar missionários (+2 🕌 — marco de hegemonia aos 60) — $200 · 1⚡"><small>FÉ</small></button>
         <button class="round-btn" data-act="treinar" title="Treinar exército (+1 🪖 militar) — $150 · 1⚡"><small>TREINAR</small></button>
+        <button class="round-btn" data-act="alistamento" title="Alistamento obrigatorio (+2 militar, -6 aprovacao) - $0 - 1AP"><small>ALISTAR</small></button>
+        <button class="round-btn" data-act="milicia" title="Armar milicias (+2 militar, -2 aprovacao) - $200 - 1AP"><small>MILICIA</small></button>
       </div>
     </div>
 
@@ -1219,7 +1221,7 @@ function updateDayHUD(){
   $('m-aprov').textContent = m.aprov + '%';
   $('m-aprov').style.color = m.aprov > 55 ? 'var(--green)' : (m.aprov > 25 ? 'var(--gold2)' : 'var(--red)');
   document.querySelectorAll('.round-btn').forEach(b => {
-    const costs = { investir:[1,250], militar:[1,300], propaganda:[1,150], nuclear:[2,600], ideologia:[1,200], fe:[1,200], treinar:[1,150] };
+    const costs = { investir:[1,250], militar:[1,300], alistamento:[1,0], milicia:[1,200], propaganda:[1,150], nuclear:[2,600], ideologia:[1,200], fe:[1,200], treinar:[1,150] };
     const cc = costs[b.dataset.act]; if (!cc) return;
     b.disabled = state.phase!=='game' || !m.alive || m.ap < cc[0] || m.money < cc[1] || (b.dataset.act==='nuclear' && m.nuclear>=5);
   });
@@ -1384,7 +1386,7 @@ function renderGame(){
 
 
   document.querySelectorAll('.round-btn').forEach(b => {
-    const costs = { investir:[1,250], militar:[1,300], propaganda:[1,150], nuclear:[2,600], ideologia:[1,200], fe:[1,200], treinar:[1,150] };
+    const costs = { investir:[1,250], militar:[1,300], alistamento:[1,0], milicia:[1,200], propaganda:[1,150], nuclear:[2,600], ideologia:[1,200], fe:[1,200], treinar:[1,150] };
     const [ap, cost] = costs[b.dataset.act];
     b.disabled = state.phase!=='game' || !m.alive || m.ap < ap || m.money < cost || (b.dataset.act==='nuclear' && m.nuclear>=5);
   });
