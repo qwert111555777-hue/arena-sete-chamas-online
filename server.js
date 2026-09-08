@@ -1130,6 +1130,8 @@ function aiTurn(room) {
     if (b.religion && b.religion !== 'laico' && b.money > 500 && Math.random() < 0.25) { const tgts = room.players.filter(o => o.alive && o !== b && o.religion !== b.religion); if (tgts.length) { const t3 = tgts[Math.floor(Math.random() * tgts.length)]; if (Math.random() < 0.3 + relBetween(b, t3) / 200) { t3.religion = b.religion; bumpRel(b, t3, 10); b.stats.conversoes = (b.stats.conversoes || 0) + 1; log(room, `🛐 ${cname(b)} espalhou sua religião para ${cname(t3)}!`); } } }
     if ((b.fe || 0) >= 10 && b.money < 1000) { b.money += Math.round((b.fe || 0) * 8); b.aprov = Math.max(0, b.aprov - 3); }
     if ((b.fe || 0) >= 20 && b.religion && b.religion !== 'laico' && b.money > 800 && Math.random() < 0.06) { const fs = room.players.find(o => o.alive && o !== b && o.religion !== b.religion); if (fs && Math.random() < 0.5) { b.money -= 200; b.mil += 12; bumpRel(b, fs, -15); log(room, `🕌 ${cname(b)} conclama GUERRA SANTA contra ${cname(fs)}!`); } }
+    if (b.money > 2000 && Math.random() < 0.08) { b.money -= 300; b.influencia = Math.min(100, (b.influencia || 0) + 5); b.aprov = Math.min(100, b.aprov + 4); }
+    if (b.money > 600 && Math.random() < 0.1) { const fo = room.players.find(o => o.alive && o !== b && relBetween(b, o) < 30); if (fo) { b.money -= 100; fo.aprov = Math.max(0, fo.aprov - 4); bumpRel(b, fo, -6); } }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -1306,6 +1308,31 @@ function performAction(room, p, msg) {
       bumpRel(p, target, -15);
       for (const o of room.players) { if (o.alive && o !== p && o.religion === p.religion) bumpRel(p, o, 5); }
       log(room, `🕌 ${cname(p)} conclama GUERRA SANTA contra ${cname(target)}! (+12 voluntários da fé, fiéis aprovam).`);
+      break;
+    }
+    case 'condenar_estado': {
+      if (!target || target === p || !target.alive) return;
+      if (!spend(p, 1, 100)) return;
+      target.aprov = Math.max(0, target.aprov - 4);
+      p.influencia = Math.min(100, (p.influencia || 0) + 2);
+      bumpRel(p, target, -6);
+      log(room, `📢 ${cname(p)} CONDENOU ${cname(target)} perante o mundo (−4❤️ deles, +2 doutrina).`);
+      break;
+    }
+    case 'apoiar_estado': {
+      if (!target || target === p || !target.alive) return;
+      if (!spend(p, 1, 150)) return;
+      target.aprov = Math.min(100, target.aprov + 4);
+      p.influencia = Math.min(100, (p.influencia || 0) + 1);
+      bumpRel(p, target, 6);
+      log(room, `🤝 ${cname(p)} declarou APOIO a ${cname(target)} (+4❤️ deles, +6 relações).`);
+      break;
+    }
+    case 'festival': {
+      if (!spend(p, 1, 300)) return;
+      p.influencia = Math.min(100, (p.influencia || 0) + 5);
+      p.aprov = Math.min(100, p.aprov + 4); p.money += 100;
+      log(room, `🎪 ${cname(p)} realizou um FESTIVAL CULTURAL mundial (+5 doutrina, +4❤️, +$100 turismo).`);
       break;
     }
     case 'ministro':
