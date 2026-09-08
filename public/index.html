@@ -359,6 +359,12 @@
   .leaflet-container{font-family:inherit;font-size:11px;}
   .leaflet-container .leaflet-control-attribution{background:rgba(10,18,38,.7);color:#8fa0c2;font-size:9px;}
   .leaflet-container .leaflet-control-attribution a{color:#8fa0c2;}
+  /* MA3 dados */
+  .rank-panel h3{font-family:Georgia,'Times New Roman',serif;}
+  .stat-h{background:linear-gradient(#1f7a8c,#145a6b);color:#fff;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;border-radius:6px;padding:5px 10px;margin:10px 0 4px;}
+  .seg{display:inline-block;width:22px;height:12px;background:#3a3220;border:1px solid #8a6a1f;border-radius:2px;margin-right:3px;}
+  .seg.on{background:linear-gradient(#ffe9a8,#d9a93c);}
+  .segs{white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -464,6 +470,10 @@
     <div class="res">❤️ <b id="m-aprov">50%</b></div>
     <div class="res">👥 <b id="m-pop">0</b></div>
     <div class="res">🌾 <b id="m-comida">0</b></div>
+    <div class="res" title="Receita por dia">📈 <b id="m-inc">+$0/d</b></div>
+    <div class="res" title="Pontos de ação">⚡ <b id="m-ap2">4</b></div>
+    <div class="res" title="Doutrina">⚖️ <b id="m-ideo">—</b></div>
+    <div class="res" title="Religião">🕌 <b id="m-rel">—</b></div>
     
     <div class="spacer"></div>
     <span class="timer-big" id="g-timer">--:--</span>
@@ -1161,6 +1171,10 @@ function updateDayHUD(){
   $('g-date').textContent = gameDate(state.day || 1);
   $('g-timer').textContent = '📅 DIA ' + (state.day || 1);
   $('m-money').textContent = fmt(m.money);
+  $('m-inc').textContent = '+$' + fmt(m.dailyIncome||0) + '/d';
+  $('m-ap2').textContent = m.ap;
+  $('m-ideo').textContent = (IDEOLOGIES[m.ideology]||'—').split(' ')[0];
+  $('m-rel').textContent = ({islamismo:'Islã',cristianismo:'Cristã',budismo:'Bud.',hinduismo:'Hindu',judaismo:'Jud.',laico:'Laico'})[m.religion]||'—';
   $('m-pop').textContent = m.pop;
   $('m-comida').textContent = m.rec ? m.rec.comida : 0;
   $('m-eco').textContent = m.eco;
@@ -1318,6 +1332,10 @@ function renderGame(){
   if (state.phase==='game') $('btn-speed2').textContent = '⏱️ ' + (state.speedMul || 1) + 'x';
   $('btn-pause').textContent = state.paused ? '▶️' : '⏸️';
   $('m-money').textContent = fmt(m.money);
+  $('m-inc').textContent = '+$' + fmt(m.dailyIncome||0) + '/d';
+  $('m-ap2').textContent = m.ap;
+  $('m-ideo').textContent = (IDEOLOGIES[m.ideology]||'—').split(' ')[0];
+  $('m-rel').textContent = ({islamismo:'Islã',cristianismo:'Cristã',budismo:'Bud.',hinduismo:'Hindu',judaismo:'Jud.',laico:'Laico'})[m.religion]||'—';
   $('m-pop').textContent = m.pop;
   $('m-comida').textContent = m.rec ? m.rec.comida : 0;
   $('m-eco').textContent = m.eco;
@@ -2104,13 +2122,15 @@ $('btn-orc').onclick = () => {
   const b = m.budget || {exe:1,int:1,tra:1,edu:1,ambm:1};
   const DEF = [['exe','⚔️ Exército','-$40/semana por nível, +segurança'],['int','🚔 Interior','+1 ❤️/semana no nível 2+'],['tra','🛣️ Transporte','+3% renda por nível'],['edu','🎓 Educação','+2% renda por nível'],['ambm','🌳 Meio Ambiente','+1 ❤️/semana no nível 2+']];
   const ov = document.createElement('div'); ov.id='newspaper';
-  ov.innerHTML = '<div class="paper" style="width:min(560px,92vw)"><h1 style="font-size:22px">🏛️ ORÇAMENTO DOS MINISTÉRIOS</h1>'
-    + DEF.map(([k,lb,ef])=>`<div style="display:flex;align-items:center;gap:10px;margin:9px 0"><span style="width:190px;font-weight:700">${lb}</span><button data-k="${k}" data-d="-1" style="width:30px;cursor:pointer">−</button><b id="bv-${k}" style="width:20px;text-align:center">${b[k]}</b><button data-k="${k}" data-d="1" style="width:30px;cursor:pointer">+</button><small style="color:#6b5a33">${ef}</small></div>`).join('')
+  ov.innerHTML = '<div class="paper" style="width:min(560px,92vw)"><h1 style="font-size:22px">🏛️ MINISTÉRIOS</h1>'
+    + DEF.map(([k,lb,ef])=>`<div data-card="${k}" style="background:#fff8e6;border:2px solid #8a6a1f;border-radius:8px;margin:10px 0;overflow:hidden"><div style="background:linear-gradient(#1f7a8c,#145a6b);color:#fff;font-weight:800;font-size:13px;padding:6px 10px">${lb}</div><div style="display:flex;align-items:center;gap:8px;padding:8px 10px"><span class="segs">${[0,1,2,3].map(i=>`<span class="seg${i<b[k]?' on':''}"></span>`).join('')}</span><button data-k="${k}" data-d="-1" style="width:30px;cursor:pointer">−</button><b id="bv-${k}" style="width:20px;text-align:center">${b[k]}</b><button data-k="${k}" data-d="1" style="width:30px;cursor:pointer">+</button><small style="color:#6b5a33">${ef}</small></div></div>`).join('')
     + '<div style="text-align:center;margin-top:10px"><button id="bo-ok" style="padding:6px 22px;cursor:pointer">Aplicar</button> <button id="bo-x" style="padding:6px 14px;cursor:pointer">Fechar</button></div></div>';
   document.body.appendChild(ov);
   ov.querySelectorAll('button[data-k]').forEach(bt => bt.onclick = () => {
     const k = bt.dataset.k; const el = document.getElementById('bv-'+k);
-    el.textContent = Math.max(0, Math.min(3, (+el.textContent) + (+bt.dataset.d)));
+    const v = Math.max(0, Math.min(3, (+el.textContent) + (+bt.dataset.d)));
+    el.textContent = v;
+    ov.querySelector('[data-card="'+k+'"]').querySelectorAll('.seg').forEach((sg,i)=>sg.classList.toggle('on', i<v));
   });
   ov.onclick = e => { if (e.target===ov || e.target.id==='bo-x') ov.remove(); };
   ov.querySelector('#bo-ok').onclick = () => {
@@ -2155,18 +2175,20 @@ $('btn-stats').onclick = () => {
   const num = n => n.toLocaleString('pt-BR');
   const mig = m.aprov>50 ? '+'+num(Math.floor((m.aprov-50)*3)) : '-'+num(Math.floor((50-m.aprov)*3));
   const rows = [
+    ['H','🏛️ NAÇÃO'],
     ['💰 PIB nacional', num(m.money*4 + m.eco*1500 + m.pop*120)],
+    ['🏭 Indústria', num(m.eco + Object.values(m.buildings).reduce((a,b)=>a+b,0))],
     [' Empregos', num(m.eco*137 + Math.floor(m.pop*0.4))],
+    ['H','👥 POVO'],
     ['👶 Nascimentos / semana', num(Math.floor(m.pop*0.02)+85)],
     ['🪦 Mortes / semana', num(Math.floor(m.pop*0.012)+31)],
     ['🧳 Migração', mig],
     ['🚔 Crimes por 100.000 hab', num(Math.max(40,(100-m.aprov)*8+81))],
     ['🚗 Acidentes de trânsito / ano', num(414 + Math.floor(m.mil/2))],
-    ['🏭 Indústria', num(m.eco + Object.values(m.buildings).reduce((a,b)=>a+b,0))],
   ];
   const ov = document.createElement('div'); ov.id='newspaper';
   ov.innerHTML = '<div class="paper" style="width:min(520px,92vw)"><h1 style="font-size:22px">📈 ESTATÍSTICAS DO PAÍS</h1>'
-    + rows.map(([k,v])=>`<div style="display:flex;justify-content:space-between;border-bottom:1px solid #c9b98b;padding:7px 2px;font-size:13px"><span>${k}</span><b>${v}</b></div>`).join('')
+    + rows.map(([k,v])=>k==='H'?`<div class="stat-h">${v}</div>`:`<div style="display:flex;justify-content:space-between;border-bottom:1px solid #c9b98b;padding:7px 2px;font-size:13px"><span>${k}</span><b>${v}</b></div>`).join('')
     + '<div style="text-align:center;margin-top:12px"><button id="st-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
   document.body.appendChild(ov);
   ov.onclick = e => { if (e.target===ov || e.target.id==='st-x') ov.remove(); };
