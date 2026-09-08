@@ -2428,6 +2428,7 @@ $('btn-eco').onclick = () => {
   s += '<div style="font-size:12px;color:#2b2416;margin-bottom:8px">🏭 Cada prédio polui +0.3/semana · 🧾 Imposto ambiental 12%+ limpa −2/semana · 💼 Orçamento do meio ambiente 2+ limpa −1.5/semana<br>⚠️ 70%+: aprovação cai · 🔴 90%+: aprovação cai mais + multas diárias.</div>';
   const pode = m.ap>=1 && m.money>=250 && pol>0;
   s += '<div style="margin-bottom:6px"><button data-refl style="padding:8px 16px;cursor:pointer" '+(pode?'':'disabled')+'>🌱 Mutirão de reflorestamento (1⚡ + $250, −15 poluição, +1 aprovação)</button></div>';
+  s += '<div style="background:#fff3d6;border:2px solid #b36b00;border-radius:8px;padding:6px 10px;margin-bottom:6px"><div style="font-size:12px;margin-bottom:4px">Energia: '+Math.round((m.rec&&m.rec.energia)||0)+' un'+((m.solar)?' (SOLAR +2/dia)':'')+'</div><button data-term style="padding:6px 10px;cursor:pointer" '+((m.ap>=1&&m.money>=300)?'':'disabled')+'>Termeletrica (1AP+$300)</button> <button data-sol style="padding:6px 10px;cursor:pointer" '+((!m.solar&&m.ap>=2&&m.money>=500)?'':'disabled')+'>Solar (2AP+$500)</button> <button data-nuc2 style="padding:6px 10px;cursor:pointer" '+((m.ap>=2&&m.money>=800)?'':'disabled')+'>Usina nuclear (2AP+$800)</button></div>';
   s += '<div style="text-align:center;margin-top:6px"><button id="ec-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
   ov.innerHTML = s;
   document.body.appendChild(ov);
@@ -2435,6 +2436,9 @@ $('btn-eco').onclick = () => {
   ov.onclick = e => { if (e.target===ov) ov.remove(); };
   const rf = ov.querySelector('[data-refl]');
   if (rf) rf.onclick = () => { send({t:'action',action:'reflorestar'}); ov.remove(); };
+  const tm = ov.querySelector('[data-term]'); if (tm) tm.onclick=()=>{ send({t:'action',action:'termeletrica'}); ov.remove(); };
+  const so = ov.querySelector('[data-sol]'); if (so) so.onclick=()=>{ send({t:'action',action:'painel_solar'}); ov.remove(); };
+  const n2 = ov.querySelector('[data-nuc2]'); if (n2) n2.onclick=()=>{ send({t:'action',action:'usina_nuclear_civil'}); ov.remove(); };
 };
 $('btn-onu').onclick = () => {
   const m = me(); if (!m || !state) return;

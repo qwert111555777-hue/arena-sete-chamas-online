@@ -909,7 +909,7 @@ function dayTick(room) {
     let nBld = 0;
     for (const k in p.buildings) nBld += (p.buildings[k] || 0);
     const needEn = Math.ceil(nBld / 4);
-    p.rec.energia += (3 + infra * 2) / DAY_DIV;
+    p.rec.energia += (3 + infra * 2 + (p.solar ? 14 : 0)) / DAY_DIV;
     let mult = 1;
     if (nBld > 0 && p.rec.energia < needEn / DAY_DIV) {
       mult = 0.5;
@@ -1140,6 +1140,8 @@ function aiTurn(room) {
     if (b.aprov < 30 && ((b.seguranca && b.seguranca.guarda) || 0) >= 1 && b.money > 300) { b.money -= 100; b.aprov = Math.min(100, b.aprov + 8); }
     if (b.money > 3000 && Math.random() < 0.08) { const bk = ['policia', 'guarda'][Math.floor(Math.random() * 2)]; b.seguranca = b.seguranca || {}; if ((b.seguranca[bk] || 0) < 3) { b.money -= 350; b.seguranca[bk] = (b.seguranca[bk] || 0) + 1; } }
     if (b.money < 1000 && room.market) { const rk = Object.keys(room.market).find(k => (b.rec[k] || 0) >= 20); if (rk) { b.rec[rk] -= 20; b.money += Math.round(room.market[rk] * 20 * Math.min(1.2, 1 + 0.03 * b.trades.length)); } }
+    if (b.blackout && b.money > 600) { b.money -= 300; b.rec.energia += 40; }
+    if (!b.solar && b.money > 3000 && Math.random() < 0.08) { b.money -= 500; b.solar = true; }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -1381,6 +1383,29 @@ function performAction(room, p, msg) {
       p.aprov = Math.min(100, p.aprov + 8);
       p.influencia = Math.max(0, (p.influencia || 0) - 2);
       log(room, `🌙 ${cname(p)} decretou TOQUE DE RECOLHER: ordem restaurada (+8❤️, −2 doutrina).`);
+      break;
+    }
+    case 'termeletrica': {
+      if (!spend(p, 1, 300)) return;
+      p.rec.energia += 40; p.pollution = Math.min(100, (p.pollution || 0) + 2);
+      log(room, `⚡ ${cname(p)} ligou TERMELÉTRICAS de emergência (+40 energia, +2 poluição).`);
+      break;
+    }
+    case 'painel_solar': {
+      if (p.solar) { err(p.conn, '☀️ Programa solar já ativo.'); return; }
+      if (!spend(p, 2, 500)) return;
+      p.solar = true; p.pollution = Math.max(0, (p.pollution || 0) - 1);
+      log(room, `☀️ ${cname(p)} lançou o PROGRAMA SOLAR nacional (+2 energia/dia para sempre, −1 poluição).`);
+      break;
+    }
+    case 'usina_nuclear_civil': {
+      const temJaz = (p.depositos || []).includes('uranio');
+      if (!temJaz && (p.rec.uranio || 0) < 5) { err(p.conn, '☢️ Precisa de jazida ou 5 urânio.'); return; }
+      if (!spend(p, 2, 800)) return;
+      if (!temJaz) p.rec.uranio -= 5;
+      p.rec.energia += 60; p.pollution = Math.min(100, (p.pollution || 0) + 3);
+      p.aprov = Math.max(0, p.aprov - 2);
+      log(room, `☢️ ${cname(p)} inaugurou uma USINA NUCLEAR civil (+60 energia, +3 poluição, −2❤️).`);
       break;
     }
     case 'ministro':
