@@ -12,8 +12,10 @@
 ### Branch / commits
 
 ```
-d2d6318 Atualiza contexto dev   ← HEAD (docs)
-4905085 140 construcoes (47->140) cliente+servidor + pasta dev/   ← PRODUÇÃO (dep-dafn2bn40ujc73c0tjd0 LIVE ✅)
+372fd77 Corrige index.html + dias refeitos   ← PRODUÇÃO (dep-dafnillg1s2s73faids0 LIVE ✅, pág 160143B verificada)
+a62b9f3 Dias/tempo real (index.html QUEBRADO pelo regex C9 — supersedido pelo 372fd77)
+d2d6318 Atualiza contexto dev
+4905085 140 construcoes (47->140) cliente+servidor + pasta dev/   ← (era a produção)
 8041ed1 Bandeiras oficiais dos 195 paises + fix np-flag   ← validado, no GitHub
 7b648b0 Sair salva automatico + velocidade 1x-5x   ← era a PRODUÇÃO (cliente quebrado!)
 56682b3 (NUNCA chegou no GitHub — perdido com workspace antigo; refeito como 8041ed1)
@@ -23,7 +25,7 @@ e1cc9f1 47 construcoes / 6 abas / 5 niveis + borracha
 ```
 
 - Repositório: `/home/user/presidente-online`, branch `main`
-- Produção (Render): `https://arena-sete-chamas-online.onrender.com` — LIVE em `4905085` (verificado: página 200 + helpers + prédios novos + /flags/br.svg 200). O bug do cliente foi ao ar junto com o fix.
+- Produção (Render): `https://arena-sete-chamas-online.onrender.com` — LIVE em `372fd77` (verificado: pág 160143B + applyDay + foreignObject + renderMap + produção/dia + /flags 200).
 - git status (na sessão antiga): `public/index.html` modificado (não commitado) — continha as 140 construções.
 
 ### ✅ BUG CRÍTICO DO np-flag (CORRIGIDO em 8041ed1)
@@ -128,7 +130,7 @@ Novas construções incluem: minas de carvão/cobre/bauxita/prata/lítio/níquel
 
 1. Corrigir o bug de sintaxe do np-flag e commitar as 140 construções — FEITO (8041ed1 + 4905085)
 2. Dados oficiais reais dos 195 países — capital, população, área, PIB, forças armadas, recursos
-3. Núcleo em tempo real — não por turno: cada segundo entra dinheiro da economia/capital e cada segundo se produzem minérios
+3. Núcleo em tempo real — não por turno: cada segundo entra dinheiro da economia/capital e cada segundo se produzem minérios — FEITO (1 dia/s em 1x, semanas estratégicas, deploy 372fd77)
 4. Construções custam minérios; dinheiro (por segundo) compra minérios, não construções; dinheiro vai para melhorias e investimentos
 5. Mercado onde a IA vende de forma inteligente — você oferece seu preço, ela aceita o dela
 6. Exército para ataque, contratar outros países para atacar, e corrupção
@@ -185,6 +187,10 @@ if (typeof o === 'string') { try { o = JSON.parse(o); } catch { return; } }
 - Log da sala tem teto de 120 entradas e 195 bots floodam — ausência de 'inicia X' no log NÃO prova que não construiu; confira `buildings`.
 - NUNCA edit_file em paralelo no MESMO arquivo (race read-modify-write: só 1 edição sobrevive). Faça sequencial ou via script único.
 - Render com autoDeploy=yes NEM SEMPRE dispara no push (pushes 8041ed1/4905085 não dispararam) — confira deploys via API e dispare manual se preciso.
+- regex `^.*X.*$` com DOTALL casa o ARQUIVO TODO (apagou o index.html 2x!) — para 1 linha use `[^^\n]*`... (correto: `[ ^\n ]` sem espaço) ou splitlines; desconfie de diff com milhares de deletions.
+- Após todo patch: conferir TAMANHO do arquivo + marcadores positivos (não só ausência do texto antigo) antes de commitar.
+- No loop diário, escalar FLUXOS e LIMIARES juntos (need de comida ÷7 foi esquecido e zerou a comida — o smoke pegou).
+- Dias de semana chegam via full state, não via msg 'day' — smoke de dias deve ouvir os dois.
 
 ---
 
@@ -207,7 +213,10 @@ if (typeof o === 'string') { try { o = JSON.parse(o); } catch { return; } }
 | reconnect2.js, wsclient.js | — | reconexão e cliente WS de teste |
 | patch_construcoes.py | NOVO 2026-09-08 | expande 47 → 140 em index.html E server.js (idênticos) |
 | verificar_construcoes.js | NOVO 2026-09-08 | conta 140, distribuição por aba, client==server, outputs |
-| smoke_construir.js | NOVO 2026-09-08 | WS end-to-end: cria sala, constrói prédio novo, confere (precisa `npm i ws`) |
+| smoke_construir.js | REMOVIDO | usava fim_turno (não existe mais); supersedido por smoke_day.js |
+| patch_dias.py | NOVO 2026-09-08 | converte turnos→dias+semanas (server+client); C9 extraído p/ patch_c9.py |
+| patch_c9.py | NOVO 2026-09-08 | reescreve linha produção/dia (line-based, SEM regex) |
+| smoke_day.js | NOVO 2026-09-08 | dias consecutivos 1x/5x + obra conclui em dias (precisa `npm i ws`) |
 
 Regressão verde: 160 verificações / 0 falhas. Esse é o baseline a proteger.
 
@@ -260,3 +269,4 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08: repo = `qwert111555777-hue/arena-sete-chamas-online` (público) — clonado OK. Fix limpo em `8041ed1` (push OK: 195 flags, sintaxe OK, HTTP 200 em / e /flags/*). Próximo: refazer 140 construções.
 - 2026-09-08 (140 construções): 93 novos refeitos do zero (lista §2 + `hidrogenio` extra p/ fechar ene=14, pois a lista somava 92). Distribuição exata: rec 20, ene 14, ali 22, ind 27, mil 19, inf 38. Cliente E servidor idênticos. Validado: 140/140, outputs só recursos existentes, node --check OK x2, smoke WS end-to-end OK (mina_cobre:1, porto_espacial:1). Pasta `dev/` (contexto+scripts) commitada no repo p/ não se perder entre chats.
 - 2026-09-08 (deploy): Render NÃO auto-disparou nos pushes; deploy manual dep-dafn2bn40ujc73c0tjd0 (4905085) via API.
+- 2026-09-08 (FASE 1 — dias em tempo real, LIVE dep-dafnillg1s2s73faids0/372fd77): dayTick (1 dia = 1000/speedMul ms), economia diária ÷7, semana = 7 dias (mercado, relações, missões, ONU 28d, IA/eventos 14d), obras em dias (buildDays por custo; infra 2, espacial 4, nuclear 5), broadcastDay leve + full semanal, fim_turno removido, velocidade recria timer, pausa congela dia, saves migram until→untilDay. Cliente: HUD DIA + data real, countdown removido, btn-speed cicla 1/2/3/5, mapa só bandeiras circulares (nomes + losangos removidos), ranking top8 + customs com posição, produção/dia genérica (140 prédios). Smoke: dias consecutivos 1x/5x (200ms/dia), mina_cobre:1, comida 21. MA3 identificado: MA 3 President Simulator (Oxiwyle/Android) — ref. p/ widgets da fase 4. Incidente: regex C9 apagou index.html (commitado/deployado quebrado a62b9f3); restaurado de 62c68a1, refeito e republicado verificado.
