@@ -1949,6 +1949,8 @@ function renderPanel(){
     acts.appendChild(mkBtn('🚫', m.sanctioning.includes(p.id)?'Suspender sanções':'Impor SANÇÕES (1⚡)', ()=>send({t:'action',action:'sancao',target:p.id}), !m.sanctioning.includes(p.id)&&(m.ap<1||m.sanctioning.length>=3)));
     acts.appendChild(mkBtn('💸','Ajudar $200 (+relações)', ()=>send({t:'action',action:'ajudar',target:p.id}), m.ap<1||m.money<200));
     acts.appendChild(mkBtn('🎁','Enviar presente ($100, +8 relações)', ()=>send({t:'action',action:'presente',target:p.id}), m.ap<1||m.money<100));
+    acts.appendChild(mkBtn('🤝','Visita de estado ($300, +15 relacoes, +2 coracao)', ()=>send({t:'action',action:'visita_estado',target:p.id}), m.ap<1||m.money<300));
+    acts.appendChild(mkBtn('🎓','Intercambio estudantil ($200, +10 relacoes, +1 eco)', ()=>send({t:'action',action:'intercambio',target:p.id}), m.ap<1||m.money<200));
     acts.appendChild(mkBtn('🧾','Isentar de tributos (1⚡, $150, +15 relações)', ()=>send({t:'action',action:'isentar',target:p.id}), m.ap<1||m.money<150));
     acts.appendChild(mkBtn('🕯️','Dar esperança (1⚡, $200, +12 aprovação)', ()=>send({t:'action',action:'dar_esperanca',target:p.id}), m.ap<1||m.money<200));
     acts.appendChild(mkBtn('🔬','Contrato de pesquisa (1⚡, $600, rel. 60+)', ()=>send({t:'action',action:'pesquisa',target:p.id}), m.ap<1||m.money<600||atWar||rel<60));
