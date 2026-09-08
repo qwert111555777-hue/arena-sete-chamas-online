@@ -584,7 +584,7 @@ function snapshot(room) {
       dailyIncome: Math.round(incomeOf(room, p) / DAY_DIV),
       buildings: p.buildings, stats: p.stats, famine: p.famine, blackout: p.blackout,
       depositos: p.depositos || [], upgrades: p.upgrades || {}, pacts: p.pacts || {},
-      seguranca: p.seguranca || { defesa: 0, secreto: 0, policia: 0, guarda: 0 },
+      seguranca: p.seguranca || { defesa: 0, secreto: 0, policia: 0, guarda: 0 }, espioes: p.espioes || 0,
     })),
     world: room.world, market: room.market, mission: MISSIONS[room.missionIdx % MISSIONS.length], paused: room.paused, speedMul: room.speedMul || 1, temSave: temSave(room.code),
   };
@@ -641,6 +641,7 @@ function addPlayer(room, conn, name, isHost) {
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
     units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 }, builds: [], emergencyUntil: 0, leis: [],
     seguranca: { defesa: 0, secreto: 0, policia: 0, guarda: 0 },
+    espioes: 1,
   };
   conn.meta = { room, player: p };
   room.players.push(p);
@@ -667,6 +668,7 @@ function makeAIBot(c) {
     buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0, mandatos: 0, conversoes: 0, doutrinacoes: 0 }, famine: false,
     ideology: Object.keys(IDEOLOGIES)[h % 6], religion: Object.keys(RELIGIONS)[h % 5],
     seguranca: { defesa: h % 2, secreto: (h >> 1) % 2, policia: (h >> 2) % 3, guarda: (h >> 3) % 2 },
+    espioes: 1,
   };
 }
 
@@ -690,7 +692,7 @@ function startGame(room) {
     p.techs = []; p.techLv = {}; p.sectors = { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 };
     p.space = 0; p.pollution = 10; p.relations = {}; p.embassies = []; p.trades = []; p.blockading = []; p.blockadedBy = [];
     p.units = { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 }; p.builds = []; p.emergencyUntil = 0; p.leis = [];
-    p.seguranca = { defesa: 0, secreto: 0, policia: 0, guarda: 0 };
+    p.seguranca = { defesa: 0, secreto: 0, policia: 0, guarda: 0 }; p.espioes = 1;
   });
   for (let i = 0; i < room.players.length; i++) for (let j = i + 1; j < room.players.length; j++) {
     room.players[i].relations[room.players[j].id] = 50; room.players[j].relations[room.players[i].id] = 50;
@@ -1082,6 +1084,8 @@ function aiTurn(room) {
     if (b.crise) resolverCrise(room, b, (b.money > 500) ? 0 : 2);
     if (b.religion && b.religion !== 'laico' && b.money > 500 && Math.random() < 0.25) { const tgts = room.players.filter(o => o.alive && o !== b && o.religion !== b.religion); if (tgts.length) { const t3 = tgts[Math.floor(Math.random() * tgts.length)]; if (Math.random() < 0.3 + relBetween(b, t3) / 200) { t3.religion = b.religion; bumpRel(b, t3, 10); b.stats.conversoes = (b.stats.conversoes || 0) + 1; log(room, `🛐 ${cname(b)} espalhou sua religião para ${cname(t3)}!`); } } }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
+    if ((b.espioes || 0) < 3 && b.money > 800) { b.money -= 150; b.espioes = (b.espioes || 0) + 1; }
+    if ((b.espioes || 0) >= 2 && b.money > 600 && Math.random() < 0.2) { const fs = room.players.filter(o => o.alive && o !== b && relBetween(b, o) < 40); if (fs.length) { const ft = fs[Math.floor(Math.random() * fs.length)]; b.money -= 150; const sAb = (b.seguranca && b.seguranca.secreto) || 0; const sDb = (ft.seguranca && ft.seguranca.secreto) || 0; if (Math.random() < Math.min(0.9, 0.5 + 0.08 * sAb + 0.05 * (b.espioes || 0))) { if (sDb >= 2 && Math.random() < 0.15 * sDb) { b.espioes = Math.max(0, (b.espioes || 0) - 1); log(room, `🕵️ O Serviço Secreto de ${cname(ft)} DETECTOU e conteve a sabotagem de ${cname(b)}! Um agente foi capturado.`); } else { const prs = ownProvinces(ft).filter(pr => pr.infra > 0); if (prs.length) { const pr = prs[Math.floor(Math.random() * prs.length)]; pr.infra -= 1; log(room, `🧨 Sabotagem de ${cname(b)} destrói infraestrutura em ${cname(ft)}!`); } else { ft.mil = Math.max(1, ft.mil - 3); log(room, `🧨 Sabotagem de ${cname(b)} danifica o arsenal de ${cname(ft)} (-3 militar)!`); } } bumpRel(b, ft, -5); } } }
     if (!room.un && Math.random() < 0.12 && b.money > 400) { const foes = room.players.filter(o => o.alive && o !== b && relBetween(b, o) < 35); if (foes.length) { const fe = foes[Math.floor(Math.random() * foes.length)]; const tp2 = Math.random() < 0.5 ? 'condenar' : 'embargo'; b.money -= 300; room.un = { type: tp2, desc: (tp2 === 'condenar' ? 'Condenação internacional de ' : 'Embargo econômico contra ') + cname(fe) + (tp2 === 'condenar' ? ' (-6 aprovação)' : ' por 3 turnos'), target: fe.id, proposer: b.id, votes: {}, deadline: Date.now() + 20000 }; room.un.votes[b.id] = true; for (const bb of room.players) if (bb.bot && bb.alive && bb.id !== b.id) room.un.votes[bb.id] = relBetween(bb, fe) < 50; log(room, `🇺🇳 ${cname(b)} propôs resolução na ONU: ${room.un.desc}. Votação aberta!`); } }
     for (const pr of room.proposals.filter(x => x.to === b.id)) {
       const from = room.players.find(x => x.id === pr.from);
@@ -1315,11 +1319,12 @@ function performAction(room, p, msg) {
       if (!spend(p, 1, dipCost(p, 150))) return;
       const sAtk = (p.seguranca && p.seguranca.secreto) || 0;   // serviço secreto de quem ataca
       const sDef = (target.seguranca && target.seguranca.secreto) || 0; // de quem se defende
-      const chance = Math.min(0.85, 0.5 + 0.08 * sAtk + (p.ministers.dip === 'esp' ? 0.1 : 0));
+      const chance = Math.min(0.9, 0.5 + 0.08 * sAtk + 0.05 * (p.espioes || 0) + (p.ministers.dip === 'esp' ? 0.1 : 0));
       const r = Math.random();
       if (r < chance) {
         if (sDef >= 2 && Math.random() < 0.15 * sDef) {
-          log(room, `🕵️ O Serviço Secreto de ${cname(target)} DETECTOU e conteve a sabotagem de ${cname(p)}!`);
+          p.espioes = Math.max(0, (p.espioes || 0) - 1);
+          log(room, `🕵️ O Serviço Secreto de ${cname(target)} DETECTOU e conteve a sabotagem de ${cname(p)}! Um agente foi capturado.`);
           bumpRel(p, target, -3);
         } else {
           const provs = ownProvinces(target).filter(pr => pr.infra > 0);
@@ -1329,6 +1334,44 @@ function performAction(room, p, msg) {
         }
       } else if (r < chance + Math.max(0.1, 0.3 - 0.05 * sAtk)) { p.aprov = Math.max(0, p.aprov - 5); target.aprov = Math.min(100, target.aprov + 2); log(room, `🚨 ${cname(p)} foi EXPOSTO sabotando ${cname(target)}!`); bumpRel(p, target, -10); }
       else log(room, `🕵️ Agentes de ${cname(p)} falham silenciosamente em ${cname(target)}.`);
+      break;
+    }
+    case 'recrutar_espiao': {
+      const sA = (p.seguranca && p.seguranca.secreto) || 0;
+      const maxE = 3 + sA * 2;
+      if ((p.espioes || 0) >= maxE) { err(p.conn, 'Rede no máximo (' + maxE + ' agentes). Amplie o Serviço Secreto.'); return; }
+      if (!spend(p, 1, 150)) return;
+      p.espioes = (p.espioes || 0) + 1;
+      log(room, `🕵️ ${cname(p)} recrutou um agente secreto (${p.espioes}/${maxE}).`);
+      break;
+    }
+    case 'roubar_tech': {
+      if (!target || target === p || !target.alive) return;
+      if (!spend(p, 1, dipCost(p, 200))) return;
+      const sA2 = (p.seguranca && p.seguranca.secreto) || 0;
+      const ch = Math.min(0.7, 0.3 + 0.07 * (p.espioes || 0) + 0.08 * sA2 + (p.ministers.dip === 'esp' ? 0.1 : 0));
+      const pool = Object.keys(target.techLv || {}).filter(k => (target.techLv[k] || 0) > (((p.techLv || {}))[k] || 0) && TECHS[k]);
+      if (Math.random() < ch && pool.length) {
+        const k = pool[Math.floor(Math.random() * pool.length)];
+        p.techLv = p.techLv || {}; p.techs = p.techs || [];
+        p.techLv[k] = (p.techLv[k] || 0) + 1;
+        if (!p.techs.includes(k)) p.techs.push(k);
+        bumpRel(p, target, -4);
+        log(room, `📡 Agentes de ${cname(p)} roubaram a tecnologia ${TECHS[k][1]} de ${cname(target)}!`);
+      } else if (Math.random() < 0.3) { p.espioes = Math.max(0, (p.espioes || 0) - 1); bumpRel(p, target, -5); log(room, `🚨 ${cname(target)} capturou um espião de ${cname(p)} tentando roubar tecnologia!`); }
+      else log(room, `🕵️ Agentes de ${cname(p)} voltaram de ${cname(target)} de mãos vazias.`);
+      break;
+    }
+    case 'cacar_espioes': {
+      if (!target || target === p || !target.alive) return;
+      if (!spend(p, 1, dipCost(p, 100))) return;
+      const sA3 = (p.seguranca && p.seguranca.secreto) || 0;
+      const tem = target.espioes || 0;
+      if (!tem) { log(room, `🔍 Caça-espiões de ${cname(p)} não acharam nenhum agente em ${cname(target)}.`); break; }
+      const kill = Math.min(tem, 1 + (Math.random() < 0.25 + 0.1 * sA3 + 0.05 * (p.espioes || 0) ? 1 : 0));
+      target.espioes = tem - kill;
+      bumpRel(p, target, -4);
+      log(room, `🔍 Caça-espiões de ${cname(p)} eliminaram ${kill} agente(s) em ${cname(target)}!`);
       break;
     }
     case 'sancao': {

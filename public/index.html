@@ -2490,10 +2490,12 @@ $('btn-spy').onclick = () => {
   s += '<div style="background:#fff8e6;border:2px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:8px;display:flex;align-items:center;gap:8px"><div style="flex:1"><b style="font-size:13px">🕵️ Serviço Secreto — Nv '+sec+'/3</b><div style="font-size:11px;color:#6b5a33">Chance de sabotagem: '+chance+'% · +8% por nível · defesa contra sabotagem</div></div>';
   s += sec>=3 ? '<b style="color:#2e7d32">MÁX</b>' : '<button data-secup style="padding:8px 12px;cursor:pointer;white-space:nowrap" '+((m.ap>=1&&m.money>=upCost)?'':'disabled')+'>⬆️ $'+upCost+'</button>';
   s += '</div>';
-  s += '<div style="font-size:11px;color:#6b5a33;margin-bottom:6px">🔍 Espionar revela caixa, eco, mil, aprovação, ☢️, dívida · 🧨 Sabotar destrói infra ou arsenal (1⚡ + ~$150). Ministro diplomata/coroa reduz custos.</div>';
+  const maxE = 3 + sec * 2, nE = m.espioes || 0;
+  s += '<div style="background:#fff8e6;border:2px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:13px">🕵️ Rede: <b>'+nE+'/'+maxE+'</b> agentes <span style="font-size:11px;color:#6b5a33">(+5% sabotagem/roubo cada)</span></div>' + (nE>=maxE?'<b style="color:#2e7d32">MÁX</b>':'<button data-spyrec style="padding:8px 12px;cursor:pointer;white-space:nowrap" '+((m.ap>=1&&m.money>=150)?'':'disabled')+'>Recrutar (1AP+$150)</button>') + '</div>';
+  s += '<div style="font-size:11px;color:#6b5a33;margin-bottom:6px">🔍 Espionar revela caixa, eco, mil, aprovação, ☢️, dívida · 🧨 Sabotar destrói infra ou arsenal (1⚡ + ~$150). Ministro diplomata/coroa reduz custos. 📡 Roubo copia 1 Nv de tech · 🔍 Caça mata agentes inimigos.</div>';
   s += '<div>' + others.map(p=>{
-    const okE = m.ap>=1 && m.money>=50, okS = m.ap>=1 && m.money>=75;
-    return '<div style="background:#fff8e6;border:2px solid #c9b98b;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1"><b style="font-size:13px">'+esc(p.country)+'</b></div><button data-esp="'+p.id+'" style="padding:6px 10px;cursor:pointer" '+(okE?'':'disabled')+'>🔍 Espionar</button><button data-sab="'+p.id+'" style="padding:6px 10px;cursor:pointer" '+(okS?'':'disabled')+'>🧨 Sabotar</button></div>';
+    const okE = m.ap>=1 && m.money>=50, okS = m.ap>=1 && m.money>=75, okR = m.ap>=1 && m.money>=100, okC = m.ap>=1 && m.money>=50;
+    return '<div style="background:#fff8e6;border:2px solid #c9b98b;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1"><b style="font-size:13px">'+esc(p.country)+'</b></div><button data-esp="'+p.id+'" style="padding:6px 10px;cursor:pointer" '+(okE?'':'disabled')+'>🔍 Espionar</button><button data-sab="'+p.id+'" style="padding:6px 10px;cursor:pointer" '+(okS?'':'disabled')+'>🧨 Sabotar</button><button data-rou="'+p.id+'" style="padding:6px 10px;cursor:pointer" '+(okR?'':'disabled')+'>📡 Roubar</button><button data-cac="'+p.id+'" style="padding:6px 10px;cursor:pointer" '+(okC?'':'disabled')+'>🔍 Caçar</button></div>';
   }).join('') + '</div>';
   s += '<div style="text-align:center;margin-top:10px"><button id="sp-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
   ov.innerHTML = s;
@@ -2504,6 +2506,9 @@ $('btn-spy').onclick = () => {
   if (up) up.onclick = () => { send({t:'action',action:'seguranca',value:'secreto'}); ov.remove(); };
   ov.querySelectorAll('[data-esp]').forEach(b=>b.onclick=()=>send({t:'action',action:'espionar',target:b.dataset.esp}));
   ov.querySelectorAll('[data-sab]').forEach(b=>b.onclick=()=>send({t:'action',action:'sabotagem',target:b.dataset.sab}));
+  const rc = ov.querySelector('[data-spyrec]'); if (rc) rc.onclick=()=>{ send({t:'action',action:'recrutar_espiao'}); ov.remove(); };
+  ov.querySelectorAll('[data-rou]').forEach(b=>b.onclick=()=>send({t:'action',action:'roubar_tech',target:b.dataset.rou}));
+  ov.querySelectorAll('[data-cac]').forEach(b=>b.onclick=()=>send({t:'action',action:'cacar_espioes',target:b.dataset.cac}));
 };
 $('btn-leis').onclick = () => {
   const m = me(); if (!m || !state) return;
