@@ -2344,6 +2344,9 @@ $('btn-dip').onclick = () => {
       + '<div style="height:8px;background:#d9c795;border-radius:4px;margin-top:4px"><div style="height:8px;width:'+Math.max(0,Math.min(100,r))+'%;background:'+col+';border-radius:4px"></div></div></div>'
       + '<span style="font-size:11px;font-weight:800;color:'+col+'">'+r+'</span>'
       + '<button data-gift="'+p.id+'" title="Presente $100 (+8)" style="padding:6px 8px;cursor:pointer" '+((!atWar&&m.ap>=1&&m.money>=100)?'':'disabled')+'>🎁</button>'
+      + '<button data-emb="'+p.id+'" title="'+(m.embassies.includes(p.id)?'Fechar embaixada (1⚡, −12 relações)':'Abrir embaixada (1⚡ + ~$200, +10 relações)')+'" style="padding:6px 8px;cursor:pointer;'+(m.embassies.includes(p.id)?'border:2px solid #2e7d32':'')+'" '+((m.embassies.includes(p.id)?(m.ap>=1):(m.ap>=1&&m.money>=100))?'':'disabled')+'>🏛️</button>'
+      + '<button data-sc="'+p.id+'" title="'+(m.sanctioning.includes(p.id)?'Suspender sanções':'Impor SANÇÕES (1⚡, −20 relações)')+'" style="padding:6px 8px;cursor:pointer;'+(m.sanctioning.includes(p.id)?'border:2px solid #a33':'')+'" '+(m.ap>=1?'':'disabled')+'>🚫</button>'
+      + (!atWar?'<button data-px="'+p.id+'" title="Pacto de não-agressão (1⚡ + $100, relações 40+, 8 turnos)" style="padding:6px 8px;cursor:pointer;'+(((m.pacts&&m.pacts[p.id]>state.turn))?'border:2px solid #2e7d32':'')+'" '+((((m.pacts&&m.pacts[p.id])||0)>state.turn||m.ap<1||m.money<100)?'disabled':'')+'>✍️</button>':'')
       + (atWar?'<button data-mkpaz="'+p.id+'" title="Propor paz" style="padding:6px 8px;cursor:pointer">🕊️</button>':(!ally?'<button data-mkali="'+p.id+'" title="Propor aliança" style="padding:6px 8px;cursor:pointer">🤝</button>':''))
       + '</div>'; }).join('')+'</div>'
     + '<div style="text-align:center;margin-top:10px"><button id="dp-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
@@ -2351,6 +2354,9 @@ $('btn-dip').onclick = () => {
     ov.querySelectorAll('[data-gift]').forEach(b=>b.onclick=()=>{ send({t:'action',action:'presente',target:b.dataset.gift}); b.disabled=true; });
     ov.querySelectorAll('[data-mkpaz]').forEach(b=>b.onclick=()=>{ send({t:'action',action:'paz',target:b.dataset.mkpaz}); b.disabled=true; });
     ov.querySelectorAll('[data-mkali]').forEach(b=>b.onclick=()=>{ send({t:'action',action:'alianca',target:b.dataset.mkali}); b.disabled=true; });
+    ov.querySelectorAll('[data-emb]').forEach(b=>b.onclick=()=>{ const tem=m.embassies.includes(b.dataset.emb); send({t:'action',action:tem?'fechar_embaixada':'embaixada',target:b.dataset.emb}); b.disabled=true; });
+    ov.querySelectorAll('[data-sc]').forEach(b=>b.onclick=()=>{ send({t:'action',action:'sancao',target:b.dataset.sc}); b.disabled=true; });
+    ov.querySelectorAll('[data-px]').forEach(b=>b.onclick=()=>{ send({t:'action',action:'pacto',target:b.dataset.px}); b.disabled=true; });
     ov.querySelector('#dp-x').onclick=()=>ov.remove();
   };
   render();
@@ -2387,14 +2393,17 @@ $('btn-war').onclick = () => {
   const ov = document.createElement('div'); ov.id='newspaper';
   ov.innerHTML = '<div class="paper" style="width:min(620px,94vw)"><h1 style="font-size:20px">⚔️ EXÉRCITO E GUERRAS</h1>'
   + '<div class="stat-h">🎖️ Seu exército · poder ' + poder(m) + '</div>'
+  + '<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><span style="font-size:22px">🏋️</span><div style="flex:1"><b style="font-size:13px">Treino militar</b><div style="font-size:11px;color:#6b5a33">Poder militar '+m.mil+'/25 · cada treino +1</div></div><button data-trei style="padding:8px 10px;cursor:pointer;white-space:nowrap" '+((m.mil<25&&m.ap>=1&&m.money>=150)?'':'disabled')+'>🏋️ Treinar (1⚡+$150)</button></div>'
   + UNITS.map(([k,em,lb,cost])=>{ const q=m.units?(m.units[k]||0):0; const maxed=q>=3; const ok=!maxed&&m.ap>=1&&m.money>=cost&&((m.rec&&m.rec.terras_raras||0)>=4);
     return '<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><span style="font-size:22px">'+em+'</span><div style="flex:1"><b style="font-size:13px">'+lb+'</b><div class="segs" style="margin-top:3px">'+[0,1,2].map(i=>'<span class="seg'+(i<q?' on':'')+'"></span>').join('')+'</div></div><button data-rec="'+k+'" title="1⚡ + 4⚙️ terras raras" style="padding:8px 10px;cursor:pointer;white-space:nowrap" '+(ok?'':'disabled')+'>+ $'+cost+'</button></div>'; }).join('')
   + '<div class="stat-h">🔥 Guerras (' + wars.length + ')</div>'
-  + (wars.length? wars.map(w=>'<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1"><b style="font-size:13px">'+esc(cname(w))+'</b><div style="font-size:11px;color:#6b5a33">poder '+poder(w)+' · militar '+w.mil+'</div></div><button data-atk="'+w.id+'" style="padding:8px 10px;cursor:pointer" '+(m.ap>=2?'':'disabled')+'>⚔️ Atacar</button><button data-paz="'+w.id+'" style="padding:8px 10px;cursor:pointer">🕊️ Paz</button></div>').join('') : '<div style="font-size:12px;color:#6b5a33;margin-bottom:6px">Em paz. Declare guerra pelo painel de um país no mapa.</div>')
+  + (wars.length? wars.map(w=>'<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1"><b style="font-size:13px">'+esc(cname(w))+'</b><div style="font-size:11px;color:#6b5a33">poder '+poder(w)+' · militar '+w.mil+'</div></div><button data-blq="'+w.id+'" title="'+(m.blockading.includes(w.id)?'Suspender bloqueio naval':'BLOQUEIO naval: alvo −25% renda (1⚡, exige frota)')+'" style="padding:8px 10px;cursor:pointer;'+(m.blockading.includes(w.id)?'border:2px solid #2e7d32':'')+'" '+(((m.units&&m.units.frota||0)>=1&&m.ap>=1)?'':'disabled')+'>⛴️</button><button data-atk="'+w.id+'" style="padding:8px 10px;cursor:pointer" '+(m.ap>=2?'':'disabled')+'>⚔️ Atacar</button><button data-paz="'+w.id+'" style="padding:8px 10px;cursor:pointer">🕊️ Paz</button></div>').join('') : '<div style="font-size:12px;color:#6b5a33;margin-bottom:6px">Em paz. Declare guerra pelo painel de um país no mapa.</div>')
   + '<div style="text-align:center;margin-top:10px"><button id="wr-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
   document.body.appendChild(ov);
   ov.querySelectorAll('[data-rec]').forEach(b=>b.onclick=()=>{ send({t:'action',action:b.dataset.rec}); b.disabled=true; });
   ov.querySelectorAll('[data-atk]').forEach(b=>b.onclick=()=>{ send({t:'action',action:'atacar',target:b.dataset.atk}); });
+  ov.querySelectorAll('[data-blq]').forEach(b=>b.onclick=()=>{ send({t:'action',action:'bloqueio',target:b.dataset.blq}); b.disabled=true; });
+  const tr = ov.querySelector('[data-trei]'); if (tr) tr.onclick=()=>{ send({t:'action',action:'treinar'}); tr.disabled=true; };
   ov.querySelectorAll('[data-paz]').forEach(b=>b.onclick=()=>{ send({t:'action',action:'paz',target:b.dataset.paz}); b.disabled=true; b.textContent='🕊️ Pedida'; });
   ov.querySelector('#wr-x').onclick=()=>ov.remove();
   ov.onclick = e => { if (e.target===ov) ov.remove(); };
