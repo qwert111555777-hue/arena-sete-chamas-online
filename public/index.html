@@ -109,7 +109,7 @@
   .hud .res b{font-family:ui-monospace,monospace; color:#ffe9a8;}
   .hud .spacer{flex:1;}
   .hud .timer-big{font-size:20px; font-weight:900; font-family:ui-monospace,monospace; color:#ffe9a8;}
-  #btn-pause,#btn-speed2,#btn-endturn,#btn-rank,#btn-news,#btn-notif,#btn-build,#btn-tech,#btn-war{width:38px;height:38px;border-radius:10px;border:2px solid #8a6a1f;background:linear-gradient(#ffe9a8,#d9a93c);color:#3a2a05;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.5);}
+  #btn-pause,#btn-speed2,#btn-endturn,#btn-rank,#btn-news,#btn-notif,#btn-build,#btn-tech,#btn-war,#btn-leis,#btn-dip{width:38px;height:38px;border-radius:10px;border:2px solid #8a6a1f;background:linear-gradient(#ffe9a8,#d9a93c);color:#3a2a05;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.5);}
   #advisor{position:absolute;left:12px;top:12px;z-index:5;display:flex;gap:10px;align-items:flex-start;pointer-events:none;}
   #advisor img{width:64px;height:64px;border-radius:50%;border:3px solid #d9a93c;box-shadow:0 3px 10px rgba(0,0,0,.6);background:#e8d9b0;}
   #advisor-bubble{max-width:300px;background:linear-gradient(#fdf6e3,#ecd9a8);color:#3a2f14;border:2px solid #8a6a1f;border-radius:12px;padding:8px 12px;font-size:12px;font-weight:600;box-shadow:0 3px 10px rgba(0,0,0,.5);position:relative;margin-top:8px;}
@@ -493,6 +493,8 @@
     <button id="btn-build" title="Construir (suas construções)">🏗️</button>
     <button id="btn-tech" title="Pesquisas e tecnologias">🔬</button>
     <button id="btn-war" title="Exército e guerras">⚔️</button>
+    <button id="btn-leis" title="Leis nacionais">📜</button>
+    <button id="btn-dip" title="Diplomacia">🤝</button>
     <button id="btn-speed2" title="Velocidade: 1x, 2x, 3x ou 5x (anfitrião)">⏱️ 1x</button>
     <button id="btn-sair" title="Sair do jogo (o anfitrião salva automaticamente)" style="background:linear-gradient(#ffd0d0,#d98a8a);border:2px solid #8a3040;border-radius:10px;width:38px;height:38px;font-size:16px;cursor:pointer;">⏻</button>
   </div>
@@ -2175,6 +2177,55 @@ $('btn-tax').onclick = () => {
     ov.remove();
   };
 };
+$('btn-leis').onclick = () => {
+  const m = me(); if (!m || !state) return;
+  const LEIS_UI = [['servico_militar','🪖 Serviço Militar Obrigatório','+5% ataque em guerras',150],['guarda_nacional','🛡️ Guarda Nacional','+5% defesa',160],['reforma_agraria','🌾 Reforma Agrária','+$10/semana',200],['abertura_comercial','💼 Abertura Comercial','+$10/semana',180],['liberdade_imprensa','📰 Liberdade de Imprensa','+3 aprovação',120],['campanha_patriotica','🎖️ Campanha Patriótica','+4 aprovação',100]];
+  const ov = document.createElement('div'); ov.id='newspaper';
+  ov.innerHTML = '<div class="paper" style="width:min(560px,92vw)"><h1 style="font-size:20px">📜 LEIS NACIONAIS</h1><div style="font-size:11px;text-align:center;margin-bottom:8px;color:#6b5a33">Cada lei custa 1⚡ + dinheiro · vale para sempre</div>'
+  + LEIS_UI.map(([k,nm,desc,cost])=>{ const on=(m.leis||[]).includes(k); const ok=!on&&m.ap>=1&&m.money>=cost;
+    return '<div style="background:#fff8e6;border:2px solid '+(on?'#2e7d32':'#c9b98b')+';border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1"><b style="font-size:13px">'+nm+'</b><div style="font-size:11px;color:#6b5a33">'+desc+'</div></div><button data-lei="'+k+'" style="padding:8px 12px;cursor:pointer;white-space:nowrap" '+(ok?'':'disabled')+'>'+(on?'✓ Ativa':'$'+cost)+'</button></div>'; }).join('')
+  + '<div style="text-align:center;margin-top:10px"><button id="le-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
+  document.body.appendChild(ov);
+  ov.querySelectorAll('[data-lei]').forEach(b=>b.onclick=()=>{ send({t:'action',action:'lei',value:b.dataset.lei}); b.disabled=true; b.textContent='✓ Ativa'; b.closest('div[style]').style.borderColor='#2e7d32'; });
+  ov.querySelector('#le-x').onclick=()=>ov.remove();
+  ov.onclick = e => { if (e.target===ov) ov.remove(); };
+};
+$('btn-dip').onclick = () => {
+  const m = me(); if (!m || !state) return;
+  let fDip = 'todos';
+  const ov = document.createElement('div'); ov.id='newspaper';
+  const esc = s => String(s==null?'':s).replace(/[<>&]/g,'');
+  const render = () => {
+    const others = state.players.filter(p=>p.alive && p.id!==myId && p.country);
+    const rel = p => (m.relations && m.relations[p.id]!=null) ? m.relations[p.id] : 50;
+    const status = p => m.allies.includes(p.id) ? '🤝 Aliado' : m.wars.includes(p.id) ? '⚔️ Guerra' : (m.trades.includes(p.id) ? '💼 Comércio' : '🕊️ Paz');
+    let list = others.slice().sort((a,b)=>rel(a)-rel(b));
+    if (fDip==='guerra') list = list.filter(p=>m.wars.includes(p.id));
+    if (fDip==='aliados') list = list.filter(p=>m.allies.includes(p.id));
+    if (fDip==='comercio') list = list.filter(p=>m.trades.includes(p.id));
+    const tab = (id,lb) => '<button data-fdip="'+id+'" style="flex:1;padding:6px 4px;cursor:pointer;font-size:12px;font-weight:800;border-radius:6px;border:2px solid '+(fDip===id?'#2e7d32':'#8a6a1f')+';background:'+(fDip===id?'#e8f5e9':'#fff8e6')+';color:#2b2416">'+lb+'</button>';
+    ov.innerHTML = '<div class="paper" style="width:min(640px,94vw)"><h1 style="font-size:20px">🤝 DIPLOMACIA</h1>'
+    + '<div style="display:flex;gap:6px;margin-bottom:8px">'+tab('todos','🌍 Todos')+tab('guerra','⚔️ Guerra')+tab('aliados','🤝 Aliados')+tab('comercio','💼 Comércio')+'</div>'
+    + '<div>'+list.map(p=>{ const r=rel(p); const atWar=m.wars.includes(p.id); const ally=m.allies.includes(p.id);
+      const col = r>=70?'#2e7d32':(r>=40?'#8a6a1f':'#a33');
+      return '<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:7px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px">'
+      + '<div style="flex:1;min-width:0"><b style="font-size:13px">'+esc(cname(p))+'</b> <small style="color:#6b5a33">'+status(p)+'</small>'
+      + '<div style="height:8px;background:#d9c795;border-radius:4px;margin-top:4px"><div style="height:8px;width:'+Math.max(0,Math.min(100,r))+'%;background:'+col+';border-radius:4px"></div></div></div>'
+      + '<span style="font-size:11px;font-weight:800;color:'+col+'">'+r+'</span>'
+      + '<button data-gift="'+p.id+'" title="Presente $100 (+8)" style="padding:6px 8px;cursor:pointer" '+((!atWar&&m.ap>=1&&m.money>=100)?'':'disabled')+'>🎁</button>'
+      + (atWar?'<button data-mkpaz="'+p.id+'" title="Propor paz" style="padding:6px 8px;cursor:pointer">🕊️</button>':(!ally?'<button data-mkali="'+p.id+'" title="Propor aliança" style="padding:6px 8px;cursor:pointer">🤝</button>':''))
+      + '</div>'; }).join('')+'</div>'
+    + '<div style="text-align:center;margin-top:10px"><button id="dp-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
+    ov.querySelectorAll('[data-fdip]').forEach(b=>b.onclick=()=>{fDip=b.dataset.fdip;render();});
+    ov.querySelectorAll('[data-gift]').forEach(b=>b.onclick=()=>{ send({t:'action',action:'presente',target:b.dataset.gift}); b.disabled=true; });
+    ov.querySelectorAll('[data-mkpaz]').forEach(b=>b.onclick=()=>{ send({t:'action',action:'paz',target:b.dataset.mkpaz}); b.disabled=true; });
+    ov.querySelectorAll('[data-mkali]').forEach(b=>b.onclick=()=>{ send({t:'action',action:'alianca',target:b.dataset.mkali}); b.disabled=true; });
+    ov.querySelector('#dp-x').onclick=()=>ov.remove();
+  };
+  render();
+  document.body.appendChild(ov);
+  ov.onclick = e => { if (e.target===ov) ov.remove(); };
+};
 $('btn-tech').onclick = () => {
   const m = me(); if (!m || !state) return;
   let tAba = window.techAba || 'ec';
@@ -2282,7 +2333,7 @@ $('btn-notif').onclick = () => {
 };
 ['btn-rank','btn-market','btn-help'].forEach(id => { const prev = $(id).onclick; $(id).onclick = e => { $('notif-panel').classList.add('hidden'); if (prev) prev.call($(id), e); }; });
 /* MA3: widgets na barra esquerda, pausa/velocidade na barra inferior (handlers preservados) */
-['btn-rank','btn-news','btn-notif','btn-tax','btn-stats','btn-miss','btn-orc','btn-rel','btn-build','btn-tech','btn-war'].forEach(id => { const b = $(id); if (b) $('ma3-tools').appendChild(b); });
+['btn-rank','btn-news','btn-notif','btn-tax','btn-stats','btn-miss','btn-orc','btn-rel','btn-build','btn-tech','btn-war','btn-leis','btn-dip'].forEach(id => { const b = $(id); if (b) $('ma3-tools').appendChild(b); });
 ['btn-market','btn-help','btn-snd'].forEach(id => { const b = $(id); if (b) { b.classList.remove('tool-btn'); $('ma3-tools').appendChild(b); } });
 ['btn-speed2','btn-pause'].forEach(id => { const b = $(id); if (b) document.querySelector('.bottom-bar').prepend(b); });
 document.addEventListener('click', e => {
