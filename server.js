@@ -1175,6 +1175,7 @@ function aiTurn(room) {
     if (b.rec && (b.rec.terras_raras || 0) >= 4 && b.money > 1000 && Math.random() < 0.08) { const us = ['infantaria','blindados','artilharia','aviacao','submarinos','frota','fuzileiros','defesa_aerea'].filter(k => (b.units[k] || 0) < 3); if (us.length) { const k = us[Math.floor(Math.random() * us.length)]; b.rec.terras_raras -= 4; b.money -= 200; b.units[k] = (b.units[k] || 0) + 1; } }
     if (b.money > 2500 && (b.trades || []).length >= 2 && Math.random() < 0.08) { b.money += 100 + 75 * b.trades.length - 200; }
     if (b.money > 2500 && ((b.sectors && b.sectors.turismo) || 0) < 5 && Math.random() < 0.06) { b.money -= 500; b.sectors.turismo = ((b.sectors && b.sectors.turismo) || 0) + 1; }
+    if (b.crise && b.crise.tipo === 'pandemia' && b.money > 500 && Math.random() < 0.3) { b.money -= 250; b.crise = null; b.pop += 3; log(room, `💉 ${cname(b)} erradicou a pandemia com vacinação em massa!`); }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -1638,6 +1639,18 @@ function performAction(room, p, msg) {
       p.aprov = Math.min(100, p.aprov + 3); p.money += 150;
       p.influencia = Math.min(100, (p.influencia || 0) + 2);
       log(room, `🎬 ${cname(p)} sediou um FESTIVAL DE CINEMA mundial (+3❤️, +$150, +2 doutrina).`);
+      break;
+    }
+    case 'policlinica': {
+      if (!spend(p, 1, 300)) return;
+      p.pop += 4; p.aprov = Math.min(100, p.aprov + 3);
+      log(room, `🏩 ${cname(p)} inaugurou uma POLICLÍNICA (+4 pop, +3❤️).`);
+      break;
+    }
+    case 'combate_cancer': {
+      if (!spend(p, 2, 600)) return;
+      p.pop += 5; p.aprov = Math.min(100, p.aprov + 6); p.ciencia = (p.ciencia || 0) + 1;
+      log(room, `🎗️ ${cname(p)} lançou o programa COMBATE AO CÂNCER (+5 pop, +6❤️, +1 ciência).`);
       break;
     }
     case 'ministro':
