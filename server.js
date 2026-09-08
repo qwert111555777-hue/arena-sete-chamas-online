@@ -635,7 +635,7 @@ function addPlayer(room, conn, name, isHost) {
     taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, budget: {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: 0, ideology: null, religion: 'laico',
     customName: null, customFlag: '🏳️', bot: false, pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 25, madeira: 0, terras_raras: 12, uranio: 0, borracha: 0 },
     xp: 0, blackout: false, depositos: [], upgrades: {}, pacts: {},
-    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0, mandatos: 0, conversoes: 0, doutrinacoes: 0 }, famine: false,
+    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0, mandatos: 0, conversoes: 0, doutrinacoes: 0, titulos: 0 }, famine: false,
     ministers: { eco: null, def: null, dip: null },
     techs: [], techLv: {}, sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
@@ -665,7 +665,7 @@ function makeAIBot(c) {
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
     units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 },
     builds: [], emergencyUntil: 0, leis: [],
-    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0, mandatos: 0, conversoes: 0, doutrinacoes: 0 }, famine: false,
+    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0, mandatos: 0, conversoes: 0, doutrinacoes: 0, titulos: 0 }, famine: false,
     ideology: Object.keys(IDEOLOGIES)[h % 6], religion: Object.keys(RELIGIONS)[h % 5],
     seguranca: { defesa: h % 2, secreto: (h >> 1) % 2, policia: (h >> 2) % 3, guarda: (h >> 3) % 2 },
     espioes: 1,
@@ -956,6 +956,28 @@ function eleicoes(room) {
   }
 }
 
+function premiosSemanais(room) {
+  const alive = room.players.filter(p => p.alive);
+  if (alive.length < 2) return;
+  const poder = p => p.mil * 10 + Object.values(p.units || {}).reduce((a, b) => a + b, 0) * 15 + (p.nuclear || 0) * 20;
+  const inds = p => Object.values(p.buildings || {}).reduce((a, b) => a + b, 0) + p.eco;
+  const cats = [
+    ['maior renda', p => incomeOf(room, p), p => { p.money += 150; }],
+    ['maior poder militar', poder, p => { p.mil += 1; }],
+    ['maior populacao', p => p.pop, p => { p.aprov = Math.min(100, p.aprov + 2); }],
+    ['maior industria', inds, p => { p.money += 100; }],
+    ['maior fe', p => p.fe || 0, p => { p.aprov = Math.min(100, p.aprov + 2); }],
+    ['maior doutrina', p => p.influencia || 0, p => { p.influencia = Math.min(100, (p.influencia || 0) + 2); }],
+  ];
+  for (const [nm, f, prize] of cats) {
+    const win = alive.slice().sort((x, y) => f(y) - f(x))[0];
+    prize(win);
+    win.stats.titulos = (win.stats.titulos || 0) + 1;
+  }
+  const tops = cats.map(([nm, f]) => `${nm}: ${cname(alive.slice().sort((x, y) => f(y) - f(x))[0])}`).join(' | ');
+  log(room, `PRÊMIOS SEMANAIS: ${tops}. Líderes recebem bônus + títulos!`);
+}
+
 function resolveWeek(room) {
   room.turn++;
   for (const k of Object.keys(room.market)) room.market[k] = Math.max(3, Math.min(40, Math.round(room.market[k] * (0.88 + Math.random() * 0.3))));
@@ -976,6 +998,7 @@ function resolveWeek(room) {
   if ((room.day - 1) % 14 === 0){ randomEvent(room); worldNews(room); }
   if ((room.day - 1) % 28 === 0 && !room.un) openUN(room);
   if ((room.day - 1) % 56 === 0) eleicoes(room);
+  premiosSemanais(room);
   if ((room.day - 1) % 14 === 0) aiTurn(room);
   const mNow = MISSIONS[room.missionIdx % MISSIONS.length];
   if (mNow) {

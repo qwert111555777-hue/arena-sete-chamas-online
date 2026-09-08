@@ -2052,13 +2052,14 @@ $('btn-rank').onclick = () => {
     return b; };
   const poder = p => p.mil*10 + Object.values(p.units).reduce((a,b)=>a+b,0)*15 + p.nuclear*20;
   const inds  = p => Object.values(p.buildings).reduce((a,b)=>a+b,0) + p.eco;
-  const cats = [['💰 Renda', renda, v=>'$'+v], ['⚔️ Poder militar', poder, v=>v], ['👥 População', p=>p.pop, v=>v], ['🏭 Indústria', inds, v=>v]];
+  const cats = [['💰 Renda', renda, v=>'$'+v], ['⚔️ Poder militar', poder, v=>v], ['👥 População', p=>p.pop, v=>v], ['🏭 Indústria', inds, v=>v], ['Fe', p=>p.fe||0, v=>v], ['Doutrina', p=>p.influencia||0, v=>v]];
   let html = '<h3 style="margin-top:0">📊 Ranking Mundial</h3>';
+  html += '<div style="font-size:11px;color:#6b5a33">Premios semanais: o lider de cada categoria ganha bonus + 1 titulo.</div>';
   cats.forEach(([nm, fn, fm]) => {
     const sorted = ps.slice().sort((a,b)=>fn(b)-fn(a));
     const top = sorted.slice(0,8);
     html += '<div style="margin:8px 0"><b>'+nm+'</b><ol style="margin:4px 0 0 18px;padding:0">';
-    top.forEach(p => { html += '<li'+(p.id===myId?' style="color:#ffd76a;font-weight:bold"':'')+'>'+cname(p)+' — '+fm(fn(p))+'</li>'; });
+    top.forEach((p, ix) => { html += '<li'+(p.id===myId?' style="color:#ffd76a;font-weight:bold"':'')+'>'+(ix===0?'👑 ':'')+cname(p)+' — '+fm(fn(p))+'</li>'; });
     sorted.forEach(p => { if (!p.bot && !top.includes(p)) html += '<li'+(p.id===myId?' style="color:#ffd76a;font-weight:bold"':'')+'>'+cname(p)+' — '+fm(fn(p))+' (#'+(sorted.indexOf(p)+1)+')</li>'; });
     html += '</ol></div>';
   });
