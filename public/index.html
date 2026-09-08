@@ -847,7 +847,7 @@ const CBYID = Object.fromEntries(COUNTRIES.map(c=>[c.id,c]));
 function cbid(id){ if (state && state.world){ const w = state.world.find(x=>x.id===id); if (w) return w; } return CBYID[id]; }
 const IDEOLOGIES = { democracia:'Democracia +5% renda', autoritarismo:'Autoritarismo +15% atq', comunismo:'Comunismo setores baratos', fascismo:'Fascismo recrutar barato', monarquia:'Monarquia dip barata', republica:'República tech barata' };
 const RELIGIONS = { laico:'Laico', cristao:'Cristã', muculmano:'Islâmica', budista:'Budista', hindu:'Hindu' };
-const MINISTERS = { eco:{tec:'Tecocrata +10% renda', pop:'Populista +1❤️', ind:'Industrialista +20% prédios'}, def:{fal:'Falcão +10% atq', estr:'Estrategista +10% def', pac:'Pacifista +2❤️ −10%'}, dip:{neg:'Negociador dip -50%', inf:'Influenciador +1⚖️', esp:'Mestre-Espião +10% sab'} };
+const MINISTERS = { eco:{tec:'Tecocrata +10% renda', pop:'Populista +1❤️', ind:'Industrialista +20% prédios'}, def:{fal:'Falcão +10% atq', estr:'Estrategista +10% def', pac:'Pacifista +2❤️ −10%'}, dip:{neg:'Negociador dip -50%', inf:'Influenciador +1⚖️', esp:'Mestre-Espião +10% sab', cul:'Culturalista fest -50%'} };
 /* 125 tecnologias: 5 árvores x 25, 5 níveis cada (espelho do servidor) */
 const TECHS = {
   /* ---------- ECONOMIA ---------- */

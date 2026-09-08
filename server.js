@@ -255,7 +255,7 @@ const RELIGIONS = {
 const MINISTERS = {
   eco: { tec: { name: 'Tecocrata', desc: '+10% renda' }, pop: { name: 'Populista', desc: '+1 aprovação/turno, -5% renda' }, ind: { name: 'Industrialista', desc: '+20% renda de prédios' } },
   def: { fal: { name: 'Falcão', desc: '+10% ataque' }, estr: { name: 'Estrategista', desc: '+10% defesa' }, pac: { name: 'Pacifista', desc: '+2 aprovação/semana, -10% renda' } },
-  dip: { neg: { name: 'Negociador', desc: 'diplomacia -50% custo' }, inf: { name: 'Influenciador', desc: '+1 influência/turno' }, esp: { name: 'Mestre-Espião', desc: '+10% sabotagem' } },
+  dip: { neg: { name: 'Negociador', desc: 'diplomacia -50% custo' }, inf: { name: 'Influenciador', desc: '+1 influência/turno' }, esp: { name: 'Mestre-Espião', desc: '+10% sabotagem' }, cul: { name: 'Culturalista', desc: 'festival -50%, +1 doutrina/sem' } },
 };
 // Cinco árvores de desenvolvimento, 25 tecnologias cada, 5 níveis.
 // Custos por nível medidos nas capturas do MA3: 50 / 99 / 198 / 396 / 797.
@@ -900,6 +900,7 @@ function dayTick(room) {
     // fé / influência passivos
     if (p.religion && p.religion !== 'laico') p.fe += 1 / DAY_DIV;
     if (p.ministers.dip === 'inf') p.influencia += 1 / DAY_DIV;
+    if (p.ministers.dip === 'cul') p.influencia += 1 / DAY_DIV;
     p.influencia += techLevel(p, 'influencia_cult') / DAY_DIV;
     p.ap = AP_PER_TURN;
   }
@@ -1144,6 +1145,7 @@ function aiTurn(room) {
     if (!b.solar && b.money > 3000 && Math.random() < 0.08) { b.money -= 500; b.solar = true; }
     if (b.money < 800 && b.money > 300) { b.money += 100 + (b.eco || 0) * 30 - 200; }
     if (b.money > 5000 && Math.random() < 0.06) { b.money -= 400; b.eco += 1; }
+    if (!b.ministers.eco && b.money > 2000) { b.money -= 300; b.ministers = { eco: ['tec', 'pop', 'ind'][Math.floor(Math.random() * 3)], def: ['fal', 'estr', 'pac'][Math.floor(Math.random() * 3)], dip: ['neg', 'inf', 'esp', 'cul'][Math.floor(Math.random() * 4)] }; }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -1341,7 +1343,7 @@ function performAction(room, p, msg) {
       break;
     }
     case 'festival': {
-      if (!spend(p, 1, 300)) return;
+      if (!spend(p, 1, (p.ministers.dip === 'cul' ? 150 : 300))) return;
       p.influencia = Math.min(100, (p.influencia || 0) + 5);
       p.aprov = Math.min(100, p.aprov + 4); p.money += 100;
       log(room, `🎪 ${cname(p)} realizou um FESTIVAL CULTURAL mundial (+5 doutrina, +4❤️, +$100 turismo).`);
@@ -2429,7 +2431,7 @@ function montarExercito(p, lado) {
   // quem não tem forças treinadas luta com milícia proporcional ao poder militar
   const nMil = Math.max(3, Math.min(8, Math.round((p.mil || 1) / 2)));
   for (let i = 0; i < nMil; i++) tipos.push('milicia');
-  const bonus = 1 + (p.mil || 0) * 0.02;
+  const md = ((p.ministers || {}).def); const bonus = 1 + (p.mil || 0) * 0.02 + (lado === 'atk' && md === 'fal' ? 0.1 : 0) + (lado === 'def' && md === 'estr' ? 0.1 : 0);
   const lista = tipos.slice(0, 10);
   return lista.map((t, i) => {
     const s = BT[t];
