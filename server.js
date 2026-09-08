@@ -1136,6 +1136,9 @@ function aiTurn(room) {
     if ((b.crise && b.crise.tipo === 'pandemia') || b.aprov < 50) { if (b.money > 600) { b.money -= 250; b.pop += 3; b.aprov = Math.min(100, b.aprov + 6); if (b.crise && b.crise.tipo === 'pandemia') b.crise = null; } }
     if (b.money > 4000 && Math.random() < 0.08) { b.money -= 500; b.pop += 8; b.aprov = Math.min(100, b.aprov + 5); if ((b.sectors.saude || 0) < 5) b.sectors.saude += 1; }
     if (b.money > 4000 && ((b.sectors && b.sectors.educacao) || 0) < 5 && Math.random() < 0.08) { b.money -= 700; b.sectors.educacao = ((b.sectors && b.sectors.educacao) || 0) + 1; }
+    if (((b.seguranca && b.seguranca.policia) || 0) >= 1 && b.money < 1500 && b.money > 300) { b.money += 150 + 50 * b.seguranca.policia - 200; b.aprov = Math.min(100, b.aprov + 3); }
+    if (b.aprov < 30 && ((b.seguranca && b.seguranca.guarda) || 0) >= 1 && b.money > 300) { b.money -= 100; b.aprov = Math.min(100, b.aprov + 8); }
+    if (b.money > 3000 && Math.random() < 0.08) { const bk = ['policia', 'guarda'][Math.floor(Math.random() * 2)]; b.seguranca = b.seguranca || {}; if ((b.seguranca[bk] || 0) < 3) { b.money -= 350; b.seguranca[bk] = (b.seguranca[bk] || 0) + 1; } }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -1361,6 +1364,24 @@ function performAction(room, p, msg) {
       log(room, `🎓 ${cname(p)} fundou uma UNIVERSIDADE (+1 Educação, pesquisas −4%/Nv).`);
       break;
     }
+    case 'operacao_policial': {
+      const pol = (p.seguranca && p.seguranca.policia) || 0;
+      if (pol < 1) { err(p.conn, '🚔 Precisa da Polícia estruturada (Nv 1+).'); return; }
+      if (!spend(p, 1, 200)) return;
+      const apre = 150 + 50 * pol;
+      p.money += apre; p.aprov = Math.min(100, p.aprov + 3);
+      log(room, `🚔 ${cname(p)} fez OPERAÇÃO POLICIAL contra o crime (+$${apre} apreendidos, +3❤️).`);
+      break;
+    }
+    case 'toque_recolher': {
+      const gd = (p.seguranca && p.seguranca.guarda) || 0;
+      if (gd < 1) { err(p.conn, '🌙 Precisa da Guarda Nacional (Nv 1+).'); return; }
+      if (!spend(p, 1, 100)) return;
+      p.aprov = Math.min(100, p.aprov + 8);
+      p.influencia = Math.max(0, (p.influencia || 0) - 2);
+      log(room, `🌙 ${cname(p)} decretou TOQUE DE RECOLHER: ordem restaurada (+8❤️, −2 doutrina).`);
+      break;
+    }
     case 'ministro':
       if (!MINISTERS[msg.post] || !MINISTERS[msg.post][msg.value]) return;
       if (!spend(p, 1, 100)) return;
@@ -1470,7 +1491,8 @@ function performAction(room, p, msg) {
       if (!spend(p, 1, dipCost(p, 150))) return;
       const sAtk = (p.seguranca && p.seguranca.secreto) || 0;   // serviço secreto de quem ataca
       const sDef = (target.seguranca && target.seguranca.secreto) || 0; // de quem se defende
-      const chance = Math.min(0.9, 0.5 + 0.08 * sAtk + 0.05 * (p.espioes || 0) + (p.ministers.dip === 'esp' ? 0.1 : 0) - ((target.spyShieldUntil || 0) > room.day ? 0.25 : 0));
+      const dDef = (target.seguranca && target.seguranca.defesa) || 0;
+      const chance = Math.min(0.9, 0.5 + 0.08 * sAtk + 0.05 * (p.espioes || 0) + (p.ministers.dip === 'esp' ? 0.1 : 0) - ((target.spyShieldUntil || 0) > room.day ? 0.25 : 0) - 0.05 * dDef);
       const r = Math.random();
       if (r < chance) {
         if (sDef >= 2 && Math.random() < 0.15 * sDef) {

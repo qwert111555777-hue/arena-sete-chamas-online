@@ -1742,6 +1742,15 @@ function renderPanel(){
       b.onclick=()=>send({t:'action',action:'seguranca',value:k}); r.appendChild(b);
       extra.appendChild(r);
     });
+    // lei & ordem (Fase 38)
+    const lor = document.createElement('div'); lor.className = 'xrow';
+    const bOp = document.createElement('button'); bOp.textContent = 'Operacao (1+200)';
+    bOp.disabled = m.ap < 1 || m.money < 200 || ((p.seguranca && p.seguranca.policia) || 0) < 1;
+    bOp.onclick = () => send({t:'action',action:'operacao_policial'}); lor.appendChild(bOp);
+    const bTq = document.createElement('button'); bTq.textContent = 'Toque (1+100)';
+    bTq.disabled = m.ap < 1 || m.money < 100 || ((p.seguranca && p.seguranca.guarda) || 0) < 1;
+    bTq.onclick = () => send({t:'action',action:'toque_recolher'}); lor.appendChild(bTq);
+    extra.appendChild(lor);
     // tecnologias: 5 árvores x 25 tecnologias x 5 níveis
     if (typeof techAba === 'undefined') window.techAba = 'ec';
     const abasDiv = document.createElement('div');
