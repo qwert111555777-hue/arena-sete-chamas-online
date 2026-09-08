@@ -682,11 +682,11 @@ function startGame(room) {
     p.country = cid;
     p.money = 10000; p.eco = 3; p.mil = 3; p.pop = 0; p.rec = { comida: 0, minerio: 0, energia: 0, concreto: 25, madeira: 0, terras_raras: 12, uranio: 0, borracha: 0 }; p.xp = 0; p.blackout = false;
     p.depositos = depositosOf(cid); p.upgrades = {}; p.pacts = {};
-    p.buildings = { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }; p.stats = { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0 }; p.famine = false;
+    p.buildings = { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }; p.stats = { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0, mandatos: 0, conversoes: 0, doutrinacoes: 0, titulos: 0 }; p.famine = false;
     p.aprov = 50; p.ap = AP_PER_TURN; p.alive = true;
     p.allies = []; p.eliminatedReason = null; p.nuclear = 0; p.influencia = 0; p.fe = 0; p.wars = []; p.abrigo = false;
     p.provinces = [{ name: 'Capital de ' + nat.name, infra: 1, owner: p.id, origem: p.id }];
-    p.sanctioning = []; p.sanctionedBy = [];
+    p.sanctioning = []; p.sanctionedBy = []; p.crise = null; p.lastCrisis = 0; p.lastTeste = 0;
     p.taxRate = 1; p.taxes = {corp:10, rend:10, prod:10, amb:5}; p.budget = {exe:1, int:1, tra:1, edu:1, ambm:1}; p.debt = 0; p.ideology = null; p.religion = 'laico';
     p.ministers = { eco: null, def: null, dip: null };
     p.techs = []; p.techLv = {}; p.sectors = { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 };
