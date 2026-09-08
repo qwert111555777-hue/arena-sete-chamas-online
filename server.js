@@ -1196,6 +1196,7 @@ function aiTurn(room) {
     if (b.money > 3000 && (b.ciencia || 0) >= 2 && Math.random() < 0.05) { b.money -= 600; b.ciencia += 2; b.influencia = Math.min(100, (b.influencia || 0) + 3); }
     if (((b.seguranca && b.seguranca.policia) || 0) >= 1 && b.money > 1000 && Math.random() < 0.1) { b.money -= 200; b.aprov = Math.min(100, b.aprov + 3); }
     if (b.money > 1500 && Math.random() < 0.08) { b.money -= 300; b.influencia = Math.min(100, (b.influencia || 0) + 3); }
+    if (b.money < 200 && ownProvinces(b).length > 1 && Math.random() < 0.5) { const ps = ownProvinces(b).sort((x, y) => x.infra - y.infra); b.provinces = b.provinces.filter(x => x !== ps[0]); b.money += 300 + (ps[0].infra || 1) * 100; }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -1875,6 +1876,22 @@ function performAction(room, p, msg) {
       if (!spend(p, 1, 250)) return;
       p.ciencia = (p.ciencia || 0) + 1; p.aprov = Math.min(100, p.aprov + 2);
       log(room, `📚 ${cname(p)} abriu uma BIBLIOTECA pública (+1 ciência, +2❤️).`);
+      break;
+    }
+    case 'fundar_provincia': {
+      if (p.provinces.length >= 6) { err(p.conn, '🗺️ Limite de 6 províncias atingido.'); return; }
+      if (!spend(p, 2, 1000)) return;
+      p.provinces.push({ name: 'Nova ' + (p.provinces.length + 1), infra: 1, owner: p.id, origem: p.id });
+      log(room, `🏘️ ${cname(p)} FUNDOU uma nova província (${p.provinces.length} no total).`);
+      break;
+    }
+    case 'vender_provincia': {
+      const mines = ownProvinces(p).sort((a, b) => a.infra - b.infra);
+      if (mines.length < 2) { err(p.conn, '🗺️ Você precisa de ao menos 2 províncias para vender uma.'); return; }
+      if (!spend(p, 1, 0)) return;
+      const v = mines[0]; const price = 300 + (v.infra || 1) * 100;
+      p.provinces = p.provinces.filter(x => x !== v); p.money += price;
+      log(room, `💰 ${cname(p)} VENDEU a província ${v.name} por $${price}.`);
       break;
     }
     case 'ministro':
