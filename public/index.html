@@ -2337,10 +2337,13 @@ $('btn-gov').onclick = () => {
     return '<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1"><b style="font-size:12px">'+sc[1]+'</b><div style="margin-top:2px">'+[0,1,2,3,4].map(i=>'<span style="display:inline-block;width:22px;height:10px;margin-right:2px;border-radius:2px;background:'+(i<lv?'#c9a227':'#d8cba0')+';border:1px solid #8a6a1f"></span>').join('')+'</div></div><button data-sec="'+sc[0]+'" style="padding:6px 10px;cursor:pointer" '+((lv>=5||m.ap<1||m.money<75)?'':'disabled')+'>'+(lv>=5?'MÁX':'Investir')+'</button></div>';
   }).join('');
   s += '<div style="background:#e6f4e6;border:2px solid #2e7d32;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px">Saude Nv'+(((m.sectors&&m.sectors.saude)||0))+' acelera a natalidade</div><button data-vac style="padding:6px 10px;cursor:pointer" '+((m.ap>=1&&m.money>=250)?'':'disabled')+'>Vacina (1AP+$250)</button><button data-hosp style="padding:6px 10px;cursor:pointer" '+((m.ap>=2&&m.money>=500)?'':'disabled')+'>Hospital (2AP+$500)</button></div>';
+  s += '<div style="background:#fff8e6;border:2px solid #c9a227;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px">Turismo Nv'+(((m.sectors&&m.sectors.turismo)||0))+' = +$'+(((m.sectors&&m.sectors.turismo)||0)*15)+'/sem</div><button data-oli style="padding:6px 10px;cursor:pointer" '+((m.ap>=2&&m.money>=1000&&((m.sectors&&m.sectors.esportes)||0)>=2)?'':'disabled')+'>Olimpiada (2AP+$1000)</button><button data-mar style="padding:6px 10px;cursor:pointer" '+((m.ap>=2&&m.money>=700)?'':'disabled')+'>Marco (2AP+$700)</button></div>';
   s += '<div style="text-align:center;margin-top:6px"><button id="gv-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
   ov.innerHTML = s;
   document.body.appendChild(ov);
   ov.querySelector('#gv-x').onclick=()=>ov.remove();
+  const ol = ov.querySelector('[data-oli]'); if (ol) ol.onclick=()=>{ send({t:'action',action:'olimpiada'}); ov.remove(); };
+  const mr = ov.querySelector('[data-mar]'); if (mr) mr.onclick=()=>{ send({t:'action',action:'marco_turistico'}); ov.remove(); };
   const vc = ov.querySelector('[data-vac]'); if (vc) vc.onclick=()=>{ send({t:'action',action:'vacinacao'}); ov.remove(); };
   const hp = ov.querySelector('[data-hosp]'); if (hp) hp.onclick=()=>{ send({t:'action',action:'hospital_campanha'}); ov.remove(); };
   ov.onclick = e => { if (e.target===ov) ov.remove(); };
