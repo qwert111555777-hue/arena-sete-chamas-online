@@ -1162,6 +1162,7 @@ function aiTurn(room) {
     if (b.money < 300 && Math.random() < 0.15) { b.money += 1500; b.aprov = Math.max(0, b.aprov - 8); }
     if (b.religion && b.religion !== 'laico' && b.money > 1000 && Math.random() < 0.15) { b.money -= 200; b.fe = Math.min(100, (b.fe || 0) + 4); }
     if (b.money > 2000 && Math.random() < 0.05) { const fo = room.players.filter(o => o.alive && o !== b).sort((x, y) => relBetween(b, y) - relBetween(b, x))[0]; if (fo && relBetween(b, fo) > 0) { b.money -= 100; bumpRel(b, fo, 8); } }
+    if (b.money > 3000 && Math.random() < 0.05) { b.money -= 600; b.aprov = Math.min(100, b.aprov + 8); b.influencia = Math.min(100, (b.influencia || 0) + 3); }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -1577,6 +1578,21 @@ function performAction(room, p, msg) {
       if (!spend(p, 1, 200)) return;
       bumpRel(p, target, 10); p.eco += 1;
       log(room, `🎓 ${cname(p)} firmou INTERCÂMBIO estudantil com ${cname(target)} (+10 relações, +1 eco).`);
+      break;
+    }
+    case 'copa_nacional': {
+      if (((p.sectors && p.sectors.esportes) || 0) < 1) { err(p.conn, '⚽ Precisa de Esportes Nv 1+ para sediar a copa.'); return; }
+      if (!spend(p, 2, 600)) return;
+      p.aprov = Math.min(100, p.aprov + 8); p.money += 300;
+      p.influencia = Math.min(100, (p.influencia || 0) + 3);
+      log(room, `⚽ ${cname(p)} sediou a COPA NACIONAL! (+8❤️, +$300, +3 doutrina).`);
+      break;
+    }
+    case 'tv_estatal': {
+      if (!spend(p, 1, 400)) return;
+      p.aprov = Math.min(100, p.aprov + 5);
+      p.influencia = Math.min(100, (p.influencia || 0) + 3);
+      log(room, `📺 ${cname(p)} inaugurou a TV ESTATAL (+5❤️, +3 doutrina).`);
       break;
     }
     case 'ministro':
