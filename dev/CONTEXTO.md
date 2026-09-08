@@ -12,8 +12,10 @@
 ### Branch / commits
 
 ```
-56682b3 Bandeiras oficiais dos 195 paises   ← COMMITTED MAS COM BUG (ver §0 bug)
-7b648b0 Sair salva automatico + velocidade 1x-5x   ← PRODUÇÃO ESTÁ AQUI
+4905085 140 construcoes (47->140) cliente+servidor + pasta dev/   ← DEPLOY EM ANDAMENTO (dep-dafn2bn40ujc73c0tjd0)
+8041ed1 Bandeiras oficiais dos 195 paises + fix np-flag   ← validado, no GitHub
+7b648b0 Sair salva automatico + velocidade 1x-5x   ← era a PRODUÇÃO (cliente quebrado!)
+56682b3 (NUNCA chegou no GitHub — perdido com workspace antigo; refeito como 8041ed1)
 371566c HUD cinza-oliva #67655f
 d47c0f7 125 tecnologias (5 arvores x 25)
 e1cc9f1 47 construcoes / 6 abas / 5 niveis + borracha
@@ -23,9 +25,9 @@ e1cc9f1 47 construcoes / 6 abas / 5 niveis + borracha
 - Produção (Render) está em `7b648b0` e está FUNCIONANDO. O commit das bandeiras (`56682b3`) não foi deployado, então o bug não chegou no ar.
 - git status (na sessão antiga): `public/index.html` modificado (não commitado) — continha as 140 construções.
 
-### ⚠️ BUG CRÍTICO A CORRIGIR ANTES DE QUALQUER OUTRA COISA
+### ✅ BUG CRÍTICO DO np-flag (CORRIGIDO em 8041ed1)
 
-O `patch_bandeiras.py` quebrou um if/else no cliente.
+CORREÇÃO DE REGISTRO: o bug NÃO veio do `patch_bandeiras.py`. `git blame` prova que o double-else já estava no commit empurrado 7b648b0 (linha 1415 por `7b648b07` + linha 1416 de `15ede949`). O CLIENTE EM PRODUÇÃO estava quebrado. Sintoma original (referência):
 
 ```
 /tmp/all.js:890
@@ -123,7 +125,7 @@ Novas construções incluem: minas de carvão/cobre/bauxita/prata/lítio/níquel
 
 ## 3. O QUE FALTA (ordem acordada com o usuário)
 
-1. Corrigir o bug de sintaxe do np-flag e commitar as 140 construções ← PRÓXIMO PASSO
+1. Corrigir o bug de sintaxe do np-flag e commitar as 140 construções — FEITO (8041ed1 + 4905085)
 2. Dados oficiais reais dos 195 países — capital, população, área, PIB, forças armadas, recursos
 3. Núcleo em tempo real — não por turno: cada segundo entra dinheiro da economia/capital e cada segundo se produzem minérios
 4. Construções custam minérios; dinheiro (por segundo) compra minérios, não construções; dinheiro vai para melhorias e investimentos
@@ -176,10 +178,16 @@ if (typeof o === 'string') { try { o = JSON.parse(o); } catch { return; } }
 - restcountries.com retorna 301 — não usar. flagcdn.com/\<iso\>.svg funciona.
 - Render (plano grátis) apaga o disco em restart/deploy — saves não sobrevivem sem disco persistente pago. Já avisado ao usuário.
 - Nunca matar o servidor local por bash (kill/pkill mata a própria ferramenta bash).
+- Servidor tem CÓPIA PRÓPRIA das 5 tabelas de construções (server.js ~935-939) e REJEITA kind desconhecido (`if (!PROD_BUILDS[msg.kind]) return`). Patch de construções tem que ir em index.html E server.js, idênticos.
+- Cliente constrói via envelope `{t:'action', action:'construir', kind}` — `{t:'construir'}` no top-level NÃO existe e é ignorado em silêncio.
+- `construir` com sucesso NÃO faz broadcast (silêncio é normal). Para validar: `fim_turno` (host) → novo state → conferir `buildings[kind]`.
+- Log da sala tem teto de 120 entradas e 195 bots floodam — ausência de 'inicia X' no log NÃO prova que não construiu; confira `buildings`.
+- NUNCA edit_file em paralelo no MESMO arquivo (race read-modify-write: só 1 edição sobrevive). Faça sequencial ou via script único.
+- Render com autoDeploy=yes NEM SEMPRE dispara no push (pushes 8041ed1/4905085 não dispararam) — confira deploys via API e dispare manual se preciso.
 
 ---
 
-## 6. FERRAMENTAS EM /home/user/dev-tools/ (PERDIDAS — workspace vazio em 2026-09-08, recriar se preciso)
+## 6. FERRAMENTAS EM /home/user/dev-tools/ (RECRIADAS em 2026-09-08 + COPIADAS p/ presidente-online/dev/ no repo, p/ sobreviver entre chats)
 
 | Arquivo | Estado | O que faz |
 |---|---|---|
@@ -196,6 +204,9 @@ if (typeof o === 'string') { try { o = JSON.parse(o); } catch { return; } }
 | teste_tecnologias.js | 35/0 | tecnologias |
 | teste_construcoes.js | 37/0 | construções |
 | reconnect2.js, wsclient.js | — | reconexão e cliente WS de teste |
+| patch_construcoes.py | NOVO 2026-09-08 | expande 47 → 140 em index.html E server.js (idênticos) |
+| verificar_construcoes.js | NOVO 2026-09-08 | conta 140, distribuição por aba, client==server, outputs |
+| smoke_construir.js | NOVO 2026-09-08 | WS end-to-end: cria sala, constrói prédio novo, confere (precisa `npm i ws`) |
 
 Regressão verde: 160 verificações / 0 falhas. Esse é o baseline a proteger.
 
@@ -246,3 +257,5 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - Pendente: clonar repo (nome a confirmar via API) ou URL do Render como plano B.
 - Plano após recuperar: clonar → corrigir bug np-flag → refazer 140 construções (lista em §2) → validar sintaxe + regressão → commitar → só então deployar.
 - 2026-09-08: repo = `qwert111555777-hue/arena-sete-chamas-online` (público) — clonado OK. Fix limpo em `8041ed1` (push OK: 195 flags, sintaxe OK, HTTP 200 em / e /flags/*). Próximo: refazer 140 construções.
+- 2026-09-08 (140 construções): 93 novos refeitos do zero (lista §2 + `hidrogenio` extra p/ fechar ene=14, pois a lista somava 92). Distribuição exata: rec 20, ene 14, ali 22, ind 27, mil 19, inf 38. Cliente E servidor idênticos. Validado: 140/140, outputs só recursos existentes, node --check OK x2, smoke WS end-to-end OK (mina_cobre:1, porto_espacial:1). Pasta `dev/` (contexto+scripts) commitada no repo p/ não se perder entre chats.
+- 2026-09-08 (deploy): Render NÃO auto-disparou nos pushes; deploy manual dep-dafn2bn40ujc73c0tjd0 (4905085) via API.
