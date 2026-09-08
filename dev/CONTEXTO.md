@@ -432,3 +432,5 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (FASE 69 — LIVE dep-dag9t2740ujc73a6d6ng/48ae5d8, SERVER+CLIENTE): 🌾 COMIDA 2.0: FEIRAS LIVRES (1⚡+$150: +2 pop+2❤️+$50) + CESTAS BÁSICAS (1⚡+$200: +3 pop+4❤️) + bots importam comida.
 - 2026-09-08 (ESTUDO Conselho Segurança 100x real: MA2 exophase — "Strong Position: Become a permanent member of the UN Security Council"; MA2 updatestar — propor resoluções na ONU E no Conselho de Segurança, subornar votos — base da Fase 70.
 - 2026-09-08 (FASE 70 — LIVE dep-dag9tvek1f9s738cntu0/ba35570, SERVER+CLIENTE): 🛡️ CONSELHO DE SEGURANÇA: ENTRAR (2⚡+$800, máx 5: +1 voto ONU) + VETAR (1⚡: derruba resolução) + bots entram.
+- 2026-09-08 (ESTUDO espaço 100x real: MA3 mwm — colonização espacial, colonizar Marte (custos, treino, viagem, exploração); departamento Ciência e Pesquisa; gestão de vassalos — base da Fase 71.
+- 2026-09-08 (FASE 71 — LIVE dep-dag9uluq1p3s73c8nf5g/ac8c78d, SERVER+CLIENTE): 🚀 ESPAÇO 2.0: SATÉLITE (2⚡+$600: +2 ciência+3 doutrina+2❤️) + MISSÃO A MARTE (req 3 ciência, 1⚡+$1500: +8❤️+8 doutrina+3 ciência+10XP) + bots lançam.
