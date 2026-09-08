@@ -372,3 +372,5 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (FASE 39 — LIVE dep-dag8vdmq1p3s73c4c9d0/0e9cb5b, SERVER+CLIENTE): 💼 COMÉRCIO 2.0: pactos dão −3%/compra e +3%/venda (máx 20%) + sancionado paga +10%/sanção + bots vendem excedente (20un) + nota no mercado.
 - 2026-09-08 (ESTUDO energia MA3 x2: power plants + alternative sources, oil rigs/uranium, produção comida/ouro/ferro/óleo/urânio (sharebie/aptoide/bluestacks/mwm) — base da Fase 40.
 - 2026-09-08 (FASE 40 — LIVE dep-dag904u7bikc738bktvg/ec67989, SERVER+CLIENTE): ⚡ ENERGIA 2.0: TERMELÉTRICA (1⚡+$300: +40⚡, +2 poluição) + ☀️ SOLAR (2⚡+$500: +2⚡/dia p/ sempre) + ☢️ USINA CIVIL (2⚡+$800: +60⚡, jazida/5 urânio) + bots + painel eco.
+- 2026-09-08 (ESTUDO impostos MA3 x2: imposto alto = natalidade cai + povo infeliz + rating cai; baixo = pop cresce + consumo; overtax = protestos (reddit/modfyp/moddroid) — base da Fase 41.
+- 2026-09-08 (FASE 41 — LIVE dep-dag910e7bikc738bohbg/31b13e7, SERVER+CLIENTE): 🧾 FISCO 2.0: imposto alto ×0.7 / baixo ×1.2 natalidade + AUDITORIA (1⚡+$200: +$100+30/eco) + INCENTIVO (1⚡+$400: +1 eco, +2❤️) + bots + botões fisco.
