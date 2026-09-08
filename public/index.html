@@ -620,6 +620,8 @@
       <div class="bottom-bar">
         <div class="ap-dock" id="m-ap" title="Pontos de ação">●●●●</div>
         <button class="round-btn" data-act="investir" title="Investir na economia (+2 🏭) — $250 · 1⚡"><small>ECONOMIA</small></button>
+        <button class="round-btn" data-act="emprestimo" title="Emprestimo do FMI (+$1500, +1 eco, -8 aprovacao) - $0 - 1AP"><small>FMI</small></button>
+        <button class="round-btn" data-act="privatizar" title="Privatizar estatal (+$800, +1 eco, -3 aprovacao) - $0 - 1AP"><small>PRIVATIZAR</small></button>
         <button class="round-btn" data-act="militar" title="Recrutar tropas (+3 🪖) — $300 · 1⚡"><small>TROPAS</small></button>
         <button class="round-btn" data-act="propaganda" title="Propaganda (+7 ❤️) — $150 · 1⚡"><small>MÍDIA</small></button>
         <button class="round-btn" data-act="nuclear" title="Avançar programa nuclear (+1 ☢️, máx 5; requer 10 de URÂNIO; nível 3+ libera míssil) — $600 · 2⚡">️<small>NUCLEAR</small></button>
@@ -1221,7 +1223,7 @@ function updateDayHUD(){
   $('m-aprov').textContent = m.aprov + '%';
   $('m-aprov').style.color = m.aprov > 55 ? 'var(--green)' : (m.aprov > 25 ? 'var(--gold2)' : 'var(--red)');
   document.querySelectorAll('.round-btn').forEach(b => {
-    const costs = { investir:[1,250], militar:[1,300], alistamento:[1,0], milicia:[1,200], propaganda:[1,150], nuclear:[2,600], ideologia:[1,200], fe:[1,200], treinar:[1,150] };
+    const costs = { investir:[1,250], emprestimo:[1,0], privatizar:[1,0], militar:[1,300], alistamento:[1,0], milicia:[1,200], propaganda:[1,150], nuclear:[2,600], ideologia:[1,200], fe:[1,200], treinar:[1,150] };
     const cc = costs[b.dataset.act]; if (!cc) return;
     b.disabled = state.phase!=='game' || !m.alive || m.ap < cc[0] || m.money < cc[1] || (b.dataset.act==='nuclear' && m.nuclear>=5);
   });
@@ -1386,7 +1388,7 @@ function renderGame(){
 
 
   document.querySelectorAll('.round-btn').forEach(b => {
-    const costs = { investir:[1,250], militar:[1,300], alistamento:[1,0], milicia:[1,200], propaganda:[1,150], nuclear:[2,600], ideologia:[1,200], fe:[1,200], treinar:[1,150] };
+    const costs = { investir:[1,250], emprestimo:[1,0], privatizar:[1,0], militar:[1,300], alistamento:[1,0], milicia:[1,200], propaganda:[1,150], nuclear:[2,600], ideologia:[1,200], fe:[1,200], treinar:[1,150] };
     const [ap, cost] = costs[b.dataset.act];
     b.disabled = state.phase!=='game' || !m.alive || m.ap < ap || m.money < cost || (b.dataset.act==='nuclear' && m.nuclear>=5);
   });
