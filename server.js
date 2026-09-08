@@ -574,7 +574,7 @@ function snapshot(room) {
       nuclear: p.nuclear, influencia: Math.round(p.influencia), fe: Math.round(p.fe), wars: p.wars,
       provinces: p.provinces, sanctioning: p.sanctioning, sanctionedBy: p.sanctionedBy,
       taxRate: p.taxRate, taxes: p.taxes || {corp:10, rend:10, prod:10, amb:5}, budget: p.budget || {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: p.debt, ideology: p.ideology, religion: p.religion,
-      ministers: p.ministers, techs: p.techs, techLv: p.techLv || {}, sectors: p.sectors, space: p.space,
+      ministers: p.ministers, techs: p.techs, techLv: p.techLv || {}, sectors: p.sectors, space: p.space, pollution: Math.round(p.pollution != null ? p.pollution : 10),
       relations: p.bot ? {} : p.relations, embassies: p.embassies, trades: p.trades,
       blockading: p.blockading, blockadedBy: p.blockadedBy,
       units: p.units, builds: p.builds, emergencyUntil: p.emergencyUntil, leis: p.leis,
@@ -686,7 +686,7 @@ function startGame(room) {
     p.taxRate = 1; p.taxes = {corp:10, rend:10, prod:10, amb:5}; p.budget = {exe:1, int:1, tra:1, edu:1, ambm:1}; p.debt = 0; p.ideology = null; p.religion = 'laico';
     p.ministers = { eco: null, def: null, dip: null };
     p.techs = []; p.techLv = {}; p.sectors = { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 };
-    p.space = 0; p.relations = {}; p.embassies = []; p.trades = []; p.blockading = []; p.blockadedBy = [];
+    p.space = 0; p.pollution = 10; p.relations = {}; p.embassies = []; p.trades = []; p.blockading = []; p.blockadedBy = [];
     p.units = { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 }; p.builds = []; p.emergencyUntil = 0; p.leis = [];
     p.seguranca = { defesa: 0, secreto: 0, policia: 0, guarda: 0 };
   });
@@ -862,6 +862,19 @@ function dayTick(room) {
     if (p.taxes && p.taxes.amb >= 12) dAprov += 1;
     if (p.budget){ if (p.budget.int>=2) dAprov += 1; if (p.budget.ambm>=2) dAprov += 1; if (p.budget.edu===0) dAprov -= 1; }
     if (p.seguranca) dAprov += (p.seguranca.policia || 0);
+    // 🌍 ecologia (Fase 16): prédios poluem, verde limpa
+    if (p.pollution == null) p.pollution = 10;
+    let nPol = 0;
+    for (const k in p.buildings) nPol += (p.buildings[k] || 0);
+    let dPol = nPol * 0.3;
+    if (p.taxes && p.taxes.amb >= 12) dPol -= 2;
+    if (p.budget && p.budget.ambm >= 2) dPol -= 1.5;
+    dPol = Math.max(-4, Math.min(6, dPol));
+    p.pollution = Math.max(0, Math.min(100, p.pollution + dPol / DAY_DIV));
+    if (p.pollution >= 70) dAprov -= 1;
+    if (p.pollution >= 90) { dAprov -= 1; p.money = Math.max(0, p.money - 5 / DAY_DIV); }
+    if (p.pollution >= 75 && !p.ecoAlert) { log(room, `🌍 ALERTA ECOLÓGICO em ${cname(p)}! Poluição ${Math.round(p.pollution)}% — aprovação caindo. Refloreste ou suba o imposto ambiental.`); p.ecoAlert = true; }
+    else if (p.pollution < 60) p.ecoAlert = false;
     p.aprov = Math.max(0, Math.min(100, p.aprov + dAprov / DAY_DIV));
     // fé / influência passivos
     if (p.religion && p.religion !== 'laico') p.fe += 1 / DAY_DIV;
@@ -1523,6 +1536,15 @@ function performAction(room, p, msg) {
       if (target.emergencyUntil > room.turn) target.emergencyUntil = 0;
       bumpRel(p, target, 8); p.xp += 5;
       log(room, `🕯️ ${cname(p)} LEVOU ESPERANÇA a ${cname(target)}: +12 aprovação e fim do estado de emergência.`);
+      break;
+    }
+    case 'reflorestar': {
+      if (p.pollution == null) p.pollution = 10;
+      if (p.pollution <= 0) { err(p.conn, '🌍 O ar já está limpo.'); return; }
+      if (!spend(p, 1, 250)) return;
+      p.pollution = Math.max(0, p.pollution - 15);
+      p.aprov = Math.min(100, p.aprov + 1);
+      log(room, `🌱 ${cname(p)} inicia um mutirão de reflorestamento (poluição ${Math.round(p.pollution)}%).`);
       break;
     }
     case 'seguranca': {                // aparato de segurança interna
