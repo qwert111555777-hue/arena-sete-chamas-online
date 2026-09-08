@@ -1068,6 +1068,10 @@ const MISSIONS = [
   { id: 'aliados_2',  desc: 'Tenha 2 aliados',                        reward: 550, check: p => (p.allies || []).length >= 2 },
   { id: 'tech_5',     desc: 'Domine 5 tecnologias',                   reward: 600, check: p => (p.techs || []).length >= 5 },
   { id: 'titulo_1',   desc: 'Ganhe 1 título semanal',                 reward: 500, check: p => (p.stats.titulos || 0) >= 1 },
+  { id: 'orgs_3',      desc: 'Polo Geopolítico: entre nas 3 organizações', reward: 800, check: p => (p.orgs || []).length >= 3 },
+  { id: 'maravilha_1',  desc: 'Erga 1 maravilha mundial',               reward: 700, check: p => (p.maravilhas || []).length >= 1 },
+  { id: 'vencer_5',     desc: 'Vença 5 batalhas (Coronel)',             reward: 1000, check: p => (p.stats.vitorias || 0) >= 5 },
+  { id: 'tesouro_15k',  desc: 'Acumule $15.000 no tesouro (Capitalista)', reward: 800, check: p => p.money >= 15000 },
 ];
 
 const UNIT_COSTS = { blindados: 300, aviacao: 400, frota: 500, infantaria: 200, artilharia: 350, submarinos: 450, porta_avioes: 700 };
