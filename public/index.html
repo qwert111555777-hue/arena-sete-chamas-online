@@ -1955,6 +1955,7 @@ function renderPanel(){
     acts.appendChild(mkBtn('🎁','Doar província mais fraca (+20 relações)', ()=>send({t:'action',action:'doar_provincia',target:p.id}), m.ap<1));
     acts.appendChild(mkBtn('💙','Ajudar na crise ($300, +10 relações)', ()=>send({t:'action',action:'ajuda_crise',target:p.id}), m.ap<1||m.money<300));
     acts.appendChild(mkBtn('🕊️','Apoiar soberania ($200, +10 relações)', ()=>send({t:'action',action:'apoiar_soberania',target:p.id}), m.ap<1||m.money<200));
+    acts.appendChild(mkBtn('🔬','Acordo de pesquisa ($300, +1 ciência cada)', ()=>send({t:'action',action:'acordo_pesquisa',target:p.id}), m.ap<1||m.money<300));
     acts.appendChild(mkBtn('🎁','Enviar presente ($100, +8 relações)', ()=>send({t:'action',action:'presente',target:p.id}), m.ap<1||m.money<100));
     acts.appendChild(mkBtn('🤝','Visita de estado ($300, +15 relacoes, +2 coracao)', ()=>send({t:'action',action:'visita_estado',target:p.id}), m.ap<1||m.money<300));
     acts.appendChild(mkBtn('🎓','Intercambio estudantil ($200, +10 relacoes, +1 eco)', ()=>send({t:'action',action:'intercambio',target:p.id}), m.ap<1||m.money<200));
@@ -2368,10 +2369,12 @@ $('btn-gov').onclick = () => {
   s += '<div style="background:#fce4ec;border:2px solid #ad1457;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px">Turismo Nv2+: maravilha mundial + festival de cinema</div><button data-mara style="padding:6px 10px;cursor:pointer" '+((m.ap>=2&&m.money>=1200)?'':'disabled')+'>Maravilha (2AP+$1200)</button><button data-cine style="padding:6px 10px;cursor:pointer" '+((m.ap>=1&&m.money>=250)?'':'disabled')+'>Festival (1AP+$250)</button></div>';
   s += '<div style="background:#e8f5e9;border:2px solid #2e7d32;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px">Saude: policlinica + combate ao cancer</div><button data-poli style="padding:6px 10px;cursor:pointer" '+((m.ap>=1&&m.money>=300)?'':'disabled')+'>Policlinica (1AP+$300)</button><button data-canc style="padding:6px 10px;cursor:pointer" '+((m.ap>=2&&m.money>=600)?'':'disabled')+'>Anti-cancer (2AP+$600)</button></div>';
   s += '<div style="background:#e8eaf6;border:2px solid #283593;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px">Organizacoes: Interpol/FMI/OMC (passivas unicas)</div><button data-oi style="padding:6px 10px;cursor:pointer" '+((m.ap>=1&&m.money>=400)?'':'disabled')+'>Interpol</button><button data-of style="padding:6px 10px;cursor:pointer" '+((m.ap>=1&&m.money>=400)?'':'disabled')+'>FMI</button><button data-oo style="padding:6px 10px;cursor:pointer" '+((m.ap>=1&&m.money>=400)?'':'disabled')+'>OMC</button></div>';
+  s += '<div style="background:#f3e5f5;border:2px solid #7b1fa2;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px">Ciencia: bolsas de pesquisa nacionais</div><button data-bolsa style="padding:6px 10px;cursor:pointer" '+((m.ap>=1&&m.money>=400)?'':'disabled')+'>Bolsas (1AP+$400)</button></div>';
   s += '<div style="text-align:center;margin-top:6px"><button id="gv-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
   ov.innerHTML = s;
   document.body.appendChild(ov);
   ov.querySelector('#gv-x').onclick=()=>ov.remove();
+  const bl = ov.querySelector('[data-bolsa]'); if (bl) bl.onclick=()=>{ send({t:'action',action:'bolsa_pesquisa'}); ov.remove(); };
   const oi = ov.querySelector('[data-oi]'); if (oi) oi.onclick=()=>{ send({t:'action',action:'org_interpol'}); ov.remove(); };
   const of = ov.querySelector('[data-of]'); if (of) of.onclick=()=>{ send({t:'action',action:'org_fmi'}); ov.remove(); };
   const oo = ov.querySelector('[data-oo]'); if (oo) oo.onclick=()=>{ send({t:'action',action:'org_omc'}); ov.remove(); };
