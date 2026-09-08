@@ -109,7 +109,7 @@
   .hud .res b{font-family:ui-monospace,monospace; color:#ffe9a8;}
   .hud .spacer{flex:1;}
   .hud .timer-big{font-size:20px; font-weight:900; font-family:ui-monospace,monospace; color:#ffe9a8;}
-  #btn-pause,#btn-speed2,#btn-endturn,#btn-rank,#btn-news,#btn-notif,#btn-build,#btn-tech,#btn-war,#btn-leis,#btn-dip{width:38px;height:38px;border-radius:10px;border:2px solid #8a6a1f;background:linear-gradient(#ffe9a8,#d9a93c);color:#3a2a05;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.5);}
+  #btn-pause,#btn-speed2,#btn-endturn,#btn-rank,#btn-news,#btn-notif,#btn-build,#btn-tech,#btn-war,#btn-leis,#btn-dip,#btn-spy{width:38px;height:38px;border-radius:10px;border:2px solid #8a6a1f;background:linear-gradient(#ffe9a8,#d9a93c);color:#3a2a05;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.5);}
   #advisor{position:absolute;left:12px;top:12px;z-index:5;display:flex;gap:10px;align-items:flex-start;pointer-events:none;}
   #advisor img{width:64px;height:64px;border-radius:50%;border:3px solid #d9a93c;box-shadow:0 3px 10px rgba(0,0,0,.6);background:#e8d9b0;}
   #advisor-bubble{max-width:300px;background:linear-gradient(#fdf6e3,#ecd9a8);color:#3a2f14;border:2px solid #8a6a1f;border-radius:12px;padding:8px 12px;font-size:12px;font-weight:600;box-shadow:0 3px 10px rgba(0,0,0,.5);position:relative;margin-top:8px;}
@@ -513,6 +513,7 @@
     <button id="btn-war" title="Exército e guerras">⚔️</button>
     <button id="btn-leis" title="Leis nacionais">📜</button>
     <button id="btn-dip" title="Diplomacia">🤝</button>
+    <button id="btn-spy" title="Operações secretas">🕵️</button>
     <button id="btn-speed2" title="Velocidade: 1x, 2x, 3x ou 5x (anfitrião)">⏱️ 1x</button>
     <button id="btn-sair" title="Sair do jogo (o anfitrião salva automaticamente)" style="background:linear-gradient(#ffd0d0,#d98a8a);border:2px solid #8a3040;border-radius:10px;width:38px;height:38px;font-size:16px;cursor:pointer;">⏻</button>
   </div>
@@ -2195,6 +2196,33 @@ $('btn-tax').onclick = () => {
     ov.remove();
   };
 };
+$('btn-spy').onclick = () => {
+  const m = me(); if (!m || !state) return;
+  const sec = (m.seguranca && m.seguranca.secreto) || 0;
+  const chance = Math.min(85, 50 + 8 * sec);
+  const upCost = [350, 800, 1600][sec];
+  const ov = document.createElement('div'); ov.id='newspaper';
+  const esc = s => String(s==null?'':s).replace(/[<>&]/g,'');
+  const others = state.players.filter(p=>p.alive && p.id!==myId && p.country);
+  let s = '<div class="paper" style="width:min(640px,94vw)"><h1 style="font-size:20px">🕵️ OPERAÇÕES SECRETAS</h1>';
+  s += '<div style="background:#fff8e6;border:2px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:8px;display:flex;align-items:center;gap:8px"><div style="flex:1"><b style="font-size:13px">🕵️ Serviço Secreto — Nv '+sec+'/3</b><div style="font-size:11px;color:#6b5a33">Chance de sabotagem: '+chance+'% · +8% por nível · defesa contra sabotagem</div></div>';
+  s += sec>=3 ? '<b style="color:#2e7d32">MÁX</b>' : '<button data-secup style="padding:8px 12px;cursor:pointer;white-space:nowrap" '+((m.ap>=1&&m.money>=upCost)?'':'disabled')+'>⬆️ $'+upCost+'</button>';
+  s += '</div>';
+  s += '<div style="font-size:11px;color:#6b5a33;margin-bottom:6px">🔍 Espionar revela caixa, eco, mil, aprovação, ☢️, dívida · 🧨 Sabotar destrói infra ou arsenal (1⚡ + ~$150). Ministro diplomata/coroa reduz custos.</div>';
+  s += '<div>' + others.map(p=>{
+    const okE = m.ap>=1 && m.money>=50, okS = m.ap>=1 && m.money>=75;
+    return '<div style="background:#fff8e6;border:2px solid #c9b98b;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1"><b style="font-size:13px">'+esc(p.country)+'</b></div><button data-esp="'+p.id+'" style="padding:6px 10px;cursor:pointer" '+(okE?'':'disabled')+'>🔍 Espionar</button><button data-sab="'+p.id+'" style="padding:6px 10px;cursor:pointer" '+(okS?'':'disabled')+'>🧨 Sabotar</button></div>';
+  }).join('') + '</div>';
+  s += '<div style="text-align:center;margin-top:10px"><button id="sp-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
+  ov.innerHTML = s;
+  document.body.appendChild(ov);
+  ov.querySelector('#sp-x').onclick=()=>ov.remove();
+  ov.onclick = e => { if (e.target===ov) ov.remove(); };
+  const up = ov.querySelector('[data-secup]');
+  if (up) up.onclick = () => { send({t:'action',action:'seguranca',value:'secreto'}); ov.remove(); };
+  ov.querySelectorAll('[data-esp]').forEach(b=>b.onclick=()=>send({t:'action',action:'espionar',target:b.dataset.esp}));
+  ov.querySelectorAll('[data-sab]').forEach(b=>b.onclick=()=>send({t:'action',action:'sabotagem',target:b.dataset.sab}));
+};
 $('btn-leis').onclick = () => {
   const m = me(); if (!m || !state) return;
   const LEIS_UI = [['servico_militar','🪖 Serviço Militar Obrigatório','+5% ataque em guerras',150],['guarda_nacional','🛡️ Guarda Nacional','+5% defesa',160],['reforma_agraria','🌾 Reforma Agrária','+$10/semana',200],['abertura_comercial','💼 Abertura Comercial','+$10/semana',180],['liberdade_imprensa','📰 Liberdade de Imprensa','+3 aprovação',120],['campanha_patriotica','🎖️ Campanha Patriótica','+4 aprovação',100]];
@@ -2351,7 +2379,7 @@ $('btn-notif').onclick = () => {
 };
 ['btn-rank','btn-market','btn-help'].forEach(id => { const prev = $(id).onclick; $(id).onclick = e => { $('notif-panel').classList.add('hidden'); if (prev) prev.call($(id), e); }; });
 /* MA3: widgets na barra esquerda, pausa/velocidade na barra inferior (handlers preservados) */
-['btn-rank','btn-news','btn-notif','btn-tax','btn-stats','btn-miss','btn-orc','btn-rel','btn-build','btn-tech','btn-war','btn-leis','btn-dip'].forEach(id => { const b = $(id); if (b) $('ma3-tools').appendChild(b); });
+['btn-rank','btn-news','btn-notif','btn-tax','btn-stats','btn-miss','btn-orc','btn-rel','btn-build','btn-tech','btn-war','btn-leis','btn-dip','btn-spy'].forEach(id => { const b = $(id); if (b) $('ma3-tools').appendChild(b); });
 ['btn-market','btn-help','btn-snd'].forEach(id => { const b = $(id); if (b) { b.classList.remove('tool-btn'); $('ma3-tools').appendChild(b); } });
 ['btn-speed2','btn-pause'].forEach(id => { const b = $(id); if (b) document.querySelector('.bottom-bar').prepend(b); });
 document.addEventListener('click', e => {
