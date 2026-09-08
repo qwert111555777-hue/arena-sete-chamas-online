@@ -1689,6 +1689,9 @@ function renderPanel(){
     bEmp.onclick=()=>send({t:'action',action:'emprestimo'}); r1.appendChild(bEmp);
     const bPag=document.createElement('button'); bPag.textContent='Pagar'; bPag.disabled=p.debt<=0||p.money<=0;
     bPag.onclick=()=>send({t:'action',action:'pagar'}); r1.appendChild(bPag);
+    const bCal=document.createElement('button'); bCal.textContent='Calote'; bCal.title='Zerar dívida: -15 coracao, -15 relacoes, sem credito 8 sem';
+    bCal.disabled=p.debt<=0; bCal.onclick=()=>{ if (confirm('Dar CALOTE? -15 aprovacao, -15 relacoes, sem credito por 8 semanas.')) send({t:'action',action:'calote'}); }; r1.appendChild(bCal);
+    const dj=document.createElement('div'); dj.style.cssText='font-size:11px;opacity:.8'; dj.textContent='Juros: +5%/semana - Teto de credito: $2000 em divida'; extra.appendChild(dj);
     extra.appendChild(r1);
     // ideologia
     sub2('⚖️ Ideologia de Estado');
@@ -1951,6 +1954,7 @@ function renderPanel(){
     });
     acts.appendChild(mkBtn('⚖️','Espalhar ideologia (1⚡, $300)', ()=>send({t:'action',action:'espalhar_ideologia',target:p.id}), m.ap<1||m.money<300||!m.ideology));
     acts.appendChild(mkBtn('🛐','Espalhar religião (1⚡, $300)', ()=>send({t:'action',action:'espalhar_religiao',target:p.id}), m.ap<1||m.money<300||!m.religion||m.religion==='laico'));
+    acts.appendChild(mkBtn('💰','Exigir TRIBUTO (1⚡, mil 2x+)', ()=>send({t:'action',action:'tributo',target:p.id}), m.ap<1||m.allies.includes(p.id)));
     if (p.bot) acts.appendChild(mkBtn('🏴','Exigir ANEXAÇÃO pacífica (2⚡, $300, rel. 60+)', ()=>send({t:'action',action:'anexar',target:p.id}), m.ap<2||m.money<300||atWar||rel<60));
     // relação bilateral
     note.textContent = `📈 Relação bilateral: ${rel}/100 ${rel>=70?'😊':rel>=50?'🙂':rel>=30?'😐':'😠'}` + (ally?' · 🤝 aliados':'') + (atWar?' · ⚔️ EM GUERRA':'') + ((m.pacts&&m.pacts[p.id]>state.turn)?' · ✍️ pacto de não-agressão':'') + (state.turn < p.emergencyUntil?' · 🆘 em emergência':'');

@@ -1011,6 +1011,7 @@ function resolveWeek(room) {
   if ((room.day - 1) % 56 === 0) eleicoes(room);
   premiosSemanais(room);
   checarEra(room);
+  for (const p of room.players) if (p.alive && p.debt > 0) p.debt = Math.min(5000, Math.round(p.debt * 1.05));
   if ((room.day - 1) % 14 === 0) aiTurn(room);
   const mNow = MISSIONS[room.missionIdx % MISSIONS.length];
   if (mNow) {
@@ -1121,6 +1122,7 @@ function aiTurn(room) {
     if (b.religion && b.religion !== 'laico' && b.money > 500 && Math.random() < 0.25) { const tgts = room.players.filter(o => o.alive && o !== b && o.religion !== b.religion); if (tgts.length) { const t3 = tgts[Math.floor(Math.random() * tgts.length)]; if (Math.random() < 0.3 + relBetween(b, t3) / 200) { t3.religion = b.religion; bumpRel(b, t3, 10); b.stats.conversoes = (b.stats.conversoes || 0) + 1; log(room, `🛐 ${cname(b)} espalhou sua religião para ${cname(t3)}!`); } } }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
+    if (b.debt > 0 && b.money > 1500) { const bx = Math.min(b.debt, Math.floor(b.money * 0.4)); b.money -= bx; b.debt -= bx; }
     if ((b.espioes || 0) < 3 && b.money > 800) { b.money -= 150; b.espioes = (b.espioes || 0) + 1; }
     if ((b.espioes || 0) >= 2 && b.money > 600 && Math.random() < 0.2) { const fs = room.players.filter(o => o.alive && o !== b && relBetween(b, o) < 40); if (fs.length) { const ft = fs[Math.floor(Math.random() * fs.length)]; b.money -= 150; const sAb = (b.seguranca && b.seguranca.secreto) || 0; const sDb = (ft.seguranca && ft.seguranca.secreto) || 0; if (Math.random() < Math.min(0.9, 0.5 + 0.08 * sAb + 0.05 * (b.espioes || 0))) { if (sDb >= 2 && Math.random() < 0.15 * sDb) { b.espioes = Math.max(0, (b.espioes || 0) - 1); log(room, `🕵️ O Serviço Secreto de ${cname(ft)} DETECTOU e conteve a sabotagem de ${cname(b)}! Um agente foi capturado.`); } else { const prs = ownProvinces(ft).filter(pr => pr.infra > 0); if (prs.length) { const pr = prs[Math.floor(Math.random() * prs.length)]; pr.infra -= 1; log(room, `🧨 Sabotagem de ${cname(b)} destrói infraestrutura em ${cname(ft)}!`); } else { ft.mil = Math.max(1, ft.mil - 3); log(room, `🧨 Sabotagem de ${cname(b)} danifica o arsenal de ${cname(ft)} (-3 militar)!`); } } bumpRel(b, ft, -5); } } }
     if (!room.un && Math.random() < 0.12 && b.money > 400) { const foes = room.players.filter(o => o.alive && o !== b && relBetween(b, o) < 35); if (foes.length) { const fe = foes[Math.floor(Math.random() * foes.length)]; const tp2 = Math.random() < 0.5 ? 'condenar' : 'embargo'; b.money -= 300; room.un = { type: tp2, desc: (tp2 === 'condenar' ? 'Condenação internacional de ' : 'Embargo econômico contra ') + cname(fe) + (tp2 === 'condenar' ? ' (-6 aprovação)' : ' por 3 turnos'), target: fe.id, proposer: b.id, votes: {}, deadline: Date.now() + 20000 }; room.un.votes[b.id] = true; for (const bb of room.players) if (bb.bot && bb.alive && bb.id !== b.id) room.un.votes[bb.id] = relBetween(bb, fe) < 50; log(room, `🇺🇳 ${cname(b)} propôs resolução na ONU: ${room.un.desc}. Votação aberta!`); } }
@@ -1325,8 +1327,35 @@ function performAction(room, p, msg) {
       log(room, `🏛️ ${cname(p)} reorganiza o orçamento dos ministérios.`);
       break;
     }
-    case 'emprestimo': p.money += 600; p.debt += 720; log(room, `🏦 ${cname(p)} contrai empréstimo de $600 (dívida $${p.debt}).`); break;
+    case 'emprestimo': {
+      if (p.debt > 2000) { err(p.conn, 'Dívida alta demais — o banco não empresta.'); return; }
+      if (room.turn < (p.caloteUntil || 0)) { err(p.conn, 'Nome sujo após calote — aguarde.'); return; }
+      p.money += 600; p.debt += 720;
+      log(room, `🏦 ${cname(p)} contrai empréstimo de $600 (dívida $${p.debt}).`);
+      break;
+    }
+    case 'calote': {
+      if (p.debt <= 0) { err(p.conn, 'Sem dívida para calotear.'); return; }
+      if (!spend(p, 1, 0)) return;
+      p.debt = 0; p.caloteUntil = room.turn + 8;
+      p.aprov = Math.max(0, p.aprov - 15);
+      for (const o of room.players) if (o.alive && o.id !== p.id) bumpRel(p, o, -15);
+      log(room, `💸 ${cname(p)} deu CALOTE na dívida! (−15 ❤️, −15 relações, sem crédito por 8 semanas)`);
+      break;
+    }
     case 'pagar': { const x = Math.min(p.debt, p.money); if (x <= 0) return; p.money -= x; p.debt -= x; log(room, `🏦 ${cname(p)} paga $${x} da dívida.`); break; }
+    case 'tributo': {
+      if (!target || target === p || !target.alive) return;
+      if (p.allies.includes(target.id)) { err(p.conn, 'Não tribute aliados.'); return; }
+      if (!spend(p, 1, 0)) return;
+      if (p.mil >= (target.mil || 1) * 2) {
+        const x = Math.min(300, Math.floor(target.money));
+        target.money -= x; p.money += x;
+        bumpRel(p, target, -10);
+        log(room, `💰 ${cname(p)} EXIGIU tributo de ${cname(target)} (+$${x}, −10 relações).`);
+      } else { bumpRel(p, target, -8); target.aprov = Math.min(100, target.aprov + 2); log(room, `💰 ${cname(target)} RIU da exigência de tributo de ${cname(p)} (−8 relações)!`); }
+      break;
+    }
     case 'infra': {
       const prov = p.provinces[msg.prov];
       if (!prov || prov.owner !== p.id || prov.infra >= 5) return;
