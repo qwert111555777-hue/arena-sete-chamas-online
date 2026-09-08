@@ -1,4 +1,4 @@
-const WebSocket = require('ws');
+const WebSocket = (function(){ try { return require('/tmp/wstest/node_modules/ws'); } catch (e) { return require('ws'); } })();
 const ws = new WebSocket('ws://localhost:3000/?gz=0');
 let myId = null, lastState = null;
 const seq1x = [], seq5x = [];

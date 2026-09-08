@@ -1,4 +1,4 @@
-const WebSocket = require('/tmp/wstest/node_modules/ws');
+const WebSocket = (function(){ try { return require('/tmp/wstest/node_modules/ws'); } catch (e) { return require('ws'); } })();
 const ws = new WebSocket('ws://localhost:3000/?gz=0');
 const send = o => ws.send(JSON.stringify(o));
 let myId=null, last=null, code=null, started=false;

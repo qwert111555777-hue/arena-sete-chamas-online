@@ -510,7 +510,7 @@ function newRoom() {
   const room = {
     code: makeCode(), phase: 'lobby', turn: 0, day: 1, dayMs: 3000, speedMul: 1, timerEnd: 0, speed: 45,
     players: [], hostId: null, proposals: [], log: [], winner: null, timer: null,
-    un: null, noWarUntil: 0, noArmsUntil: 0, embargo: null, paused: false, pausedRemaining: 0,
+    un: null, noWarUntil: 0, noArmsUntil: 0, embargo: null, paused: false, pausedRemaining: 0, era: 1, timeline: [],
     world: COUNTRIES.slice(), market: { comida: 8, minerio: 12, energia: 10, concreto: 10, madeira: 7, terras_raras: 20, uranio: 25, borracha: 14 }, missionIdx: 0, warAuth: null, paused: false, pausedRemaining: 0,
   };
   rooms.set(room.code, room);
@@ -567,7 +567,7 @@ function snapshot(room) {
     t: 'state', phase: room.phase, code: room.code, turn: room.turn, day: room.day || 1,
     winner: room.winner,
     log: room.log.slice(0, 60), proposals: room.proposals,
-    un: room.un, noWarUntil: room.noWarUntil, noArmsUntil: room.noArmsUntil, embargo: room.embargo, inverno: room.invernoUntil || 0,
+    un: room.un, noWarUntil: room.noWarUntil, noArmsUntil: room.noArmsUntil, embargo: room.embargo, inverno: room.invernoUntil || 0, era: room.era || 1, timeline: room.timeline || [],
     players: room.players.map(p => ({
       id: p.id, name: p.name, country: p.country, color: p.color,
       money: Math.round(p.money), eco: p.eco, mil: p.mil, aprov: Math.round(p.aprov), ap: p.ap,
@@ -700,7 +700,7 @@ function startGame(room) {
   for (const c of COUNTRIES) room.players.push(makeAIBot(c));
   room.players.forEach((p, i) => { if (p.bot) p.color = i % 60; });
   room.phase = 'game'; room.turn = 1; room.day = 1; room.proposals = [];
-  room.un = null; room.noWarUntil = 20; room.noArmsUntil = 0; room.embargo = null; room.bloqueio = null; room.invernoUntil = 0; room.nukesUsed = 0;
+  room.un = null; room.noWarUntil = 20; room.noArmsUntil = 0; room.embargo = null; room.bloqueio = null; room.invernoUntil = 0; room.nukesUsed = 0; room.era = 1; room.timeline = [];
   room.dayMs = dayMsFor(room.speedMul || 1);
   log(room, '🏳️ Cada jogador fundou sua própria nação: $10.000, 0 habitantes, reserva natural de 12⚙️ terras raras — tudo por construir.');
   log(room, `🤖 As ${COUNTRIES.length} nações do mundo estão sob controle da IA. É vocês contra elas!`);
@@ -735,7 +735,7 @@ function checkVictory(room) {
   if (room.phase !== 'game') return;
   if (!room.marcos) room.marcos = {};
   const alive = room.players.filter(p => p.alive);
-  const marco = (id, p, txt) => { if (p && !room.marcos[id + '_' + p.id]) { room.marcos[id + '_' + p.id] = 1; log(room, `🏆 MARCO: ${cname(p)} — ${txt} (o jogo continua: o mundo é infinito!)`); } };
+  const marco = (id, p, txt) => { if (p && !room.marcos[id + '_' + p.id]) { room.marcos[id + '_' + p.id] = 1; log(room, `🏆 MARCO: ${cname(p)} — ${txt} (o jogo continua: o mundo é infinito!)`); record(room, `🏆 ${cname(p)}: ${txt}`); } };
   if (room.players.length > 1 && alive.length === 1) marco('unica', alive[0], 'última nação de pé — o mundo é seu!');
   marco('eco', alive.find(p => p.eco >= 60), 'hegemonia econômica (economia 60+)');
   marco('ideo', alive.find(p => p.influencia >= 60), 'hegemonia ideológica (doutrina 60+)');
@@ -950,10 +950,21 @@ function eleicoes(room) {
     if (!p.alive || p.bot) continue;
     p.stats = p.stats || {};
     p.stats.mandatos = p.stats.mandatos || 0;
-    if (p.aprov >= 50) { p.stats.mandatos++; p.money += 300; p.aprov = Math.min(100, p.aprov + 3); log(room, `🗳️ ${cname(p)} foi REELEITO com ${Math.round(p.aprov)}% de aprovação! (+$300, +3 ❤️, ${p.stats.mandatos}º mandato)`); }
-    else if (p.aprov >= 35) { p.aprov = Math.min(100, p.aprov + 1); log(room, `🗳️ ${cname(p)} vence a eleição no aperto (${Math.round(p.aprov)}%) — a oposição cresce.`); }
-    else { p.aprov = Math.max(0, p.aprov - 5); p.emergencyUntil = room.turn + 2; log(room, `🗳️ DERROTA nas urnas para ${cname(p)} (${Math.round(p.aprov)}%)! Protestos tomam as ruas — EMERGÊNCIA.`); }
+    if (p.aprov >= 50) { record(room, 'Eleicao dia ' + room.day + ': ' + cname(p) + ' reeleito'); p.stats.mandatos++; p.money += 300; p.aprov = Math.min(100, p.aprov + 3); log(room, `🗳️ ${cname(p)} foi REELEITO com ${Math.round(p.aprov)}% de aprovação! (+$300, +3 ❤️, ${p.stats.mandatos}º mandato)`); }
+    else if (p.aprov >= 35) { record(room, 'Eleicao dia ' + room.day + ': ' + cname(p) + ' vence no aperto'); p.aprov = Math.min(100, p.aprov + 1); log(room, `🗳️ ${cname(p)} vence a eleição no aperto (${Math.round(p.aprov)}%) — a oposição cresce.`); }
+    else { p.aprov = Math.max(0, p.aprov - 5); record(room, 'Eleicao dia ' + room.day + ': ' + cname(p) + ' derrotado'); p.emergencyUntil = room.turn + 2; log(room, `🗳️ DERROTA nas urnas para ${cname(p)} (${Math.round(p.aprov)}%)! Protestos tomam as ruas — EMERGÊNCIA.`); }
   }
+}
+
+const ERAS = ['Fundação', 'Expansão', 'Potência', 'Lenda'];
+function record(room, txt) { room.timeline = room.timeline || []; room.timeline.unshift({ day: room.day, txt }); if (room.timeline.length > 30) room.timeline.length = 30; }
+function checarEra(room) {
+  const nova = Math.min(4, Math.floor((room.day - 1) / 56) + 1);
+  if (nova === (room.era || 1)) return;
+  room.era = nova;
+  for (const p of room.players) if (p.alive) { p.money += 100; p.aprov = Math.min(100, p.aprov + 2); }
+  log(room, `NOVA ERA: ${ERAS[nova - 1]}! Todas as nações recebem +$100 e +2 coracoes.`);
+  record(room, `Era ${ERAS[nova - 1]} começou (dia ${room.day}).`);
 }
 
 function premiosSemanais(room) {
@@ -999,6 +1010,7 @@ function resolveWeek(room) {
   if ((room.day - 1) % 28 === 0 && !room.un) openUN(room);
   if ((room.day - 1) % 56 === 0) eleicoes(room);
   premiosSemanais(room);
+  checarEra(room);
   if ((room.day - 1) % 14 === 0) aiTurn(room);
   const mNow = MISSIONS[room.missionIdx % MISSIONS.length];
   if (mNow) {
@@ -1108,7 +1120,7 @@ function aiTurn(room) {
     if (b.crise) resolverCrise(room, b, (b.money > 500) ? 0 : 2);
     if (b.religion && b.religion !== 'laico' && b.money > 500 && Math.random() < 0.25) { const tgts = room.players.filter(o => o.alive && o !== b && o.religion !== b.religion); if (tgts.length) { const t3 = tgts[Math.floor(Math.random() * tgts.length)]; if (Math.random() < 0.3 + relBetween(b, t3) / 200) { t3.religion = b.religion; bumpRel(b, t3, 10); b.stats.conversoes = (b.stats.conversoes || 0) + 1; log(room, `🛐 ${cname(b)} espalhou sua religião para ${cname(t3)}!`); } } }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
-    if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); } }
+    if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.espioes || 0) < 3 && b.money > 800) { b.money -= 150; b.espioes = (b.espioes || 0) + 1; }
     if ((b.espioes || 0) >= 2 && b.money > 600 && Math.random() < 0.2) { const fs = room.players.filter(o => o.alive && o !== b && relBetween(b, o) < 40); if (fs.length) { const ft = fs[Math.floor(Math.random() * fs.length)]; b.money -= 150; const sAb = (b.seguranca && b.seguranca.secreto) || 0; const sDb = (ft.seguranca && ft.seguranca.secreto) || 0; if (Math.random() < Math.min(0.9, 0.5 + 0.08 * sAb + 0.05 * (b.espioes || 0))) { if (sDb >= 2 && Math.random() < 0.15 * sDb) { b.espioes = Math.max(0, (b.espioes || 0) - 1); log(room, `🕵️ O Serviço Secreto de ${cname(ft)} DETECTOU e conteve a sabotagem de ${cname(b)}! Um agente foi capturado.`); } else { const prs = ownProvinces(ft).filter(pr => pr.infra > 0); if (prs.length) { const pr = prs[Math.floor(Math.random() * prs.length)]; pr.infra -= 1; log(room, `🧨 Sabotagem de ${cname(b)} destrói infraestrutura em ${cname(ft)}!`); } else { ft.mil = Math.max(1, ft.mil - 3); log(room, `🧨 Sabotagem de ${cname(b)} danifica o arsenal de ${cname(ft)} (-3 militar)!`); } } bumpRel(b, ft, -5); } } }
     if (!room.un && Math.random() < 0.12 && b.money > 400) { const foes = room.players.filter(o => o.alive && o !== b && relBetween(b, o) < 35); if (foes.length) { const fe = foes[Math.floor(Math.random() * foes.length)]; const tp2 = Math.random() < 0.5 ? 'condenar' : 'embargo'; b.money -= 300; room.un = { type: tp2, desc: (tp2 === 'condenar' ? 'Condenação internacional de ' : 'Embargo econômico contra ') + cname(fe) + (tp2 === 'condenar' ? ' (-6 aprovação)' : ' por 3 turnos'), target: fe.id, proposer: b.id, votes: {}, deadline: Date.now() + 20000 }; room.un.votes[b.id] = true; for (const bb of room.players) if (bb.bot && bb.alive && bb.id !== b.id) room.un.votes[bb.id] = relBetween(bb, fe) < 50; log(room, `🇺🇳 ${cname(b)} propôs resolução na ONU: ${room.un.desc}. Votação aberta!`); } }
@@ -1549,9 +1561,10 @@ function performAction(room, p, msg) {
       const hits = shield ? 1 : 2;
       for (let i = 0; i < hits && provs.length; i++) { const pr = provs[Math.floor(Math.random() * provs.length)]; pr.infra = Math.max(0, pr.infra - 2); }
       log(room, `☢️💥 ${cname(p)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(target)}!${shield ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`);
+      record(room, `☢️ ${cname(p)} lançou ogiva em ${cname(target)} (dia ${room.day}).`);
       room.nukesUsed = (room.nukesUsed || 0) + 1;
       if (abrig) log(room, `🛡️ Abrigos nucleares de ${cname(target)} salvaram vidas (dano reduzido, abrigo consumido)!`);
-      if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); }
+      if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); }
       break;
     }
     case 'teste_nuclear': {
