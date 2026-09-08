@@ -1160,6 +1160,7 @@ function aiTurn(room) {
     if (b.money > 1000 && Math.random() < 0.1) { const prs = ownProvinces(b).filter(pr => pr.infra < 5); if (prs.length) { b.money -= 200; prs[0].infra = Math.min(5, prs[0].infra + 1); } }
     if (b.mil < 10 && b.money > 1500 && Math.random() < 0.2) { b.money -= 150; b.mil = Math.min(25, b.mil + 1); }
     if (b.money < 300 && Math.random() < 0.15) { b.money += 1500; b.aprov = Math.max(0, b.aprov - 8); }
+    if (b.religion && b.religion !== 'laico' && b.money > 1000 && Math.random() < 0.15) { b.money -= 200; b.fe = Math.min(100, (b.fe || 0) + 4); }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -1548,6 +1549,19 @@ function performAction(room, p, msg) {
       if (!spend(p, 1, 0)) return;
       p.money += 800; p.eco += 1; p.aprov = Math.max(0, p.aprov - 3);
       log(room, `🏷️ ${cname(p)} PRIVATIZOU uma estatal (+$800, +1 eco, −3❤️).`);
+      break;
+    }
+    case 'peregrinacao': {
+      if (!spend(p, 1, 150)) return;
+      p.fe = Math.min(100, (p.fe || 0) + 3); p.money += 150; p.aprov = Math.min(100, p.aprov + 2);
+      log(room, `🕋 ${cname(p)} organizou uma PEREGRINAÇÃO nacional (+3 fé, +$150 turismo, +2❤️).`);
+      break;
+    }
+    case 'concordata': {
+      if (!spend(p, 1, 300)) return;
+      const bonus = p.religion !== 'laico' ? 8 : 3;
+      p.fe = Math.min(100, (p.fe || 0) + 2); p.aprov = Math.min(100, p.aprov + bonus);
+      log(room, `🤝 ${cname(p)} assinou CONCORDATA com líderes religiosos (+2 fé, +${bonus}❤️).`);
       break;
     }
     case 'ministro':
