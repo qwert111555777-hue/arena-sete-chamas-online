@@ -21,7 +21,7 @@ const MAGIC = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 const DAY_DIV = 7;            // economia diária = valores semanais / 7
 const WEEK_DAYS = 7;          // dias por semana (ciclo estratégico)
 const dayMsFor = mul => Math.round(1000 / ([1, 2, 3, 5].includes(mul) ? mul : 1));
-const buildDays = cost => cost >= 800 ? 4 : cost >= 500 ? 3 : cost >= 300 ? 2 : 1;  // dias p/ concluir obra
+const buildDays = cost => Math.min(30, Math.max(4, 3 + Math.round(cost / 40)));  // dias p/ concluir obra (varia por construção)
 function restartDayTimer(room){ if (room.timer){ try{ clearInterval(room.timer); }catch{} } room.timer = setInterval(() => dayTick(room), room.dayMs || 1000); }
 function ensureDayTimer(room){ if (room.phase === 'game' && !room.paused && !room.timer) restartDayTimer(room); }
 const AP_PER_TURN = 4;
@@ -1028,7 +1028,7 @@ function aiTurn(room) {
       const kind = kinds[(room.turn + b.id.length) % kinds.length];
       if (kind === 'infra') {
         const pr = ownProvinces(b).find(x => x.infra < 5);
-        if (pr) { b.money -= 200; b.builds.push({ kind: 'infra', prov: b.provinces.indexOf(pr), untilDay: room.day + 2 }); }
+        if (pr) { b.money -= 200; b.builds.push({ kind: 'infra', prov: b.provinces.indexOf(pr), untilDay: room.day + 6 }); }
       } else if (b.money > PROD_BUILDS[kind] && b.rec.concreto >= (CONCRETE_NEED[kind] || 0)) {
         b.money -= PROD_BUILDS[kind]; b.rec.concreto -= CONCRETE_NEED[kind] || 0; b.builds.push({ kind, untilDay: room.day + buildDays(PROD_BUILDS[kind] || 300) });
       }
@@ -1182,7 +1182,7 @@ function performAction(room, p, msg) {
     case 'espacial': {
       if (p.space + p.builds.filter(b=>b.kind==='espacial').length >= 3) return;
       if (!spend(p, 2, SPACE_COSTS[p.space + p.builds.filter(b=>b.kind==='espacial').length])) return;
-      p.builds.push({ kind: 'espacial', untilDay: room.day + 4 });
+      p.builds.push({ kind: 'espacial', untilDay: room.day + 12 });
       log(room, `🚀 ${cname(p)} inicia etapa do programa espacial (conclui no próximo turno).`);
       break;
     }
@@ -1207,7 +1207,7 @@ function performAction(room, p, msg) {
       const prov = p.provinces[msg.prov];
       if (!prov || prov.owner !== p.id || prov.infra >= 5) return;
       if (!spend(p, 1, 200)) return;
-      p.builds.push({ kind: 'infra', prov: msg.prov, untilDay: room.day + 2 });
+      p.builds.push({ kind: 'infra', prov: msg.prov, untilDay: room.day + 6 });
       log(room, `🏗️ ${cname(p)} inicia construção em ${prov.name} (conclui no próximo turno).`);
       break;
     }
@@ -1216,7 +1216,7 @@ function performAction(room, p, msg) {
       if (p.rec.uranio < 10) { err(p.conn, '☢️ O programa nuclear exige 10 de URÂNIO — minere numa jazida própria ou compre no mercado.'); return; }
       if (!spend(p, 2, 600)) return;
       p.rec.uranio -= 10;
-      p.builds.push({ kind: 'nuclear', untilDay: room.day + 5 });
+      p.builds.push({ kind: 'nuclear', untilDay: room.day + 18 });
       log(room, `☢️ ${cname(p)} inicia etapa do programa nuclear (conclui no próximo turno).`);
       break;
 
@@ -1826,6 +1826,7 @@ function route(conn, msg) {
       if (!room || room.phase !== 'lobby') return;
       player.customName = sanitizeName(msg.name).slice(0, 24) || player.name;
       player.customFlag = FLAGS_ALLOWED.includes(msg.flag) ? msg.flag : '🏳️';
+      const cor = parseInt(msg.color, 10); if (Number.isInteger(cor) && cor >= 0 && cor < 60) player.color = cor;
       broadcast(room);
       break;
     }

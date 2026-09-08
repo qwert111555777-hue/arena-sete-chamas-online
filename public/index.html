@@ -105,7 +105,7 @@
   .hud .res b{font-family:ui-monospace,monospace; color:#ffe9a8;}
   .hud .spacer{flex:1;}
   .hud .timer-big{font-size:20px; font-weight:900; font-family:ui-monospace,monospace; color:#ffe9a8;}
-  #btn-pause,#btn-speed2,#btn-endturn,#btn-rank,#btn-news{width:38px;height:38px;border-radius:50%;border:2px solid #8a6a1f;background:radial-gradient(circle at 35% 30%, #ffe9a8, #d9a93c 60%, #8a6a1f);color:#3a2a05;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.5);}
+  #btn-pause,#btn-speed2,#btn-endturn,#btn-rank,#btn-news,#btn-build{width:38px;height:38px;border-radius:50%;border:2px solid #8a6a1f;background:radial-gradient(circle at 35% 30%, #ffe9a8, #d9a93c 60%, #8a6a1f);color:#3a2a05;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.5);}
   #advisor{position:absolute;left:12px;top:12px;z-index:5;display:flex;gap:10px;align-items:flex-start;pointer-events:none;}
   #advisor img{width:64px;height:64px;border-radius:50%;border:3px solid #d9a93c;box-shadow:0 3px 10px rgba(0,0,0,.6);background:#e8d9b0;}
   #advisor-bubble{max-width:300px;background:linear-gradient(#fdf6e3,#ecd9a8);color:#3a2f14;border:2px solid #8a6a1f;border-radius:12px;padding:8px 12px;font-size:12px;font-weight:600;box-shadow:0 3px 10px rgba(0,0,0,.5);position:relative;margin-top:8px;}
@@ -323,7 +323,6 @@
 <div id="scr-home">
   <div class="flagband">🇧🇷 🇺🇸 🇷🇺 🇨🇳 🇩🇪 🇫🇷 🇬🇧 🇳🇬 🇯🇵</div>
   <h1>PRESIDENTE <span>ONLINE</span></h1>
-  <div class="subtitle">Simulador de geopolítica multiplayer — governe uma nação no mapa-múndi,<br>gerencie a economia, forme alianças, declare guerras e domine o mundo com seus amigos.</div>
 
   <div class="card">
     <div class="label">Seu nome de presidente</div>
@@ -341,12 +340,12 @@
     </div>
   </div>
 
-  <div class="features">
-    <span class="feat">👥 Até 30 jogadores</span>
-    <span class="feat">🗺️ Mapa-múndi interativo</span>
-    <span class="feat">⚔️ Guerras e saques</span>
-    <span class="feat">🤝 Alianças e diplomacia</span>
-    <span class="feat">🎲 Eventos aleatórios</span>
+</div>
+
+  <div class="card">
+    <div class="label">📂 Continuar jogo salvo</div>
+    <div style="color:var(--muted);font-size:12px;margin-bottom:8px;">Digite o código acima e carregue (mesmo navegador).</div>
+    <button style="width:100%" id="btn-load">Carregar</button>
   </div>
 </div>
 
@@ -377,7 +376,6 @@
   </div>
 
   <div style="display:flex; gap:10px; margin-top:16px; justify-content:flex-end;">
-    <button id="btn-speed" title="Velocidade do tempo: 1x, 2x, 3x ou 5x (só o anfitrião)">⏱️ Velocidade 1x</button>
     <button id="btn-leave" class="danger">Sair da sala</button>
     <button id="btn-start" class="primary" style="min-width:220px;">▶ Iniciar partida</button>
   </div>
@@ -408,6 +406,7 @@
     <button id="btn-miss" title="Missões do presidente">🎯</button>
     <button id="btn-orc" title="Orçamento dos ministérios">🏛️</button>
     <button id="btn-rel" title="Religiões do mundo">🕌</button>
+    <button id="btn-build" title="Construir (suas construções)">🏗️</button>
     <button id="btn-speed2" title="Velocidade: 1x, 2x, 3x ou 5x (anfitrião)">⏱️ 1x</button>
     <button id="btn-sair" title="Sair do jogo (o anfitrião salva automaticamente)" style="background:radial-gradient(circle at 35% 30%, #ffd0d0, #d98a8a 60%, #8a3040);">⏻</button>
   </div>
@@ -1103,6 +1102,13 @@ function handle(m){
   }
   if (m.t === 'state'){ applyState(m); return; }
   if (m.t === 'day'){ applyDay(m); return; }
+  if (m.t === 'tem_save'){
+    if (!m.tem){ toast('Nenhum jogo salvo com esse código.', 'error'); return; }
+    let s = null; try{ s = JSON.parse(sessionStorage.getItem(SS_KEY) || 'null'); }catch(e){}
+    if (s && s.code && s.token && String(s.code).toUpperCase() === String(m.code).toUpperCase()){ send({t:'reconnect', code:s.code, token:s.token}); toast('📂 Save encontrado! Voltando ao jogo...', 'info'); }
+    else toast('Save encontrado, mas é de outra sessão. Só quem jogou pode continuar (mesmo navegador).', 'info');
+    return;
+  }
   if (m.t === 'sair_ok'){ try { location.reload(); } catch {} return; }
   if (m.t === 'aviso'){ toast(m.msg); return; }
   if (m.t === 'chat'){ /* chat removido a pedido */ }
@@ -1141,9 +1147,6 @@ function renderLobby(){
   $('lob-code').textContent = state.code;
   $('lob-count').textContent = state.players.length;
   const isHost = me() && me().isHost;
-  const bs = $('btn-speed');
-  bs.classList.toggle('hidden', !isHost);
-  bs.textContent = `⏱️ Velocidade ${state.speedMul || 1}x`;
   const btn = $('btn-start');
   btn.classList.toggle('hidden', !isHost);
   btn.textContent = state.players.length >= 2
@@ -1161,7 +1164,7 @@ function renderLobby(){
   const mine = me();
   const wrap = document.createElement('div');
   wrap.style.cssText = 'padding:14px; display:flex; flex-direction:column; gap:10px;';
-  wrap.innerHTML = '<div style="color:var(--muted); font-size:12px; line-height:1.6;">🏳️ Aqui você <b style="color:var(--gold2)">FUNDA a sua própria nação</b>. As <b>' + (state.world ? state.world.length : 195) + ' nações do mundo real</b> ficam sob controle da 🤖 IA — é vocês contra elas! Todos começam iguais: <b>$10.000</b>, <b>0 habitantes</b> e um único território escasso.</div>';
+  wrap.innerHTML = '<div style="font-weight:800;font-size:14px;">Funde sua nação: nome, cor e símbolo.</div>';
   const inp = document.createElement('input');
   inp.value = (mine && mine.customName) || ''; inp.placeholder = 'Nome da sua nação (ex.: Nova Aurora)'; inp.maxLength = 24;
   inp.style.cssText = 'padding:10px; border-radius:8px; border:1px solid var(--border); background:#0c1324; color:#fff; font-size:14px;';
@@ -1175,11 +1178,24 @@ function renderLobby(){
     b.onclick = () => send({t:'fundar', name: inp.value || (mine?mine.name:''), flag: f});
     fl.appendChild(b);
   });
+  const lbCor = document.createElement('div'); lbCor.style.cssText = 'font-weight:700;font-size:12px;color:var(--muted)'; lbCor.textContent = 'Cor da nação:'; wrap.appendChild(lbCor);
+  const corRow = document.createElement('div'); corRow.style.cssText = 'display:flex; flex-wrap:wrap; gap:6px;';
+  const selCor = (mine && mine.color != null) ? mine.color : 0;
+  for (let ci = 0; ci < 12; ci++){
+    const cb = document.createElement('button');
+    cb.style.cssText = 'width:30px;height:30px;border-radius:6px;cursor:pointer;border:2px solid ' + (ci===selCor?'var(--gold2)':'#000') + ';background:hsl(' + ((ci*137)%360) + ',55%,' + (42+(ci%4)*8) + '%);';
+    cb.title = 'Cor ' + (ci+1);
+    cb.onclick = () => send({t:'fundar', name: inp.value || (mine?mine.name:''), flag: selFlag, color: ci});
+    corRow.appendChild(cb);
+  }
+  wrap.appendChild(corRow);
+  const lbSim = document.createElement('div'); lbSim.style.cssText = 'font-weight:700;font-size:12px;color:var(--muted)'; lbSim.textContent = 'Símbolo:'; wrap.appendChild(lbSim);
   wrap.appendChild(fl);
   const fbtn = document.createElement('button'); fbtn.className = 'primary'; fbtn.textContent = '🏳️ Fundar minha nação';
   fbtn.onclick = () => send({t:'fundar', name: inp.value || (mine?mine.name:''), flag: selFlag});
   wrap.appendChild(fbtn);
   if (mine && mine.customName){ const okd = document.createElement('div'); okd.style.cssText = 'color:#39d98a; font-size:13px; font-weight:700;'; okd.textContent = '✅ Nação fundada: ' + (mine.customFlag||'🏳️') + ' ' + mine.customName; wrap.appendChild(okd); }
+  if (!isHost){ const w = document.createElement('div'); w.style.cssText = 'color:var(--gold2); font-size:13px; font-weight:700;'; w.textContent = '⏳ Aguarde o dono da sala iniciar o jogo.'; wrap.appendChild(w); }
   grid.appendChild(wrap);
 }
 
@@ -1292,19 +1308,7 @@ function renderMap(){
   gT.innerHTML = ''; gLines.innerHTML = ''; g.innerHTML = '';
 
   /* províncias removidas do mapa a pedido — só marcadores com bandeiras */
-  state.players.forEach(pl => {
-    const poly = terrFor(pl.country);
-    if (!poly) return;
-    const el = document.createElementNS('http://www.w3.org/2000/svg','polygon');
-    el.setAttribute('points', poly.map(pt=>pt.join(',')).join(' '));
-    const col = pl.alive ? PALETTE[pl.color % PALETTE.length] : '#3a4356';
-    el.setAttribute('fill', col);
-    el.setAttribute('fill-opacity', pl.alive ? '0.26' : '0.10');
-    el.setAttribute('stroke', col);
-    el.setAttribute('stroke-opacity', pl.alive ? '0.85' : '0.3');
-    el.setAttribute('stroke-width', '1.6');
-    gT.appendChild(el);
-  });
+  /* territórios removidos do mapa a pedido — só bandeiras definem os países */
 
   // linhas de aliança entre mim e meus aliados
   if (m && m.country){
@@ -1369,17 +1373,27 @@ function renderMap(){
     }
     const isoM = isoOf(p.country);
     if (isoM){
-      const fo = document.createElementNS('http://www.w3.org/2000/svg','foreignObject');
-      fo.setAttribute('x', '-12'); fo.setAttribute('y', '-12');
-      fo.setAttribute('width', '24'); fo.setAttribute('height', '24');
-      const fim = document.createElementNS('http://www.w3.org/1999/xhtml','img');
-      fim.setAttribute('src', 'flags/' + isoM + '.svg');
-      fim.setAttribute('style', 'width:24px;height:24px;border-radius:50%;object-fit:cover;border:2px solid ' + ringColor + ';box-sizing:border-box;background:#0c1324;display:block;');
-      fo.appendChild(fim); mk.appendChild(fo);
+      const fim = document.createElementNS('http://www.w3.org/2000/svg','image');
+      fim.setAttribute('x', '-13'); fim.setAttribute('y', '-9');
+      fim.setAttribute('width', '26'); fim.setAttribute('height', '18');
+      fim.setAttribute('preserveAspectRatio', 'none');
+      fim.setAttribute('href', 'flags/' + isoM + '.svg');
+      mk.appendChild(fim);
+      const fb = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      fb.setAttribute('x', '-13'); fb.setAttribute('y', '-9');
+      fb.setAttribute('width', '26'); fb.setAttribute('height', '18');
+      fb.setAttribute('fill', 'none'); fb.setAttribute('stroke', ringColor); fb.setAttribute('stroke-width', '2');
+      mk.appendChild(fb);
     } else {
+      const csq = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      csq.setAttribute('x', '-13'); csq.setAttribute('y', '-9');
+      csq.setAttribute('width', '26'); csq.setAttribute('height', '18');
+      csq.setAttribute('fill', PALETTE[p.color % PALETTE.length]);
+      csq.setAttribute('stroke', ringColor); csq.setAttribute('stroke-width', '2');
+      mk.appendChild(csq);
       const fl = document.createElementNS('http://www.w3.org/2000/svg','text');
       fl.setAttribute('text-anchor','middle'); fl.setAttribute('dominant-baseline','central');
-      fl.setAttribute('font-size', '15');
+      fl.setAttribute('font-size', '13');
       fl.textContent = c.flag;
       mk.appendChild(fl);
     }
@@ -1771,10 +1785,10 @@ function renderRanking(){
   const rows = [...state.players].sort((a,b)=>score(b)-score(a));
   panel.innerHTML = '<h3>📊 Ranking das nações</h3>';
   rows.forEach((p,i) => {
-    const div = document.createElement('div'); div.className='rank-row';
+    const div = document.createElement('div'); div.className='rank-row'; if (p.id===myId){ div.style.border='2px solid #ffd76a'; div.style.background='#2a2410'; }
     const dot=document.createElement('span'); dot.className='dot'; dot.style.background=PALETTE[p.color%PALETTE.length];
     const rk=document.createElement('span'); rk.className='rk'; rk.textContent=(i+1)+'.';
-    const rn=document.createElement('span'); rn.className='rn'; const rIso=isoOf(p.country); const rNm=String((cbid(p.country)||{}).name||p.name).replace(/[<>&]/g,''); rn.innerHTML=(rIso?'<img src="flags/'+rIso+'.svg" style="width:20px;height:14px;vertical-align:-2px;border-radius:2px;border:1px solid #000"> ':cflag(p)+' ')+rNm+(p.bot?' 🤖':'')+(p.alive?'':' 💀');
+    const rn=document.createElement('span'); rn.className='rn'; const rIso=isoOf(p.country); const rNm=String((cbid(p.country)||{}).name||p.name).replace(/[<>&]/g,''); rn.innerHTML=(rIso?'<img src="flags/'+rIso+'.svg" style="width:20px;height:14px;vertical-align:-2px;border-radius:2px;border:1px solid #000"> ':cflag(p)+' ')+rNm;
     const rs=document.createElement('span'); rs.className='rs'; rs.textContent=`🏭${p.eco} 🪖${p.mil} ❤️${p.aprov} ☢️${p.nuclear}`;
     div.append(dot,rk,rn,rs); panel.appendChild(div);
   });
@@ -1811,6 +1825,11 @@ $('btn-join').onclick = () => {
   localStorage.setItem('po_name', $('inp-name').value.trim());
   send({t:'join', code, name:$('inp-name').value.trim()});
 };
+$('btn-load').onclick = () => {
+  const code = $('inp-code').value.trim().toUpperCase();
+  if (code.length < 4) return toast('Digite o código de 4 letras do jogo salvo.', 'error');
+  send({t:'tem_save', code});
+};
 $('inp-name').value = myName();
 const urlSala = new URLSearchParams(location.search).get('sala');
 if (urlSala){ $('inp-code').value = urlSala.toUpperCase().slice(0,4); toast('🔗 Código de sala preenchido! Digite seu nome e entre.', 'info'); }
@@ -1821,7 +1840,6 @@ $('btn-copy-link').onclick = () => {
   navigator.clipboard.writeText(link).then(()=>toast('🔗 Link de convite copiado!')).catch(()=>toast(link,'info'));
 };
 $('btn-leave').onclick = () => { limparSessao(); location.reload(); };
-$('btn-speed').onclick = () => { const seq = [1,2,3,5]; const cur = state.speedMul || 1; send({t:'velocidade', speed: seq[(seq.indexOf(cur)+1) % seq.length]}); };
 $('btn-start').onclick = () => send({t:'start'});
 $('btn-pause').onclick = () => send({t:'pausar'});
 $('btn-rank').onclick = () => {
@@ -1850,6 +1868,12 @@ $('btn-rank').onclick = () => {
   box.style.cssText = 'background:#101826;border:1px solid #2c3e5d;border-radius:10px;padding:16px;max-width:420px;max-height:80vh;overflow:auto;color:#dfe8f5';
   box.innerHTML = html; ov.appendChild(box); document.body.appendChild(ov);
   ov.onclick = e => { if (e.target === ov || e.target.id === 'rank-close') ov.remove(); };
+};
+$('btn-build').onclick = () => {
+  if (!state || state.phase !== 'game' || !me()) return;
+  selectedId = myId; renderPanel(); renderMap();
+  const secs = document.querySelectorAll('#np-extra .np-sub');
+  for (const s of secs){ if (s.textContent.includes('Construções')){ s.scrollIntoView({behavior:'smooth', block:'start'}); break; } }
 };
 $('btn-speed2').onclick = () => {
   const antigo = $('menu-vel'); if (antigo) antigo.remove();
