@@ -1891,7 +1891,7 @@ function renderPanel(){
     }
     // leis nacionais
     sub2('📜 Leis nacionais (1⚡)');
-    [['servico_militar','Serviço Militar Obrigatório','+5% ataque em guerras',150],['guarda_nacional','Guarda Nacional','+5% defesa',160],['reforma_agraria','Reforma Agrária','+$10/semana',200],['abertura_comercial','Abertura Comercial','+$10/semana',180],['liberdade_imprensa','Liberdade de Imprensa','+3 aprovação',120],['campanha_patriotica','Campanha Patriótica','+4 aprovação',100]].forEach(([k,nm,desc,cost])=>{
+    [['servico_militar','Serviço Militar Obrigatório','+5% ataque em guerras',150],['guarda_nacional','Guarda Nacional','+5% defesa',160],['reforma_agraria','Reforma Agrária','+$10/semana',200],['abertura_comercial','Abertura Comercial','+$10/semana',180],['liberdade_imprensa','Liberdade de Imprensa','+3 aprovação',120],['campanha_patriotica','Campanha Patriótica','+4 aprovação',100],['ensino_obrigatorio','Ensino Obrigatório','+2 aprovação, +1 ciência',200],['saude_universal','Saúde Universal','+3 aprovação, +2 pop',250],['codigo_florestal','Código Florestal','+1 economia',150]].forEach(([k,nm,desc,cost])=>{
       const r=document.createElement('div'); r.className='xrow';
       const n=document.createElement('span'); n.className='xn'; n.textContent=nm+' ('+desc+')'; r.appendChild(n);
       const b=document.createElement('button'); b.textContent=p.leis.includes(k)?'✓ ativa':'$'+cost;
@@ -2599,7 +2599,7 @@ $('btn-spy').onclick = () => {
 };
 $('btn-leis').onclick = () => {
   const m = me(); if (!m || !state) return;
-  const LEIS_UI = [['servico_militar','🪖 Serviço Militar Obrigatório','+5% ataque em guerras',150],['guarda_nacional','🛡️ Guarda Nacional','+5% defesa',160],['reforma_agraria','🌾 Reforma Agrária','+$10/semana',200],['abertura_comercial','💼 Abertura Comercial','+$10/semana',180],['liberdade_imprensa','📰 Liberdade de Imprensa','+3 aprovação',120],['campanha_patriotica','🎖️ Campanha Patriótica','+4 aprovação',100]];
+  const LEIS_UI = [['servico_militar','🪖 Serviço Militar Obrigatório','+5% ataque em guerras',150],['guarda_nacional','🛡️ Guarda Nacional','+5% defesa',160],['reforma_agraria','🌾 Reforma Agrária','+$10/semana',200],['abertura_comercial','💼 Abertura Comercial','+$10/semana',180],['liberdade_imprensa','📰 Liberdade de Imprensa','+3 aprovação',120],['campanha_patriotica','🎖️ Campanha Patriótica','+4 aprovação',100],['ensino_obrigatorio','📚 Ensino Obrigatório','+2 aprovação, +1 ciência',200],['saude_universal','🏥 Saúde Universal','+3 aprovação, +2 pop',250],['codigo_florestal','🌳 Código Florestal','+1 economia',150]];
   const ov = document.createElement('div'); ov.id='newspaper';
   ov.innerHTML = '<div class="paper" style="width:min(560px,92vw)"><h1 style="font-size:20px">📜 LEIS NACIONAIS</h1><img src="headers/laws.jpg" style="width:100%;height:110px;object-fit:cover;border-radius:8px;border:2px solid #8a6a1f;margin-bottom:8px"><div style="font-size:11px;text-align:center;margin-bottom:8px;color:#6b5a33">Cada lei custa 1⚡ + dinheiro · vale para sempre</div>'
   + LEIS_UI.map(([k,nm,desc,cost])=>{ const on=(m.leis||[]).includes(k); const ok=!on&&m.ap>=1&&m.money>=cost;

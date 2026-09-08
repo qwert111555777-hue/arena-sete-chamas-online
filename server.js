@@ -759,6 +759,9 @@ const LEIS = {
   abertura_comercial:{ name: 'Abertura Comercial',          cost: 180, desc: '+$10/semana' },
   liberdade_imprensa:{ name: 'Liberdade de Imprensa',       cost: 120, desc: '+3 aprovação' },
   campanha_patriotica:{ name: 'Campanha Patriótica',        cost: 100, desc: '+4 aprovação' },
+  ensino_obrigatorio:{ name: 'Ensino Obrigatório', cost: 200, desc: '+2 aprovação, +1 ciência' },
+  saude_universal:  { name: 'Saúde Universal',   cost: 250, desc: '+3 aprovação, +2 pop' },
+  codigo_florestal: { name: 'Código Florestal',  cost: 150, desc: '+1 economia' },
 };
 
 function incomeOf(room, p) {
@@ -1163,6 +1166,7 @@ function aiTurn(room) {
     if (b.religion && b.religion !== 'laico' && b.money > 1000 && Math.random() < 0.15) { b.money -= 200; b.fe = Math.min(100, (b.fe || 0) + 4); }
     if (b.money > 2000 && Math.random() < 0.05) { const fo = room.players.filter(o => o.alive && o !== b).sort((x, y) => relBetween(b, y) - relBetween(b, x))[0]; if (fo && relBetween(b, fo) > 0) { b.money -= 100; bumpRel(b, fo, 8); } }
     if (b.money > 3000 && Math.random() < 0.05) { b.money -= 600; b.aprov = Math.min(100, b.aprov + 8); b.influencia = Math.min(100, (b.influencia || 0) + 3); }
+    if (b.money > 1000 && Math.random() < 0.05 && b.leis) { const op = Object.keys(LEIS).filter(k => !b.leis.includes(k)); if (op.length && b.money >= LEIS[op[0]].cost + 500) { b.money -= LEIS[op[0]].cost; b.leis.push(op[0]); } }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -1822,6 +1826,9 @@ function performAction(room, p, msg) {
       p.leis.push(msg.value);
       if (msg.value === 'liberdade_imprensa') p.aprov = Math.min(100, p.aprov + 3);
       if (msg.value === 'campanha_patriotica') p.aprov = Math.min(100, p.aprov + 4);
+      if (msg.value === 'ensino_obrigatorio') { p.aprov = Math.min(100, p.aprov + 2); p.ciencia = (p.ciencia || 0) + 1; }
+      if (msg.value === 'saude_universal') { p.aprov = Math.min(100, p.aprov + 3); p.pop += 2; }
+      if (msg.value === 'codigo_florestal') p.eco += 1;
       log(room, `📜 ${cname(p)} aprova a lei "${lei.name}" (${lei.desc}).`);
       break;
     }
