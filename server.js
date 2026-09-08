@@ -586,7 +586,7 @@ function snapshot(room) {
       depositos: p.depositos || [], upgrades: p.upgrades || {}, pacts: p.pacts || {},
       seguranca: p.seguranca || { defesa: 0, secreto: 0, policia: 0, guarda: 0 }, espioes: p.espioes || 0,
     })),
-    world: room.world, market: room.market, mission: MISSIONS[room.missionIdx % MISSIONS.length], paused: room.paused, speedMul: room.speedMul || 1, temSave: temSave(room.code),
+    world: room.world, market: room.market, mission: MISSIONS[room.missionIdx % MISSIONS.length], missionIdx: room.missionIdx, paused: room.paused, speedMul: room.speedMul || 1, temSave: temSave(room.code),
   };
 }
 function broadcast(room) {
@@ -1015,10 +1015,10 @@ function resolveWeek(room) {
   if ((room.day - 1) % 14 === 0) aiTurn(room);
   const mNow = MISSIONS[room.missionIdx % MISSIONS.length];
   if (mNow) {
-    const hero = room.players.find(p => p.alive && !p.bot && mNow.check(p));
+    const hero = room.players.find(p => p.alive && mNow.check(p));
     if (hero) {
-      hero.money += mNow.reward; hero.aprov = Math.min(100, hero.aprov + 3); hero.xp += 10;
-      log(room, `🏆 MISSÃO CUMPRIDA por ${cname(hero)}: ${mNow.desc} (+$${mNow.reward}, +3 aprovação)!`);
+      const rw = mNow.reward * (room.era || 1); hero.money += rw; hero.aprov = Math.min(100, hero.aprov + 3); hero.xp = (hero.xp || 0) + 10;
+      log(room, `🏆 MISSÃO CUMPRIDA por ${cname(hero)}: ${mNow.desc} (+$${rw}, +3 aprovação)!`); record(room, `🏆 ${cname(hero)} cumpriu: ${mNow.desc}.`);
       room.missionIdx++;
     }
   }
@@ -1047,6 +1047,14 @@ const MISSIONS = [
   { id: 'anexar',      desc: 'Ocupe território inimigo (2+ províncias)', reward: 700, check: p => ownProvinces(p).length >= 2 },
   { id: 'blindados_1', desc: 'Produza forças blindadas',                 reward: 400, check: p => p.units.blindados >= 1 },
   { id: 'treinar_3',   desc: 'Treine o exército 3 vezes',                reward: 400, check: p => p.stats.treinos >= 3 },
+  { id: 'fe_15',      desc: 'Alcance 15 de fé',                       reward: 500, check: p => (p.fe || 0) >= 15 },
+  { id: 'doc_15',     desc: 'Alcance 15 de doutrina',                 reward: 500, check: p => (p.influencia || 0) >= 15 },
+  { id: 'rede_3',     desc: 'Tenha 3 agentes secretos',               reward: 550, check: p => (p.espioes || 0) >= 3 },
+  { id: 'nuke_2',     desc: 'Chegue ao Nv 2 nuclear',                 reward: 600, check: p => (p.nuclear || 0) >= 2 },
+  { id: 'abrigo_1',   desc: 'Construa abrigos nucleares',             reward: 450, check: p => !!p.abrigo },
+  { id: 'aliados_2',  desc: 'Tenha 2 aliados',                        reward: 550, check: p => (p.allies || []).length >= 2 },
+  { id: 'tech_5',     desc: 'Domine 5 tecnologias',                   reward: 600, check: p => (p.techs || []).length >= 5 },
+  { id: 'titulo_1',   desc: 'Ganhe 1 título semanal',                 reward: 500, check: p => (p.stats.titulos || 0) >= 1 },
 ];
 
 const UNIT_COSTS = { blindados: 300, aviacao: 400, frota: 500, infantaria: 200, artilharia: 350, submarinos: 450, porta_avioes: 700 };
