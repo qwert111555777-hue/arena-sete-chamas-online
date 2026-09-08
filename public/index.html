@@ -1950,6 +1950,9 @@ function renderPanel(){
     acts.appendChild(mkBtn('💸','Ajudar $200 (+relações)', ()=>send({t:'action',action:'ajudar',target:p.id}), m.ap<1||m.money<200));
     acts.appendChild(mkBtn('💸','Emprestar $1000 (volta $1200 em 28 dias)', ()=>send({t:'action',action:'emprestar',target:p.id}), m.ap<1||m.money<1000));
     acts.appendChild(mkBtn('💙','Perdoar dívidas dele (+15 relações)', ()=>send({t:'action',action:'perdoar',target:p.id}), m.ap<1));
+    acts.appendChild(mkBtn('🎁','Doar província mais fraca (+20 relações)', ()=>send({t:'action',action:'doar_provincia',target:p.id}), m.ap<1));
+    acts.appendChild(mkBtn('💙','Ajudar na crise ($300, +10 relações)', ()=>send({t:'action',action:'ajuda_crise',target:p.id}), m.ap<1||m.money<300));
+    acts.appendChild(mkBtn('🕊️','Apoiar soberania ($200, +10 relações)', ()=>send({t:'action',action:'apoiar_soberania',target:p.id}), m.ap<1||m.money<200));
     acts.appendChild(mkBtn('🎁','Enviar presente ($100, +8 relações)', ()=>send({t:'action',action:'presente',target:p.id}), m.ap<1||m.money<100));
     acts.appendChild(mkBtn('🤝','Visita de estado ($300, +15 relacoes, +2 coracao)', ()=>send({t:'action',action:'visita_estado',target:p.id}), m.ap<1||m.money<300));
     acts.appendChild(mkBtn('🎓','Intercambio estudantil ($200, +10 relacoes, +1 eco)', ()=>send({t:'action',action:'intercambio',target:p.id}), m.ap<1||m.money<200));
