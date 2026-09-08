@@ -430,3 +430,5 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (FASE 68 — LIVE dep-dag9s8ek1f9s738cifng/f3ca2a3, SERVER+CLIENTE): 🚨 CRISES 4.0: APAGÃO (importar/racionar/ignorar) + GREVE GERAL (negociar/cortar/ignorar), 10 crises, switch 20, bots resolvem.
 - 2026-09-08 (ESTUDO comida 100x real: MA2 updatestar/Play — bens (carne/frutas/legumes/pão/doces/fast-food), Well-Fed Society (superávit alimentar), Merchant (comprar bens); fazendas/padarias/estufas — base da Fase 69.
 - 2026-09-08 (FASE 69 — LIVE dep-dag9t2740ujc73a6d6ng/48ae5d8, SERVER+CLIENTE): 🌾 COMIDA 2.0: FEIRAS LIVRES (1⚡+$150: +2 pop+2❤️+$50) + CESTAS BÁSICAS (1⚡+$200: +3 pop+4❤️) + bots importam comida.
+- 2026-09-08 (ESTUDO Conselho Segurança 100x real: MA2 exophase — "Strong Position: Become a permanent member of the UN Security Council"; MA2 updatestar — propor resoluções na ONU E no Conselho de Segurança, subornar votos — base da Fase 70.
+- 2026-09-08 (FASE 70 — LIVE dep-dag9tvek1f9s738cntu0/ba35570, SERVER+CLIENTE): 🛡️ CONSELHO DE SEGURANÇA: ENTRAR (2⚡+$800, máx 5: +1 voto ONU) + VETAR (1⚡: derruba resolução) + bots entram.
