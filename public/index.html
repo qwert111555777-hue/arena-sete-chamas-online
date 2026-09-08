@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Presidente Online — Simulador de Geopolítica</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root{
     --bg:#0b1020; --panel:#121a30; --panel2:#0e1526; --border:#23304f;
@@ -348,6 +349,16 @@
   #newspaper .paper button{background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:8px 22px;font-weight:800;cursor:pointer;}
   #newspaper .paper button:hover{background:#256b29;}
   .side-tools{display:none;}
+  /* mapa satelite Leaflet (MA3) */
+  #leafmap{position:absolute;inset:0;z-index:1;background:#0a1226;}
+  body.leaf-on svg#map{visibility:hidden;}
+  .lflag{width:30px;height:21px;}
+  .lflag img{width:30px;height:21px;display:block;}
+  .lcus{width:30px;height:21px;display:flex;align-items:center;justify-content:center;font-size:15px;}
+  .lflag.sel{filter:drop-shadow(0 0 5px #ffd76a);}
+  .leaflet-container{font-family:inherit;font-size:11px;}
+  .leaflet-container .leaflet-control-attribution{background:rgba(10,18,38,.7);color:#8fa0c2;font-size:9px;}
+  .leaflet-container .leaflet-control-attribution a{color:#8fa0c2;}
 </style>
 </head>
 <body>
@@ -474,6 +485,7 @@
   <div class="game-body">
     <div class="map-wrap">
       
+      <div id="leafmap" class="hidden"></div>
       <svg id="map" viewBox="0 0 1000 520" preserveAspectRatio="xMidYMid slice">
         <defs>
           <linearGradient id="ocean" x1="0" y1="0" x2="0" y2="1">
@@ -583,6 +595,7 @@
   </div>
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 'use strict';
 /* ================= dados compartilhados com o servidor ================= */
@@ -1490,6 +1503,52 @@ function renderMap(){
     mk.onclick = () => { if (dragged) return; selectedId = (selectedId === p.id ? null : p.id); renderMap(); renderPanel(); };
     g.appendChild(mk);
   });
+  syncLeaflet();
+}
+
+/* ---------- mapa satelite (Leaflet, estilo MA3) ---------- */
+let leafMap = null, leafMarks = {};
+function leafInit(){
+  if (leafMap || typeof L === 'undefined' || !$('leafmap')) return;
+  try {
+    leafMap = L.map('leafmap', { minZoom: 2, maxZoom: 7, maxBounds: [[-85,-200],[85,200]], maxBoundsViscosity: 1, worldCopyJump: true, zoomControl: false }).setView([20, 0], 2);
+    L.control.zoom({ position: 'bottomright' }).addTo(leafMap);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Esri, Maxar, Earthstar Geographics', maxZoom: 7 }).addTo(leafMap);
+    $('leafmap').classList.remove('hidden');
+    document.body.classList.add('leaf-on');
+    window.__leaf = true;
+  } catch(e){ leafMap = null; }
+}
+function syncLeaflet(){
+  if (!leafMap){ leafInit(); if (!leafMap) return; }
+  const seen = {};
+  state.players.forEach(p => {
+    if (!p.country) return;
+    const c = cbid(p.country) || {};
+    if (c.lat == null || c.lon == null) return;
+    seen[p.id] = 1;
+    const iso = isoOf(p.country);
+    const sel = (p.id === selectedId) ? ' sel' : '';
+    const dim = p.alive ? '' : ';opacity:.45';
+    const html = iso
+      ? '<div class="lflag' + sel + '" style="box-shadow:0 1px 4px rgba(0,0,0,.6)' + dim + '"><img src="flags/' + iso + '.svg" alt=""></div>'
+      : '<div class="lflag lcus' + sel + '" style="background:' + PALETTE[(p.color||0)%60] + ';box-shadow:0 1px 4px rgba(0,0,0,.6)' + dim + '">' + (c.flag||p.customFlag||'🏳️') + '</div>';
+    const ic = L.divIcon({ html: html, className: '', iconSize: [30,21], iconAnchor: [15,10] });
+    if (leafMarks[p.id]){ leafMarks[p.id].setLatLng([c.lat, c.lon]); leafMarks[p.id].setIcon(ic); }
+    else { leafMarks[p.id] = L.marker([c.lat, c.lon], { icon: ic }).addTo(leafMap); leafMarks[p.id].on('click', () => { selectedId = (selectedId===p.id?null:p.id); renderMap(); renderPanel(); }); }
+  });
+  Object.keys(leafMarks).forEach(id => { if (!seen[id]){ leafMap.removeLayer(leafMarks[id]); delete leafMarks[id]; } });
+  if (leafMap._al) leafMap._al.forEach(l => leafMap.removeLayer(l));
+  leafMap._al = [];
+  const mm = me();
+  if (mm && mm.country){
+    const a = cbid(mm.country) || {};
+    (mm.allies||[]).forEach(aid => {
+      const al = state.players.find(p=>p.id===aid);
+      const b = (al && al.country) ? (cbid(al.country)||{}) : {};
+      if (a.lat != null && b.lat != null) leafMap._al.push(L.polyline([[a.lat,a.lon],[b.lat,b.lon]],{color:'#e8b93c',weight:2,dashArray:'6 5',opacity:.8}).addTo(leafMap));
+    });
+  }
 }
 
 function renderPanel(){
@@ -2186,6 +2245,7 @@ function svgPoint(e){
 }
 document.addEventListener('wheel', e => {
   if ($('scr-game').classList.contains('hidden')) return;
+  if (window.__leaf) return;
   if (!e.target.closest('.map-wrap')) return;
   e.preventDefault();
   const p = svgPoint(e);
@@ -2199,6 +2259,7 @@ document.addEventListener('wheel', e => {
 let drag = null;
 document.addEventListener('pointerdown', e => {
   if ($('scr-game').classList.contains('hidden')) return;
+  if (window.__leaf) return;
   if (!e.target.closest('.map-wrap')) return;
   if (e.target.closest('.nation-panel,.bottom-bar,.side-tools,.rank-panel,#propose-bar')) return;
   drag = { x:e.clientX, y:e.clientY, tx:view.tx, ty:view.ty };
