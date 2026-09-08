@@ -884,6 +884,7 @@ function dayTick(room) {
     if (p.taxes && p.taxes.amb >= 12) dAprov += 1;
     if (p.budget){ if (p.budget.int>=2) dAprov += 1; if (p.budget.ambm>=2) dAprov += 1; if (p.budget.edu===0) dAprov -= 1; }
     if (p.seguranca) dAprov += (p.seguranca.policia || 0);
+    if (p.sectors) dAprov += (((p.sectors.habitacao || 0) >= 3) ? 1 : 0);
     // 🌍 ecologia (Fase 16): prédios poluem, verde limpa
     if (p.pollution == null) p.pollution = 10;
     let nPol = 0;
@@ -1149,6 +1150,8 @@ function aiTurn(room) {
     if (!b.ministers.eco && b.money > 2000) { b.money -= 300; b.ministers = { eco: ['tec', 'pop', 'ind'][Math.floor(Math.random() * 3)], def: ['fal', 'estr', 'pac'][Math.floor(Math.random() * 3)], dip: ['neg', 'inf', 'esp', 'cul'][Math.floor(Math.random() * 4)] }; }
     if (((b.sectors && b.sectors.esportes) || 0) >= 2 && b.money > 5000 && Math.random() < 0.06) { b.money -= 700; b.aprov = Math.min(100, b.aprov + 10); b.influencia = Math.min(100, (b.influencia || 0) + 5); log(room, `🏟️ ${cname(b)} sediou os JOGOS OLÍMPICOS!`); }
     if (b.money > 4000 && ((b.sectors && b.sectors.turismo) || 0) < 5 && Math.random() < 0.08) { b.money -= 500; b.sectors.turismo = ((b.sectors && b.sectors.turismo) || 0) + 1; }
+    if (b.money > 4000 && ((b.sectors && b.sectors.habitacao) || 0) < 5 && Math.random() < 0.08) { b.money -= 600; b.sectors.habitacao = ((b.sectors && b.sectors.habitacao) || 0) + 1; b.pop += 5; }
+    if (b.aprov < 45 && ((b.sectors && b.sectors.habitacao) || 0) >= 1 && b.money > 500) { b.money -= 200; b.pop += 2; b.aprov = Math.min(100, b.aprov + 5); }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -1442,6 +1445,20 @@ function performAction(room, p, msg) {
       if ((p.sectors.turismo || 0) < 5) p.sectors.turismo += 1;
       p.money += 200; p.aprov = Math.min(100, p.aprov + 3);
       log(room, `🗽 ${cname(p)} ergueu um MARCO TURÍSTICO mundial (+1 Turismo, +$200, +3❤️).`);
+      break;
+    }
+    case 'conjunto_habitacional': {
+      if (!spend(p, 2, 600)) return;
+      if ((p.sectors.habitacao || 0) < 5) p.sectors.habitacao += 1;
+      p.pop += 5; p.aprov = Math.min(100, p.aprov + 4);
+      log(room, `🏠 ${cname(p)} entregou um CONJUNTO HABITACIONAL (+1 Habitação, +5 pop, +4❤️).`);
+      break;
+    }
+    case 'aluguel_social': {
+      if (((p.sectors && p.sectors.habitacao) || 0) < 1) { err(p.conn, '🏠 Precisa de Habitação Nv 1+.'); return; }
+      if (!spend(p, 1, 200)) return;
+      p.pop += 2; p.aprov = Math.min(100, p.aprov + 5);
+      log(room, `🏠 ${cname(p)} criou o ALUGUEL SOCIAL (+2 pop, +5❤️).`);
       break;
     }
     case 'ministro':
