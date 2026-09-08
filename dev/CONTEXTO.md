@@ -440,3 +440,5 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (FASE 73 — LIVE dep-daga07uq1p3s73c8t4ug/cbbdced, SERVER): 🏆 RANKINGS 2.0: +3 categorias semanais: MAIOR RIQUEZA (+$150) + MAIS PROVÍNCIAS (+1 infra) + MELHOR DIPLOMACIA (+2❤️). 10 categorias.
 - 2026-09-08 (ESTUDO cultura 100x real: MA3 — cultura/esportes/qualidade de vida/prestígio nacional; MA2 mumu — Ministério da Cultura e Esportes, programas culturais, marcos culturais locais; MA2 — festivais de cinema — base da Fase 74.
 - 2026-09-08 (FASE 74 — LIVE dep-daga0qmq1p3s73c92130/35030e4, SERVER+CLIENTE): 🎭 CULTURA 2.0: MUSEU (1⚡+$300: +3 doutrina+$100+2❤️) + BIBLIOTECA (1⚡+$250: +1 ciência+2❤️) + bots culturam.
+- 2026-09-08 (ESTUDO províncias 100x real: MA3/aptoide — expandir território, anexar estados, conceder independência; MA2 mumu — desenvolvimento de províncias — base da Fase 75.
+- 2026-09-08 (FASE 75 — LIVE dep-daga21m1egvs739rf3h0/12506e6, SERVER+CLIENTE): 🏘️ PROVÍNCIAS 2.0: FUNDAR (2⚡+$1000: +1 província, máx 6) + VENDER (1⚡: +$300+100×infra da mais fraca, req 2+) + bots vendem se pobres. Cadeia 3AP validada.
