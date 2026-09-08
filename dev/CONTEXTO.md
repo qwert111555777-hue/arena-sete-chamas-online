@@ -434,3 +434,5 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (FASE 70 — LIVE dep-dag9tvek1f9s738cntu0/ba35570, SERVER+CLIENTE): 🛡️ CONSELHO DE SEGURANÇA: ENTRAR (2⚡+$800, máx 5: +1 voto ONU) + VETAR (1⚡: derruba resolução) + bots entram.
 - 2026-09-08 (ESTUDO espaço 100x real: MA3 mwm — colonização espacial, colonizar Marte (custos, treino, viagem, exploração); departamento Ciência e Pesquisa; gestão de vassalos — base da Fase 71.
 - 2026-09-08 (FASE 71 — LIVE dep-dag9uluq1p3s73c8nf5g/ac8c78d, SERVER+CLIENTE): 🚀 ESPAÇO 2.0: SATÉLITE (2⚡+$600: +2 ciência+3 doutrina+2❤️) + MISSÃO A MARTE (req 3 ciência, 1⚡+$1500: +8❤️+8 doutrina+3 ciência+10XP) + bots lançam.
+- 2026-09-08 (ESTUDO segurança interna 100x real: MA3 lifesimulator/soft112 — Ministério da Defesa, serviço secreto, polícia, Guarda Nacional; segurança e proteção interna; MA2 — financiar polícia/guarda/defesa — base da Fase 72.
+- 2026-09-08 (FASE 72 — LIVE dep-dag9v9740ujc73a6kqsg/e70c141, SERVER+CLIENTE): 🚔 POLÍCIA 2.0: PATRULHAS (Pol Nv1+, 1⚡+$200: +3❤️+1 pop) + OPERAÇÃO POLICIAL (2⚡+$400: +$300+$2❤️) + bots patrulham.
