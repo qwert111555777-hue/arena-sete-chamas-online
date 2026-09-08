@@ -634,7 +634,7 @@ function addPlayer(room, conn, name, isHost) {
     taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, budget: {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: 0, ideology: null, religion: 'laico',
     customName: null, customFlag: '🏳️', bot: false, pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 25, madeira: 0, terras_raras: 12, uranio: 0, borracha: 0 },
     xp: 0, blackout: false, depositos: [], upgrades: {}, pacts: {},
-    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0 }, famine: false,
+    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0 }, famine: false,
     ministers: { eco: null, def: null, dip: null },
     techs: [], techLv: {}, sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
@@ -663,7 +663,7 @@ function makeAIBot(c) {
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
     units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 },
     builds: [], emergencyUntil: 0, leis: [],
-    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0 }, famine: false,
+    buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0 }, famine: false,
     ideology: Object.keys(IDEOLOGIES)[h % 6], religion: Object.keys(RELIGIONS)[h % 5],
     seguranca: { defesa: h % 2, secreto: (h >> 1) % 2, policia: (h >> 2) % 3, guarda: (h >> 3) % 2 },
   };
@@ -1048,12 +1048,16 @@ function aiTurn(room) {
         b.money -= PROD_BUILDS[kind]; b.rec.concreto -= CONCRETE_NEED[kind] || 0; b.builds.push({ kind, untilDay: room.day + buildDays(PROD_BUILDS[kind] || 300) });
       }
     }
-    if (b.money > 1200 && b.mil < 12 && room.turn % 4 === 0) { b.money -= 150; b.mil += 1; }
+    if (b.money > 1200 && b.mil < 18 && room.turn % 4 === 0) { b.money -= 150; b.mil += 1; }
     if (b.money > 900 && b.rec.terras_raras >= 4) {
       const ks = ['infantaria', 'blindados', 'artilharia', 'aviacao', 'porta_avioes'];
       const k = ks[room.turn % ks.length];
       if (b.units[k] < 3) { b.money -= UNIT_COSTS[k]; b.rec.terras_raras -= 4; b.units[k]++; }
     }
+    // crescimento da IA (Fase 20): bots evoluem eco/tech/leis como gente
+    if (b.money > 2000 && room.turn % 5 === 0 && b.eco < 40) { b.money -= 500; b.eco += 1; }
+    if (b.money > 1500 && room.turn % 6 === 0) { const _tk = Object.keys(TECHS)[(room.turn + b.id.length) % Object.keys(TECHS).length]; b.techLv = b.techLv || {}; if ((b.techLv[_tk] || 0) < 3) { b.techLv[_tk]++; b.money -= 200; } }
+    if (b.money > 3000 && room.turn % 7 === 0 && (b.leis || []).length < 6) { b.leis = b.leis || []; const _lk = Object.keys(LEIS).find(k => !b.leis.includes(k)); if (_lk) { b.leis.push(_lk); b.money -= LEIS[_lk].cost; } }
     for (const pr of room.proposals.filter(x => x.to === b.id)) {
       const from = room.players.find(x => x.id === pr.from);
       if (!from) continue;
@@ -1281,7 +1285,7 @@ function performAction(room, p, msg) {
     case 'ajudar': {
       if (!target || target === p || !target.alive) return;
       if (!spend(p, 1, 200)) return;
-      target.money += 200; p.aprov = Math.min(100, p.aprov + 2); target.aprov = Math.min(100, target.aprov + 2);
+      target.money += 200; p.aprov = Math.min(100, p.aprov + 2); p.stats.ajuda = (p.stats.ajuda || 0) + 1; target.aprov = Math.min(100, target.aprov + 2);
       const tinhaEm = room.turn < target.emergencyUntil;
       target.emergencyUntil = 0;
       bumpRel(p, target, 10);
@@ -1625,6 +1629,7 @@ function performAction(room, p, msg) {
         for (const pr of target.provinces) pr.owner = p.id;
         p.provinces = p.provinces.concat(target.provinces); target.provinces = [];
         target.alive = false; target.eliminatedReason = `Anexada por acordo diplomático por ${cname(p)}`;
+        p.stats.anexacoes = (p.stats.anexacoes || 0) + 1;
         p.xp += 15;
         log(room, `🏴 ${cname(p)} ANEXOU ${cname(target)} por acordo diplomático! O território foi incorporado pacificamente.`);
       } else {
@@ -2166,7 +2171,7 @@ function btFinalizar(room, recuou) {
     atk.mil = Math.max(1, Math.round(atk.mil * 0.9));
     def.aprov = Math.max(0, def.aprov - 4);
     atk.aprov = Math.max(0, atk.aprov - 3);
-    atk.stats.vitorias++; atk.xp += 15;
+    atk.stats.vitorias = (atk.stats.vitorias || 0) + 1; atk.xp += 15;
     const provs = ownProvinces(def);
     let capturou = null;
     if (provs.length && vivosD === 0 && atk.mil >= def.mil) {
@@ -2181,6 +2186,7 @@ function btFinalizar(room, recuou) {
     def.mil = Math.max(1, Math.round(def.mil * 0.92));
     atk.aprov = Math.max(0, atk.aprov - 3);
     def.aprov = Math.min(100, def.aprov + 4);
+    def.stats.vitorias = (def.stats.vitorias || 0) + 1; def.xp += 10;
     b.resultado = { vencedor: 'def', loot: 0, provincia: null };
     log(room, `🛡️ ${cname(def)} REPELIU a ofensiva de ${cname(atk)}!`);
   }
