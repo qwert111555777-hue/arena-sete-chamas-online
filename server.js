@@ -578,7 +578,7 @@ function snapshot(room) {
       ministers: p.ministers, techs: p.techs, techLv: p.techLv || {}, sectors: p.sectors, space: p.space, pollution: Math.round(p.pollution != null ? p.pollution : 10),
       relations: p.bot ? {} : p.relations, embassies: p.embassies, trades: p.trades,
       blockading: p.blockading, blockadedBy: p.blockadedBy,
-      units: p.units, builds: p.builds, emergencyUntil: p.emergencyUntil, leis: p.leis,
+      units: p.units, builds: p.builds, emergencyUntil: p.emergencyUntil, leis: p.leis, crise: p.crise || null,
       pop: Math.round(p.pop), rec: floorRec(p.rec), xp: p.xp, bot: p.bot, customName: p.customName, customFlag: p.customFlag,
       dailyIncome: Math.round(incomeOf(room, p) / DAY_DIV),
       buildings: p.buildings, stats: p.stats, famine: p.famine, blackout: p.blackout,
@@ -1072,6 +1072,7 @@ function aiTurn(room) {
     if (b.money > 2000 && room.turn % 5 === 0 && b.eco < 40) { b.money -= 500; b.eco += 1; }
     if (b.money > 1500 && room.turn % 6 === 0) { const _tk = Object.keys(TECHS)[(room.turn + b.id.length) % Object.keys(TECHS).length]; b.techLv = b.techLv || {}; if ((b.techLv[_tk] || 0) < 3) { b.techLv[_tk]++; b.money -= 200; } }
     if (b.money > 3000 && room.turn % 7 === 0 && (b.leis || []).length < 6) { b.leis = b.leis || []; const _lk = Object.keys(LEIS).find(k => !b.leis.includes(k)); if (_lk) { b.leis.push(_lk); b.money -= LEIS[_lk].cost; } }
+    if (b.crise) resolverCrise(room, b, (b.money > 500) ? 0 : 2);
     for (const pr of room.proposals.filter(x => x.to === b.id)) {
       const from = room.players.find(x => x.id === pr.from);
       if (!from) continue;
@@ -1126,12 +1127,47 @@ function worldNews(room) {
   const a = pool[Math.floor(Math.random() * pool.length)];
   log(room, NEWS_TEMPLATES[Math.floor(Math.random() * NEWS_TEMPLATES.length)](cname(a)));
 }
+function novaCrise(room, pick, tipo) {
+  if (pick.crise || (pick.lastCrisis && room.day - pick.lastCrisis < 21)) { pick.money += 40; log(room, `📦 ${cname(pick)} recebe doações de rotina (+$40).`); return; }
+  pick.crise = { tipo, desde: room.day };
+  pick.lastCrisis = room.day;
+  const dmg = { terremoto: '🏚️ TERREMOTO', pandemia: '🦠 PANDEMIA', seca: '🏜️ SECA SEVERA', enchente: '🌊 ENCHENTE' }[tipo];
+  if (tipo === 'terremoto') { const prs = ownProvinces(pick).filter(pr => pr.infra > 0); if (prs.length) prs[0].infra -= 1; pick.aprov = Math.max(0, pick.aprov - 4); }
+  if (tipo === 'pandemia') { pick.pop = Math.max(0, (pick.pop || 0) - 15); pick.aprov = Math.max(0, pick.aprov - 5); }
+  if (tipo === 'seca') { pick.rec.comida = 0; pick.aprov = Math.max(0, pick.aprov - 3); }
+  if (tipo === 'enchente') { pick.money = Math.max(0, pick.money - 200); pick.aprov = Math.max(0, pick.aprov - 3); }
+  log(room, `${dmg} atinge ${cname(pick)}! Abra 🚨 CRISES e escolha como responder.`);
+}
+
+function resolverCrise(room, p, ch) {
+  const c = p.crise; if (!c) return;
+  const t = c.tipo; ch = ch | 0;
+  const done = txt => { p.crise = null; log(room, txt); };
+  if (t === 'terremoto') {
+    if (ch === 0) { if (!spend(p, 1, 400)) return; const prs = ownProvinces(p).filter(pr => pr.infra < 5); if (prs.length) prs[0].infra = Math.min(5, prs[0].infra + 2); p.aprov = Math.min(100, p.aprov + 4); done(`🏗️ ${cname(p)} reconstruiu após o terremoto (+2 infra, +4 ❤️).`); }
+    else if (ch === 1) { if (!room.proposals.some(pr => pr.from === p.id && pr.kind === 'ajuda')) room.proposals.push({ from: p.id, to: 'ALL', kind: 'ajuda' }); p.aprov = Math.min(100, p.aprov + 1); done(`🆘 ${cname(p)} pediu ajuda internacional contra o terremoto.`); }
+    else { p.aprov = Math.max(0, p.aprov - 8); p.mil = Math.max(1, p.mil - 1); done(`🏚️ ${cname(p)} ignorou o terremoto (−8 ❤️, −1 militar).`); }
+  } else if (t === 'pandemia') {
+    if (ch === 0) { if (!spend(p, 1, 350)) return; p.aprov = Math.min(100, p.aprov + 5); done(`💉 ${cname(p)} vacinou a população (+5 ❤️).`); }
+    else if (ch === 1) { if (!spend(p, 1, 0)) return; p.money = Math.max(0, p.money - 150); p.aprov = Math.min(100, p.aprov + 2); done(`🔒 ${cname(p)} decretou lockdown (−$150, +2 ❤️).`); }
+    else { p.pop = Math.max(0, (p.pop || 0) - 10); p.aprov = Math.max(0, p.aprov - 10); done(`🦠 A pandemia se alastrou em ${cname(p)} (−10 pop, −10 ❤️).`); }
+  } else if (t === 'seca') {
+    if (ch === 0) { if (!spend(p, 1, 250)) return; p.rec.comida += 50; p.aprov = Math.min(100, p.aprov + 3); done(`🚰 ${cname(p)} enviou caminhões-pipa (+50 comida, +3 ❤️).`); }
+    else if (ch === 1) { if (!spend(p, 2, 500)) return; p.rec.comida += 120; p.aprov = Math.min(100, p.aprov + 5); done(`🌧️ ${cname(p)} fez transposição de águas (+120 comida, +5 ❤️).`); }
+    else { p.pop = Math.max(0, (p.pop || 0) - 5); p.aprov = Math.max(0, p.aprov - 8); done(`🏜️ A seca castigou ${cname(p)} (−5 pop, −8 ❤️).`); }
+  } else if (t === 'enchente') {
+    if (ch === 0) { if (!spend(p, 1, 200)) return; p.aprov = Math.min(100, p.aprov + 4); done(`🚤 ${cname(p)} fez resgates na enchente (+4 ❤️).`); }
+    else if (ch === 1) { if (!spend(p, 2, 450)) return; const prs = ownProvinces(p).filter(pr => pr.infra < 5); if (prs.length) prs[0].infra = Math.min(5, prs[0].infra + 1); p.aprov = Math.min(100, p.aprov + 6); done(`🏗️ ${cname(p)} fez obras de drenagem (+1 infra, +6 ❤️).`); }
+    else { p.money = Math.max(0, p.money - 150); p.aprov = Math.max(0, p.aprov - 8); done(`🌊 A enchente causou prejuízos em ${cname(p)} (−$150, −8 ❤️).`); }
+  } else p.crise = null;
+}
+
 function randomEvent(room) {
   if (Math.random() > 0.45) return;
   const alive = room.players.filter(p => p.alive);
   if (!alive.length) return;
   const pick = alive[Math.floor(Math.random() * alive.length)];
-  switch (Math.floor(Math.random() * 10)) {
+  switch (Math.floor(Math.random() * 14)) {
     case 0: alive.forEach(p => p.money += 80); log(room, '📈 Boom das commodities: todas as nações recebem +$80.'); break;
     case 1: pick.money = Math.max(0, pick.money - 150); log(room, `📉 Crise financeira atinge ${cname(pick)}: -$150.`); break;
     case 2: alive.forEach(p => p.aprov = Math.min(100, p.aprov + 3)); log(room, '🕊️ Cúpula de paz global: aprovação +3 para todos.'); break;
@@ -1147,6 +1183,10 @@ function randomEvent(room) {
     case 7: pick.influencia += 2; log(room, `🎬 Cultura de ${cname(pick)} conquista o mundo: influência +2.`); break;
     case 8: { const provs = ownProvinces(pick).filter(pr => pr.infra > 0); if (provs.length) { const pr = provs[0]; pr.infra -= 1; pick.emergencyUntil = room.turn + 3; log(room, `🌪️ DESASTRE em ${pr.name} (${cname(pick)}): infra -1 e EMERGÊNCIA (-20% renda por 3 turnos). Peça ou receba ajuda!`); } break; }
     case 9: { const ks = Object.keys(pick.buildings).filter(k => pick.buildings[k] > 0); if (ks.length) { const k = ks[Math.floor(Math.random() * ks.length)]; pick.buildings[k] -= 1; pick.aprov = Math.max(0, pick.aprov - 5); pick.emergencyUntil = room.turn + 3; log(room, `🌍 TERREMOTO em ${cname(pick)}: ${PROD_NAMES[k] || k} destruído, -5 aprovação, EMERGÊNCIA declarada!`); } break; }
+    case 10: novaCrise(room, pick, 'terremoto'); break;
+    case 11: novaCrise(room, pick, 'pandemia'); break;
+    case 12: novaCrise(room, pick, 'seca'); break;
+    case 13: novaCrise(room, pick, 'enchente'); break;
   }
 }
 
@@ -1479,6 +1519,11 @@ function performAction(room, p, msg) {
       p.mil -= n; target.mil += n;
       bumpRel(p, target, 10); p.xp += 8;
       log(room, `🪖 ${cname(p)} ENVIOU TROPAS para ${cname(target)}: +${n} poder militar para o aliado.`);
+      break;
+    }
+    case 'crise': {
+      if (!p.crise) { err(p.conn, 'Nenhuma crise ativa.'); return; }
+      resolverCrise(room, p, msg.choice | 0);
       break;
     }
     case 'convocar_reservas': {       // Emergency Reserves (pedido de players MA3)
