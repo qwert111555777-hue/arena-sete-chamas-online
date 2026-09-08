@@ -996,7 +996,7 @@ const SEG_UI = {
 const SPACE_COSTS = [500,800,1200];
 function isoOf(id){ const m = String(id || '').toLowerCase().match(/^([a-z]{2})\b/); return m ? m[1] : null; }
 function flagHTML(id, cls){ const iso = isoOf(id); return iso ? `<img class="${cls || 'flimg'}" src="flags/${iso}.svg" alt="">` : ''; }
-const PORTRAITS = { br:'portraits/br.jpg', us:'portraits/us.jpg', ru:'portraits/ru.jpg', cn:'portraits/cn.jpg', gb:'portraits/gb.jpg', fr:'portraits/fr.jpg', de:'portraits/de.jpg', in:'portraits/in.jpg', jp:'portraits/jp.jpg', mx:'portraits/mx.jpg', ng:'portraits/ng.jpg', au:'portraits/au.jpg' };
+const PORTRAITS = { br:'portraits/br.jpg', us:'portraits/us.jpg', ru:'portraits/ru.jpg', cn:'portraits/cn.jpg', gb:'portraits/gb.jpg', fr:'portraits/fr.jpg', de:'portraits/de.jpg', in:'portraits/in.jpg', jp:'portraits/jp.jpg', mx:'portraits/mx.jpg', ng:'portraits/ng.jpg', au:'portraits/au.jpg', ar:'portraits/ar.jpg', ca:'portraits/ca.jpg', es:'portraits/es.jpg', it:'portraits/it.jpg', tr:'portraits/tr.jpg', sa:'portraits/sa.jpg', ir:'portraits/ir.jpg', eg:'portraits/eg.jpg', za:'portraits/za.jpg', id:'portraits/id.jpg' };
 const proj = c => ({ x:(c.lon+180)/360*1000, y:(90-c.lat)/180*520 });
 const PALETTE = Array.from({length:60},(_,i)=>'hsl('+(i*6)+',72%,'+(i%2?58:44)+'%)');
 /* territórios estilizados (mesma projeção do mapa) */
