@@ -813,9 +813,10 @@ function incomeOf(room, p) {
 function resolveUN(room) {
   if (!room.un) return;
   const u = room.un;
+  if (u.vetoedBy) { const vt = room.players.find(pp => pp.id === u.vetoedBy); log(room, `🛡️ ${cname(vt)} VETOU a resolução no Conselho de Segurança!`); room.un = null; checkEliminations(room); broadcast(room); return; }
   const yes = Object.values(u.votes).filter(v => v).length;
   const prop = u.proposer ? room.players.find(pp => pp.id === u.proposer) : null;
-  const bonusVoto = (prop && prop.influencia >= 40) ? 1 : 0;
+  const bonusVoto = ((prop && prop.influencia >= 40) ? 1 : 0) + ((prop && (room.cs || []).includes(prop.id)) ? 1 : 0);
   const no = Object.values(u.votes).filter(v => !v).length;
   const passed = (yes + bonusVoto) > no;
   const tgt = u.target ? room.players.find(p => p.id === u.target) : null;
@@ -1188,6 +1189,7 @@ function aiTurn(room) {
     if (b.money > 2000 && Math.random() < 0.08) { b.money -= 400; b.ciencia = (b.ciencia || 0) + 2; }
     if (b.money > 2000 && Math.random() < 0.06) { b.comandantes = b.comandantes || {}; const cp = ['marinha','policia','esportes','cultura','defesa'].filter(k => !b.comandantes[k]); if (cp.length) { b.money -= 300; b.comandantes[cp[0]] = 1; } }
     if ((b.rec.comida || 0) < 30 && b.money > 1500 && Math.random() < 0.15) { b.money -= 200; b.rec.comida = (b.rec.comida || 0) + 25; }
+    if (b.money > 4000 && Math.random() < 0.04) { room.cs = room.cs || []; if (room.cs.length < 5 && !room.cs.includes(b.id)) { b.money -= 800; room.cs.push(b.id); log(room, `🛡️ ${cname(b)} entrou no Conselho de Segurança!`); } }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -1805,6 +1807,25 @@ function performAction(room, p, msg) {
       if (!spend(p, 1, 200)) return;
       p.pop += 3; p.aprov = Math.min(100, p.aprov + 4);
       log(room, `🍲 ${cname(p)} distribuiu CESTAS BÁSICAS (+3 pop, +4❤️).`);
+      break;
+    }
+    case 'entrar_cs': {
+      room.cs = room.cs || [];
+      if (room.cs.includes(p.id)) { err(p.conn, 'Sua nação já é membro permanente.'); return; }
+      if (room.cs.length >= 5) { err(p.conn, '🛡️ O Conselho já tem 5 membros permanentes.'); return; }
+      if (!spend(p, 2, 800)) return;
+      room.cs.push(p.id);
+      p.aprov = Math.min(100, p.aprov + 2);
+      log(room, `🛡️ ${cname(p)} virou MEMBRO PERMANENTE do Conselho de Segurança! (+1 voto, poder de veto).`);
+      break;
+    }
+    case 'vetar': {
+      room.cs = room.cs || [];
+      if (!room.cs.includes(p.id)) { err(p.conn, '🛡️ Só membros do Conselho de Segurança podem vetar.'); return; }
+      if (!room.un) { err(p.conn, 'Nenhuma resolução em votação.'); return; }
+      if (!spend(p, 1, 0)) return;
+      room.un.vetoedBy = p.id;
+      log(room, `🛡️ ${cname(p)} anunciou VETO à resolução em votação!`);
       break;
     }
     case 'ministro':
