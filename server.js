@@ -567,13 +567,13 @@ function snapshot(room) {
     t: 'state', phase: room.phase, code: room.code, turn: room.turn, day: room.day || 1,
     winner: room.winner,
     log: room.log.slice(0, 60), proposals: room.proposals,
-    un: room.un, noWarUntil: room.noWarUntil, noArmsUntil: room.noArmsUntil, embargo: room.embargo,
+    un: room.un, noWarUntil: room.noWarUntil, noArmsUntil: room.noArmsUntil, embargo: room.embargo, inverno: room.invernoUntil || 0,
     players: room.players.map(p => ({
       id: p.id, name: p.name, country: p.country, color: p.color,
       money: Math.round(p.money), eco: p.eco, mil: p.mil, aprov: Math.round(p.aprov), ap: p.ap,
       alive: p.alive, allies: p.allies, connected: p.connected,
       isHost: p.id === room.hostId, reason: p.eliminatedReason,
-      nuclear: p.nuclear, influencia: Math.round(p.influencia), fe: Math.round(p.fe), wars: p.wars,
+      nuclear: p.nuclear, influencia: Math.round(p.influencia), fe: Math.round(p.fe), wars: p.wars, abrigo: !!p.abrigo,
       provinces: p.provinces, sanctioning: p.sanctioning, sanctionedBy: p.sanctionedBy,
       taxRate: p.taxRate, taxes: p.taxes || {corp:10, rend:10, prod:10, amb:5}, budget: p.budget || {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: p.debt, ideology: p.ideology, religion: p.religion,
       ministers: p.ministers, techs: p.techs, techLv: p.techLv || {}, sectors: p.sectors, space: p.space, pollution: Math.round(p.pollution != null ? p.pollution : 10),
@@ -630,7 +630,7 @@ function addPlayer(room, conn, name, isHost) {
     token: crypto.randomBytes(9).toString('base64url'), disconnectedAt: 0,
     money: 0, eco: 0, mil: 0, aprov: 50, ap: AP_PER_TURN, alive: true,
     allies: [], connected: true, eliminatedReason: null,
-    nuclear: 0, influencia: 0, fe: 0, provinces: [], wars: [],
+    nuclear: 0, influencia: 0, fe: 0, provinces: [], wars: [], abrigo: false,
     sanctioning: [], sanctionedBy: [],
     taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, budget: {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: 0, ideology: null, religion: 'laico',
     customName: null, customFlag: '🏳️', bot: false, pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 25, madeira: 0, terras_raras: 12, uranio: 0, borracha: 0 },
@@ -657,7 +657,7 @@ function makeAIBot(c) {
     customName: null, customFlag: null, isHost: false,
     money: 10000, eco: 3 + (h % 4), mil: 3 + ((h >> 2) % 4), pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 25, madeira: 0, terras_raras: 12, uranio: 0, borracha: 0 }, xp: 0, blackout: false, depositos: depositosOf(c.id), upgrades: {}, pacts: {},
     aprov: 50, ap: AP_PER_TURN, alive: true, allies: [], eliminatedReason: null,
-    nuclear: 0, influencia: 0, fe: 0, wars: [],
+    nuclear: 0, influencia: 0, fe: 0, wars: [], abrigo: false,
     provinces: [{ name: c.name, infra: 1, owner: c.id, origem: c.id }],
     sanctioning: [], sanctionedBy: [], taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, budget: {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: 0, ideology: null, religion: 'laico',
     ministers: { eco: null, def: null, dip: null },
@@ -684,7 +684,7 @@ function startGame(room) {
     p.depositos = depositosOf(cid); p.upgrades = {}; p.pacts = {};
     p.buildings = { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }; p.stats = { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0 }; p.famine = false;
     p.aprov = 50; p.ap = AP_PER_TURN; p.alive = true;
-    p.allies = []; p.eliminatedReason = null; p.nuclear = 0; p.influencia = 0; p.fe = 0; p.wars = [];
+    p.allies = []; p.eliminatedReason = null; p.nuclear = 0; p.influencia = 0; p.fe = 0; p.wars = []; p.abrigo = false;
     p.provinces = [{ name: 'Capital de ' + nat.name, infra: 1, owner: p.id, origem: p.id }];
     p.sanctioning = []; p.sanctionedBy = [];
     p.taxRate = 1; p.taxes = {corp:10, rend:10, prod:10, amb:5}; p.budget = {exe:1, int:1, tra:1, edu:1, ambm:1}; p.debt = 0; p.ideology = null; p.religion = 'laico';
@@ -700,7 +700,7 @@ function startGame(room) {
   for (const c of COUNTRIES) room.players.push(makeAIBot(c));
   room.players.forEach((p, i) => { if (p.bot) p.color = i % 60; });
   room.phase = 'game'; room.turn = 1; room.day = 1; room.proposals = [];
-  room.un = null; room.noWarUntil = 20; room.noArmsUntil = 0; room.embargo = null; room.bloqueio = null;
+  room.un = null; room.noWarUntil = 20; room.noArmsUntil = 0; room.embargo = null; room.bloqueio = null; room.invernoUntil = 0; room.nukesUsed = 0;
   room.dayMs = dayMsFor(room.speedMul || 1);
   log(room, '🏳️ Cada jogador fundou sua própria nação: $10.000, 0 habitantes, reserva natural de 12⚙️ terras raras — tudo por construir.');
   log(room, `🤖 As ${COUNTRIES.length} nações do mundo estão sob controle da IA. É vocês contra elas!`);
@@ -791,6 +791,7 @@ function incomeOf(room, p) {
   if (p.taxRate === 0) mult -= 0.10;
   if (room.embargo && room.embargo.target === p.id && room.turn < room.embargo.until) mult *= 0.7;
   if (room.bloqueio && room.bloqueio.target === p.id && room.turn < room.bloqueio.until) mult *= 0.5;
+  if (room.turn < (room.invernoUntil || 0)) mult *= 0.9;
   if (p.blockadedBy.length) mult *= p.units.frota >= 1 ? 0.9 : 0.75;
   if (room.turn < p.emergencyUntil) mult *= 0.8;
   base *= mult;
@@ -1084,6 +1085,7 @@ function aiTurn(room) {
     if (b.crise) resolverCrise(room, b, (b.money > 500) ? 0 : 2);
     if (b.religion && b.religion !== 'laico' && b.money > 500 && Math.random() < 0.25) { const tgts = room.players.filter(o => o.alive && o !== b && o.religion !== b.religion); if (tgts.length) { const t3 = tgts[Math.floor(Math.random() * tgts.length)]; if (Math.random() < 0.3 + relBetween(b, t3) / 200) { t3.religion = b.religion; bumpRel(b, t3, 10); b.stats.conversoes = (b.stats.conversoes || 0) + 1; log(room, `🛐 ${cname(b)} espalhou sua religião para ${cname(t3)}!`); } } }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
+    if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); } }
     if ((b.espioes || 0) < 3 && b.money > 800) { b.money -= 150; b.espioes = (b.espioes || 0) + 1; }
     if ((b.espioes || 0) >= 2 && b.money > 600 && Math.random() < 0.2) { const fs = room.players.filter(o => o.alive && o !== b && relBetween(b, o) < 40); if (fs.length) { const ft = fs[Math.floor(Math.random() * fs.length)]; b.money -= 150; const sAb = (b.seguranca && b.seguranca.secreto) || 0; const sDb = (ft.seguranca && ft.seguranca.secreto) || 0; if (Math.random() < Math.min(0.9, 0.5 + 0.08 * sAb + 0.05 * (b.espioes || 0))) { if (sDb >= 2 && Math.random() < 0.15 * sDb) { b.espioes = Math.max(0, (b.espioes || 0) - 1); log(room, `🕵️ O Serviço Secreto de ${cname(ft)} DETECTOU e conteve a sabotagem de ${cname(b)}! Um agente foi capturado.`); } else { const prs = ownProvinces(ft).filter(pr => pr.infra > 0); if (prs.length) { const pr = prs[Math.floor(Math.random() * prs.length)]; pr.infra -= 1; log(room, `🧨 Sabotagem de ${cname(b)} destrói infraestrutura em ${cname(ft)}!`); } else { ft.mil = Math.max(1, ft.mil - 3); log(room, `🧨 Sabotagem de ${cname(b)} danifica o arsenal de ${cname(ft)} (-3 militar)!`); } } bumpRel(b, ft, -5); } } }
     if (!room.un && Math.random() < 0.12 && b.money > 400) { const foes = room.players.filter(o => o.alive && o !== b && relBetween(b, o) < 35); if (foes.length) { const fe = foes[Math.floor(Math.random() * foes.length)]; const tp2 = Math.random() < 0.5 ? 'condenar' : 'embargo'; b.money -= 300; room.un = { type: tp2, desc: (tp2 === 'condenar' ? 'Condenação internacional de ' : 'Embargo econômico contra ') + cname(fe) + (tp2 === 'condenar' ? ' (-6 aprovação)' : ' por 3 turnos'), target: fe.id, proposer: b.id, votes: {}, deadline: Date.now() + 20000 }; room.un.votes[b.id] = true; for (const bb of room.players) if (bb.bot && bb.alive && bb.id !== b.id) room.un.votes[bb.id] = relBetween(bb, fe) < 50; log(room, `🇺🇳 ${cname(b)} propôs resolução na ONU: ${room.un.desc}. Votação aberta!`); } }
@@ -1465,6 +1467,7 @@ function performAction(room, p, msg) {
       p.trades = p.trades.filter(id => id !== target.id); target.trades = target.trades.filter(id => id !== p.id);
       p.relations[target.id] = 0; target.relations[p.id] = 0;
       p.aprov = Math.max(0, p.aprov - 2);
+      if ((target.nuclear || 0) >= 3) { p.aprov = Math.max(0, p.aprov - 3); log(room, `☢️ DISSUASÃO: atacar ${cname(target)} (arsenal Nv${target.nuclear}) assusta seu povo (−3 ❤️ extra).`); }
       const auth = room.warAuth && room.warAuth.by === p.id && room.warAuth.target === target.id && room.turn <= room.warAuth.until;
       if (!auth) {
         for (const o of room.players) if (o.alive && o.id !== p.id && o.id !== target.id) o.relations[p.id] = Math.max(0, relBetween(o, p) - 8);
@@ -1515,13 +1518,34 @@ function performAction(room, p, msg) {
       if (p.ap < 3) { err(p.conn, 'Lançar um míssil custa 3 pontos de ação.'); return; }
       p.ap -= 3; p.nuclear -= 1;
       const shield = techLevel(target, 'interceptadores') > 0;
-      target.mil = Math.max(1, Math.round(target.mil * (shield ? 0.7 : 0.4)));
-      target.aprov = Math.max(0, target.aprov - (shield ? 10 : 20));
+      const abrig = !!target.abrigo; if (abrig) target.abrigo = false;
+      target.mil = Math.max(1, Math.round(target.mil * (abrig ? 0.75 : (shield ? 0.7 : 0.4))));
+      target.aprov = Math.max(0, target.aprov - (abrig ? 5 : (shield ? 10 : 20)));
       p.aprov = Math.max(0, p.aprov - 10);
       const provs = ownProvinces(target);
       const hits = shield ? 1 : 2;
       for (let i = 0; i < hits && provs.length; i++) { const pr = provs[Math.floor(Math.random() * provs.length)]; pr.infra = Math.max(0, pr.infra - 2); }
       log(room, `☢️💥 ${cname(p)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(target)}!${shield ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`);
+      room.nukesUsed = (room.nukesUsed || 0) + 1;
+      if (abrig) log(room, `🛡️ Abrigos nucleares de ${cname(target)} salvaram vidas (dano reduzido, abrigo consumido)!`);
+      if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); }
+      break;
+    }
+    case 'teste_nuclear': {
+      if ((p.nuclear || 0) < 2) { err(p.conn, 'Programa nuclear Nv2+ necessário para um teste.'); return; }
+      if (p.lastTeste && room.turn - p.lastTeste < 4) { err(p.conn, 'Teste recente demais (1 a cada 4 semanas).'); return; }
+      if (!spend(p, 1, 300)) return;
+      p.lastTeste = room.turn;
+      p.aprov = Math.min(100, p.aprov + 3);
+      for (const o of room.players) if (o.alive && o.id !== p.id) bumpRel(p, o, -2);
+      log(room, `☢️🧪 ${cname(p)} fez um TESTE NUCLEAR (+3 ❤️ em casa, −2 relações com o mundo). Dissuasão reforçada!`);
+      break;
+    }
+    case 'abrigo': {
+      if (p.abrigo) { err(p.conn, 'Abrigos já construídos.'); return; }
+      if (!spend(p, 1, 250)) return;
+      p.abrigo = true;
+      log(room, `🛡️ ${cname(p)} construiu ABRIGOS nucleares (protege do próximo ataque).`);
       break;
     }
     case 'comprar': {
