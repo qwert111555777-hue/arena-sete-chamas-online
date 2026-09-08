@@ -12,7 +12,8 @@
 ### Branch / commits
 
 ```
-372fd77 Corrige index.html + dias refeitos   ← PRODUÇÃO (dep-dafnillg1s2s73faids0 LIVE ✅, pág 160143B verificada)
+de00ec9 FASE 2: quadradas/minimos/cor/ranking/builds lentos/load+build   ← PRODUÇÃO (dep-dafo3mv40ujc73c543tg LIVE ✅, pág 161710B verificada)
+372fd77 Corrige index.html + dias refeitos   ← (era a produção)
 a62b9f3 Dias/tempo real (index.html QUEBRADO pelo regex C9 — supersedido pelo 372fd77)
 d2d6318 Atualiza contexto dev
 4905085 140 construcoes (47->140) cliente+servidor + pasta dev/   ← (era a produção)
@@ -25,7 +26,7 @@ e1cc9f1 47 construcoes / 6 abas / 5 niveis + borracha
 ```
 
 - Repositório: `/home/user/presidente-online`, branch `main`
-- Produção (Render): `https://arena-sete-chamas-online.onrender.com` — LIVE em `372fd77` (verificado: pág 160143B + applyDay + foreignObject + renderMap + produção/dia + /flags 200).
+- Produção (Render): `https://arena-sete-chamas-online.onrender.com` — LIVE em `de00ec9` (verificado: pág 161710B + btn-load/btn-build + tem_save + Cor da nação + foreignObject=0 + btn-speed antigo=0 + /flags 200).
 - git status (na sessão antiga): `public/index.html` modificado (não commitado) — continha as 140 construções.
 
 ### ✅ BUG CRÍTICO DO np-flag (CORRIGIDO em 8041ed1)
@@ -145,6 +146,7 @@ Itens já resolvidos na lista original:
 - Save só pelo criador da sala; fechar a sala ejeta todos — FEITO
 - Sem chat; notícias só dentro de um jornal clicável, sem toast — FEITO
 - Velocidade escolhida durante o jogo e sair salva automático — FEITOS
+- Mapa só bandeiras QUADRADAS (sem território); home mínima (criar/entrar/código/carregar); lobby mínimo (fundar = nome+cor+símbolo, sem velocidade); ranking destaca país próprio sem 🤖/💀; obras lentas por prédio (6–27 dias); botões Carregar 📂 e Construir 🏗️ — FEITOS (Fase 2, deploy de00ec9)
 
 ---
 
@@ -191,6 +193,10 @@ if (typeof o === 'string') { try { o = JSON.parse(o); } catch { return; } }
 - Após todo patch: conferir TAMANHO do arquivo + marcadores positivos (não só ausência do texto antigo) antes de commitar.
 - No loop diário, escalar FLUXOS e LIMIARES juntos (need de comida ÷7 foi esquecido e zerou a comida — o smoke pegou).
 - Dias de semana chegam via full state, não via msg 'day' — smoke de dias deve ouvir os dois.
+- Service ID correto: `srv-da95mkpf2nfc73eccqjg` (`srv-d43ek5er433s73co2mno` NÃO existe — era ID errado; dá 404 not found).
+- Trigger de deploy: body `-d '{}'` (201). Body `{"clearCache":false}` dá 400 invalid JSON.
+- GET de deploy único retorna o objeto FLAT (`d['status']`), sem wrapper 'deploy' (só a lista usa wrapper).
+- URL de produção: `arena-sete-chamas-online.onrender.com` (presidente-online.onrender.com dá 404).
 
 ---
 
@@ -217,6 +223,8 @@ if (typeof o === 'string') { try { o = JSON.parse(o); } catch { return; } }
 | patch_dias.py | NOVO 2026-09-08 | converte turnos→dias+semanas (server+client); C9 extraído p/ patch_c9.py |
 | patch_c9.py | NOVO 2026-09-08 | reescreve linha produção/dia (line-based, SEM regex) |
 | smoke_day.js | NOVO 2026-09-08 | dias consecutivos 1x/5x + obra conclui em dias (precisa `npm i ws`) |
+| patch_fase2.py | NOVO 2026-09-08 | FASE 2: quadradas, home/lobby mínimos, fundar+cor, ranking, builds lentos, btn-load/btn-build |
+| smoke_fundar.js | NOVO 2026-09-08 | fundar nome+símbolo+cor; cor inválida rejeitada (precisa `npm i ws`) |
 
 Regressão verde: 160 verificações / 0 falhas. Esse é o baseline a proteger.
 
@@ -224,9 +232,11 @@ Regressão verde: 160 verificações / 0 falhas. Esse é o baseline a proteger.
 
 ## 7. SEGURANÇA
 
-- GitHub PAT e chave Render foram usadas só inline, nunca gravadas em arquivo do workspace. (Chaves redigidas neste arquivo.)
-- Avisar o usuário para revogar os dois quando o trabalho terminar.
-- Remotes do git não persistem — recuperar de .git/FETCH_HEAD; o PAT precisa ser colado de novo pelo usuário.
+- 2026-09-08 o usuário ORDENOU guardar as chaves: estão em `/home/user/.chaves` (chmod 600, FORA do repo — nunca commitar, repo é PÚBLICO). Uso: `export $(cat /home/user/.chaves | xargs)` ou `export RENDER_API_KEY=$(grep RENDER_API_KEY /home/user/.chaves | cut -d= -f2)`.
+- NESTE arquivo vai só o PONTEIRO do caminho, nunca os valores (este arquivo é commitado no repo público).
+- Se o próximo chat abrir workspace VAZIO (como em §11), as chaves se perderam — pedir as 2 de novo UMA vez e regravar.
+- Avisar o usuário para revogar as duas quando o trabalho terminar.
+- Remotes do git não persistem — recuperar de .git/FETCH_HEAD; push funcionou sem PAT (auth do sandbox); se quebrar, usar GH_TOKEN de /home/user/.chaves.
 
 ---
 
@@ -242,11 +252,11 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 
 ## 9. COMO DEPLOYAR (Render)
 
-- Serviço: `srv-da95mkpf2nfc73eccqjg`
-- Último deploy conhecido: `dep-dafje9ad0e5s73cln130` (commit 7b648b0, live)
-- `POST /v1/services/srv-da95mkpf2nfc73eccqjg/deploys` body: `{"clearCache":"clear"}`
-- Usar a chave Render inline (pedir ao usuário — nunca gravar em arquivo).
-- Não deployar enquanto o bug de sintaxe existir.
+- Serviço: `srv-da95mkpf2nfc73eccqjg` (único correto; srv-d43... não existe)
+- Último deploy: `dep-dafo3mv40ujc73c543tg` (commit de00ec9, live)
+- `POST /v1/services/srv-da95mkpf2nfc73eccqjg/deploys` body: `{}` (qualquer clearCache dá 400)
+- Chave: `export RENDER_API_KEY=$(grep RENDER_API_KEY /home/user/.chaves | cut -d= -f2)` (nunca gravar valor em arquivo commitado).
+- Não deployar enquanto houver bug de sintaxe.
 
 ---
 
@@ -270,3 +280,4 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (140 construções): 93 novos refeitos do zero (lista §2 + `hidrogenio` extra p/ fechar ene=14, pois a lista somava 92). Distribuição exata: rec 20, ene 14, ali 22, ind 27, mil 19, inf 38. Cliente E servidor idênticos. Validado: 140/140, outputs só recursos existentes, node --check OK x2, smoke WS end-to-end OK (mina_cobre:1, porto_espacial:1). Pasta `dev/` (contexto+scripts) commitada no repo p/ não se perder entre chats.
 - 2026-09-08 (deploy): Render NÃO auto-disparou nos pushes; deploy manual dep-dafn2bn40ujc73c0tjd0 (4905085) via API.
 - 2026-09-08 (FASE 1 — dias em tempo real, LIVE dep-dafnillg1s2s73faids0/372fd77): dayTick (1 dia = 1000/speedMul ms), economia diária ÷7, semana = 7 dias (mercado, relações, missões, ONU 28d, IA/eventos 14d), obras em dias (buildDays por custo; infra 2, espacial 4, nuclear 5), broadcastDay leve + full semanal, fim_turno removido, velocidade recria timer, pausa congela dia, saves migram until→untilDay. Cliente: HUD DIA + data real, countdown removido, btn-speed cicla 1/2/3/5, mapa só bandeiras circulares (nomes + losangos removidos), ranking top8 + customs com posição, produção/dia genérica (140 prédios). Smoke: dias consecutivos 1x/5x (200ms/dia), mina_cobre:1, comida 21. MA3 identificado: MA 3 President Simulator (Oxiwyle/Android) — ref. p/ widgets da fase 4. Incidente: regex C9 apagou index.html (commitado/deployado quebrado a62b9f3); restaurado de 62c68a1, refeito e republicado verificado.
+- 2026-09-08 (FASE 2 — LIVE dep-dafo3mv40ujc73c543tg/de00ec9): mapa só QUADRADOS 26x18 (image real ou PALETTE+emoji, sem território/foreignObject), home mínima (nome+criar+código+entrar+carregar via tem_save/same-browser), lobby mínimo (fundar nome+12 cores+24 símbolos, btn-speed removido, hint não-host), fundar aceita cor 0–59, ranking destaca próprio em dourado sem 🤖/💀, builds lentos buildDays=min(30,max(4,3+round(custo/40))) 6–27d + infra 6/espacial 12/nuclear 18, HUD btn-build abre Construções. Smoke: dias OK (mina 12d conclui) + fundar/cor OK (99 rejeitado). Deploy: autoDeploy=yes NÃO disparou; manual via API. Correções de registro: service ID srv-da95... (não srv-d43...), body '{}', GET flat, URL arena-sete-chamas-online.
