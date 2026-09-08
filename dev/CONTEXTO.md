@@ -420,3 +420,5 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (FASE 63 — LIVE dep-dag9n7rl550s73adq070/4df571e, SERVER+CLIENTE): 🎁 DIPLOMACIA 3.0: DOAR PROVÍNCIA (1⚡: +20 rel, req 2+) + AJUDA CRISE (1⚡+$300 alvo em crise) + APOIAR SOBERANIA (1⚡+$200) + bots ajudam amigos em crise.
 - 2026-09-08 (ESTUDO veteranos 100x real: MA2 mumu/Steam — soldados ganham experiência em combate, condecorações, paradas militares, prestígio nacional; veteranos de guerra — base da Fase 64.
 - 2026-09-08 (FASE 64 — LIVE dep-dag9ntijnfac73feufrg/2cd87a9, SERVER+CLIENTE): 🎖️ VETERANOS: CONDECORAR (req 1 vitória, 1⚡+$200: +1 mil+3❤️) + PARADA MILITAR (1⚡+$300: +5❤️+2 doutrina+3XP) + bots condecoram.
+- 2026-09-08 (ESTUDO pesquisa 100x real: MA2 amazon/Steam — "trade and research agreements" (acordos comerciais e de pesquisa), pesquisar tecnologias econômicas/militares, Ministério da Educação impulsiona progresso tecnológico — base da Fase 65.
+- 2026-09-08 (FASE 65 — LIVE dep-dag9ogeq1p3s73c7tok0/e116a03, SERVER+CLIENTE): 🔬 PESQUISA: ACORDO (1⚡+$300 alvo: +1 ciência cada, +8 rel) + BOLSAS (1⚡+$400: +2 ciência+1 eco) + bots pesquisam.
