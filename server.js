@@ -1237,6 +1237,13 @@ function aiTurn(room) {
     if (b.money > 1500 && Math.random() < 0.05) { b.money -= 200; b.money += 400; }
     if (b.money > 800 && Math.random() < 0.06) { b.aprov = Math.min(100, b.aprov + 3); }
     if (b.money > 1500 && Math.random() < 0.05) { b.money -= 200; b.mil = (b.mil || 3) + 1; }
+    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 500; b.mil = (b.mil || 3) + 3; }
+    if (b.money > 1500 && Math.random() < 0.05) { b.money -= 300; b.aprov = Math.min(100, b.aprov + 4); }
+    if (b.money > 3000 && Math.random() < 0.04) { b.money -= 700; b.eco = (b.eco || 3) + 2; }
+    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 600; b.money += 700; }
+    if (b.money > 3000 && Math.random() < 0.04) { b.money -= 600; b.eco = (b.eco || 3) + 2; }
+    if (b.money > 1500 && Math.random() < 0.05) { b.money -= 300; b.aprov = Math.min(100, b.aprov + 5); }
+    if (b.money > 3500 && Math.random() < 0.04) { b.money -= 800; b.mil = (b.mil || 3) + 3; }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -2325,6 +2332,91 @@ function performAction(room, p, msg) {
       if (!spend(p, 1, 300)) return;
       p.aprov = Math.min(100, p.aprov + 2); p.money += 200;
       log(room, `🚁 ${cname(p)} lançou PATRULHA DE FRONTEIRA (+2❤️, +$200).`);
+      break;
+    }
+    case 'esquadrao_helicopteros': {
+      if (!spend(p, 1, 500)) return;
+      p.mil = (p.mil || 3) + 3; p.aprov = Math.min(100, p.aprov + 1);
+      log(room, `🚁 ${cname(p)} criou ESQUADRÃO DE HELICÓPTEROS (+3 mil, +1❤️).`);
+      break;
+    }
+    case 'batalhao_tanques': {
+      if (!spend(p, 1, 500)) return;
+      p.mil = (p.mil || 3) + 2; p.money += 200;
+      log(room, `🛡️ ${cname(p)} formou BATALHÃO DE TANQUES (+2 mil, +$200).`);
+      break;
+    }
+    case 'lei_marcial': {
+      if (!spend(p, 1, 0)) return;
+      p.mil = (p.mil || 3) + 2; p.aprov = Math.min(100, p.aprov + 2);
+      for (const o of room.players) if (o.alive && o.id !== p.id) bumpRel(p, o, -3);
+      log(room, `⚖️ ${cname(p)} decretou LEI MARCIAL (+2 mil, +2❤️, −3 relações).`);
+      break;
+    }
+    case 'prevenir_golpe': {
+      if (!spend(p, 1, 300)) return;
+      p.aprov = Math.min(100, p.aprov + 4);
+      log(room, `🛡️ ${cname(p)} manteve GOLPE CONTIDO (+4❤️).`);
+      break;
+    }
+    case 'hidreletrica': {
+      if (!spend(p, 1, 700)) return;
+      p.eco = (p.eco || 3) + 2; p.aprov = Math.min(100, p.aprov + 3);
+      log(room, `⚡ ${cname(p)} inaugurou HIDRELÉTRICA (+2 eco, +3❤️).`);
+      break;
+    }
+    case 'parque_eolico': {
+      if (!spend(p, 1, 500)) return;
+      p.eco = (p.eco || 3) + 1; p.aprov = Math.min(100, p.aprov + 3);
+      log(room, `🌬️ ${cname(p)} construiu PARQUE EÓLICO (+1 eco, +3❤️).`);
+      break;
+    }
+    case 'mina_ouro': {
+      if (!spend(p, 1, 600)) return;
+      p.money += 700;
+      log(room, `⛏️ ${cname(p)} abriu MINA DE OURO (+$700).`);
+      break;
+    }
+    case 'mina_uranio': {
+      if (!spend(p, 1, 800)) return;
+      p.money += 500; p.eco = (p.eco || 3) + 1;
+      log(room, `☢️ ${cname(p)} abriu MINA DE URÂNIO (+$500, +1 eco).`);
+      break;
+    }
+    case 'ferrovia': {
+      if (!spend(p, 1, 600)) return;
+      p.eco = (p.eco || 3) + 2;
+      log(room, `🚂 ${cname(p)} construiu FERROVIA (+2 eco).`);
+      break;
+    }
+    case 'porto_moderno': {
+      if (!spend(p, 1, 600)) return;
+      p.money += 400; p.eco = (p.eco || 3) + 1;
+      log(room, `⚓ ${cname(p)} modernizou o PORTO MODERNO (+$400, +1 eco).`);
+      break;
+    }
+    case 'negociar_greve': {
+      if (!spend(p, 1, 300)) return;
+      p.aprov = Math.min(100, p.aprov + 5);
+      log(room, `🤝 ${cname(p)} fechou GREVE: ACORDO (+5❤️).`);
+      break;
+    }
+    case 'reprimir_greve': {
+      if (!spend(p, 1, 200)) return;
+      p.mil = (p.mil || 3) + 1; p.aprov = Math.max(0, p.aprov - 4);
+      log(room, `🔨 ${cname(p)} deixou GREVE REPRIMIDA (+1 mil, −4❤️).`);
+      break;
+    }
+    case 'radar_nacional': {
+      if (!spend(p, 1, 400)) return;
+      p.mil = (p.mil || 3) + 2;
+      log(room, `📡 ${cname(p)} ativou RADAR NACIONAL (+2 mil).`);
+      break;
+    }
+    case 'escudo_antimissil': {
+      if (!spend(p, 1, 800)) return;
+      p.mil = (p.mil || 3) + 3; p.aprov = Math.min(100, p.aprov + 2);
+      log(room, `🛡️ ${cname(p)} ergueu ESCUDO ANTIMÍSSIL (+3 mil, +2❤️).`);
       break;
     }
     case 'fundar_provincia': {
