@@ -853,7 +853,7 @@ const CBYID = Object.fromEntries(COUNTRIES.map(c=>[c.id,c]));
 function cbid(id){ if (state && state.world){ const w = state.world.find(x=>x.id===id); if (w) return w; } return CBYID[id]; }
 const IDEOLOGIES = { democracia:'Democracia +5% renda', autoritarismo:'Autoritarismo +15% atq', comunismo:'Comunismo setores baratos', fascismo:'Fascismo recrutar barato', monarquia:'Monarquia dip barata', republica:'República tech barata' };
 const RELIGIONS = { laico:'Laico', cristao:'Cristã', muculmano:'Islâmica', budista:'Budista', hindu:'Hindu' };
-const MINISTERS = { eco:{tec:'Tecocrata +10% renda', pop:'Populista +1❤️', ind:'Industrialista +20% prédios'}, def:{fal:'Falcão +10% atq', estr:'Estrategista +10% def', pac:'Pacifista +2❤️ −10%'}, dip:{neg:'Negociador dip -50%', inf:'Influenciador +1⚖️', esp:'Mestre-Espião +10% sab', cul:'Culturalista fest -50%'} };
+const MINISTERS = { eco:{tec:'Tecocrata +10% renda', pop:'Populista +1❤️', ind:'Industrialista +20% prédios'}, def:{fal:'Falcão +10% atq', estr:'Estrategista +10% def', pac:'Pacifista +2❤️ −10%'}, dip:{neg:'Negociador dip -50%', inf:'Influenciador +1⚖️', esp:'Mestre-Espião +10% sab', cul:'Culturalista fest -50%'} , soc:{art:'Artista +1❤️', atl:'Atleta +5% renda', mec:'Mecenas +1⚖️'}};
 /* 125 tecnologias: 5 árvores x 25, 5 níveis cada (espelho do servidor) */
 const TECHS = {
   /* ---------- ECONOMIA ---------- */
@@ -1722,7 +1722,7 @@ function renderPanel(){
     Object.keys(MINISTERS).forEach(post=>{
       const r=document.createElement('div'); r.className='xrow';
       const n=document.createElement('span'); n.className='xn';
-      n.textContent = post==='eco'?'Economia':post==='def'?'Defesa':'Diplomacia';
+      n.textContent = post==='eco'?'Economia':post==='def'?'Defesa':post==='soc'?'Cultura/Esporte':'Diplomacia';
       r.appendChild(n);
       Object.keys(MINISTERS[post]).forEach(v=>{
         const b=document.createElement('button'); b.className='chip'+(p.ministers[post]===v?' on':'');
@@ -2446,14 +2446,14 @@ $('btn-med').onclick = () => {
   const shareI = m.ideology ? alive.filter(o=>o.ideology===m.ideology).length/Math.max(1,alive.length)*100 : 0;
   const revPos = alive.slice().sort((a,b)=>(b.dailyIncome||0)-(a.dailyIncome||0)).findIndex(p=>p.id===myId)+1;
   const nTech = Object.keys(m.techLv||{}).length;
-  const minF = (m.ministers && (m.ministers.eco?1:0)+(m.ministers.def?1:0)+(m.ministers.dip?1:0)) || 0;
+  const minF = (m.ministers && (m.ministers.eco?1:0)+(m.ministers.def?1:0)+(m.ministers.dip?1:0)+(m.ministers.soc?1:0)) || 0;
   const bmax = m.budget ? ['exe','int','tra','edu','ambm'].filter(k=>m.budget[k]>=3).length : 0;
   const ACH = [
     ['☢️','Programa Nuclear','Inicie o programa nuclear', Math.min(m.nuclear||0,1), 1],
     ['🏴','Conquistador','Anexe uma nação por acordo diplomático', st.anexacoes||0, 1],
     ['🍞','Pão na Mesa','Estoque de comida acima da necessidade ('+Math.floor(m.rec.comida||0)+'/'+need+')', Math.min(m.rec.comida||0,need), need],
     ['🎖️','Potência Global','Top 3 em receita diária (você: #'+revPos+')', revPos<=3?1:0, 1],
-    ['🏛️','Governo Completo','Preencha as 3 pastas de ministros', minF, 3],
+    ['🏛️','Governo Completo','Preencha as 4 pastas de ministros', minF, 4],
     ['💰','Capitalista','Acumule $50.000 no caixa', Math.min(m.money||0,50000), 50000],
     ['🤝','Benfeitor','Envie ajuda humanitária 5 vezes', st.ajuda||0, 5],
     ['🕊️','Diplomata','Tenha 3 aliados ao mesmo tempo', Math.min((m.allies||[]).length,3), 3],

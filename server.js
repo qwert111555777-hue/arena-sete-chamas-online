@@ -256,6 +256,7 @@ const MINISTERS = {
   eco: { tec: { name: 'Tecocrata', desc: '+10% renda' }, pop: { name: 'Populista', desc: '+1 aprovação/turno, -5% renda' }, ind: { name: 'Industrialista', desc: '+20% renda de prédios' } },
   def: { fal: { name: 'Falcão', desc: '+10% ataque' }, estr: { name: 'Estrategista', desc: '+10% defesa' }, pac: { name: 'Pacifista', desc: '+2 aprovação/semana, -10% renda' } },
   dip: { neg: { name: 'Negociador', desc: 'diplomacia -50% custo' }, inf: { name: 'Influenciador', desc: '+1 influência/turno' }, esp: { name: 'Mestre-Espião', desc: '+10% sabotagem' }, cul: { name: 'Culturalista', desc: 'festival -50%, +1 doutrina/sem' } },
+  soc: { art: { name: 'Artista', desc: '+1 aprovação/turno' }, atl: { name: 'Atleta', desc: '+5% renda' }, mec: { name: 'Mecenas', desc: '+1 influência/dia' } },
 };
 // Cinco árvores de desenvolvimento, 25 tecnologias cada, 5 níveis.
 // Custos por nível medidos nas capturas do MA3: 50 / 99 / 198 / 396 / 797.
@@ -638,7 +639,7 @@ function addPlayer(room, conn, name, isHost) {
     customName: null, customFlag: '🏳️', bot: false, pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 25, madeira: 0, terras_raras: 12, uranio: 0, borracha: 0 },
     xp: 0, blackout: false, depositos: [], upgrades: {}, pacts: {},
     buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0, mandatos: 0, conversoes: 0, doutrinacoes: 0, titulos: 0 }, famine: false,
-    ministers: { eco: null, def: null, dip: null },
+    ministers: { eco: null, def: null, dip: null, soc: null },
     techs: [], techLv: {}, sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
     units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 }, builds: [], emergencyUntil: 0, leis: [],
@@ -662,7 +663,7 @@ function makeAIBot(c) {
     nuclear: 0, influencia: 0, fe: 0, wars: [], abrigo: false,
     provinces: [{ name: c.name, infra: 1, owner: c.id, origem: c.id }],
     sanctioning: [], sanctionedBy: [], taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, budget: {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: 0, ideology: null, religion: 'laico',
-    ministers: { eco: null, def: null, dip: null },
+    ministers: { eco: null, def: null, dip: null, soc: null },
     techs: [], techLv: {}, sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
     units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 },
@@ -794,6 +795,7 @@ function incomeOf(room, p) {
   if (p.ministers.eco === 'tec') mult += 0.10;
   if (p.ministers.eco === 'pop') mult -= 0.05;
   if (p.ministers.def === 'pac') mult -= 0.10;
+  if (p.ministers.soc === 'atl') mult += 0.05;
   if (p.taxRate === 2) mult += 0.15;
   if (p.taxRate === 0) mult -= 0.10;
   if (room.embargo && room.embargo.target === p.id && room.turn < room.embargo.until) mult *= 0.7;
@@ -889,6 +891,7 @@ function dayTick(room) {
     if (p.ideology === 'monarquia') dAprov += 1;
     if (p.ministers.eco === 'pop') dAprov += 1;
     if (p.ministers.def === 'pac') dAprov += 2;
+    if (p.ministers.soc === 'art') dAprov += 1;
     if (p.taxRate === 0) dAprov += 1;
     if (p.taxRate === 2) dAprov -= 2;
     if (p.taxes && p.taxes.amb >= 12) dAprov += 1;
@@ -913,6 +916,7 @@ function dayTick(room) {
     if (p.religion && p.religion !== 'laico') p.fe += 1 / DAY_DIV;
     if (p.ministers.dip === 'inf') p.influencia += 1 / DAY_DIV;
     if (p.ministers.dip === 'cul') p.influencia += 1 / DAY_DIV;
+    if (p.ministers.soc === 'mec') p.influencia += 1 / DAY_DIV;
     p.influencia += techLevel(p, 'influencia_cult') / DAY_DIV;
     p.ap = AP_PER_TURN;
   }
@@ -1164,7 +1168,7 @@ function aiTurn(room) {
     if (!b.solar && b.money > 3000 && Math.random() < 0.08) { b.money -= 500; b.solar = true; }
     if (b.money < 800 && b.money > 300) { b.money += 100 + (b.eco || 0) * 30 - 200; }
     if (b.money > 5000 && Math.random() < 0.06) { b.money -= 400; b.eco += 1; }
-    if (!b.ministers.eco && b.money > 2000) { b.money -= 300; b.ministers = { eco: ['tec', 'pop', 'ind'][Math.floor(Math.random() * 3)], def: ['fal', 'estr', 'pac'][Math.floor(Math.random() * 3)], dip: ['neg', 'inf', 'esp', 'cul'][Math.floor(Math.random() * 4)] }; }
+    if (!b.ministers.eco && b.money > 2000) { b.money -= 300; b.ministers = { eco: ['tec', 'pop', 'ind'][Math.floor(Math.random() * 3)], def: ['fal', 'estr', 'pac'][Math.floor(Math.random() * 3)], dip: ['neg', 'inf', 'esp', 'cul'][Math.floor(Math.random() * 4)], soc: ['art', 'atl', 'mec'][Math.floor(Math.random() * 3)] }; }
     if (((b.sectors && b.sectors.esportes) || 0) >= 1 && b.money > 3000 && Math.random() < 0.05) { b.money -= 400; b.aprov = Math.min(100, b.aprov + 3); log(room, `🎾 ${cname(b)} sediou a Copa Davis.`); }
     if (((b.sectors && b.sectors.esportes) || 0) >= 2 && b.money > 5000 && Math.random() < 0.06) { b.money -= 700; b.aprov = Math.min(100, b.aprov + 10); b.influencia = Math.min(100, (b.influencia || 0) + 5); log(room, `🏟️ ${cname(b)} sediou os JOGOS OLÍMPICOS!`); }
     if (b.money > 4000 && ((b.sectors && b.sectors.turismo) || 0) < 5 && Math.random() < 0.08) { b.money -= 500; b.sectors.turismo = ((b.sectors && b.sectors.turismo) || 0) + 1; }
@@ -1931,7 +1935,7 @@ function performAction(room, p, msg) {
       if (!MINISTERS[msg.post] || !MINISTERS[msg.post][msg.value]) return;
       if (!spend(p, 1, 100)) return;
       p.ministers[msg.post] = msg.value;
-      log(room, `💼 ${cname(p)} nomeia ${MINISTERS[msg.post][msg.value].name} para a pasta ${msg.post === 'eco' ? 'Economia' : msg.post === 'def' ? 'Defesa' : 'Diplomacia'}.`);
+      log(room, `💼 ${cname(p)} nomeia ${MINISTERS[msg.post][msg.value].name} para a pasta ${msg.post === 'eco' ? 'Economia' : msg.post === 'def' ? 'Defesa' : msg.post === 'soc' ? 'Cultura/Esportes' : 'Diplomacia'}.`);
       break;
     case 'tech': {
       const k = msg.value; if (!TECHS[k]) return;
