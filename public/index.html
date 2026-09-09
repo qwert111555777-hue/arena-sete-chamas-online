@@ -416,6 +416,25 @@
   .rank-panel .px{background:#1f7a78!important;border-color:#145a58!important;color:#fff!important;border-radius:50%!important;width:26px;height:26px;padding:0!important;font-size:13px!important;}
   .rank-row{background:#fff8e6!important;border:1px solid #c9a227!important;color:#3a2a05!important;}
   @media (max-width:900px){ #bottomnav{gap:6px;bottom:6px;} #bottomnav button{width:46px!important;height:46px!important;font-size:19px!important;} .hud{gap:5px!important;} }
+  /* ===== MA3 WIDGETS UI-2 (arte original) ===== */
+  .paper{position:relative;border:3px solid #c9a227!important;border-radius:12px!important;box-shadow:0 14px 40px rgba(0,0,0,.6)!important;}
+  .paper h1{background:linear-gradient(180deg,#2a9d9a,#1f7a78)!important;color:#fff!important;border-radius:8px;padding:8px 12px!important;border:2px solid #c9a227;text-shadow:0 2px 3px rgba(0,0,0,.4);}
+  .paper button{background:linear-gradient(180deg,#2a9d9a,#1f7a78);color:#fff;border:2px solid #145a58;border-radius:8px;font-weight:700;}
+  .paper button:hover:not(:disabled){background:linear-gradient(180deg,#35b5b2,#27908d);}
+  .paper button:disabled{opacity:.45;}
+  .paper button[id$="-x"]{background:linear-gradient(180deg,#8a1f2d,#5a1219)!important;border-color:#ffd76a!important;color:#ffd76a!important;}
+  .ovx{position:absolute!important;top:-15px!important;right:-15px!important;width:32px!important;height:32px!important;border-radius:50%!important;background:radial-gradient(circle at 35% 30%,#35b5b2,#1f7a78 70%)!important;border:2px solid #f5e3c0!important;color:#fff!important;font-size:15px!important;font-weight:900!important;z-index:5;box-shadow:0 4px 10px rgba(0,0,0,.5);padding:0!important;}
+  .minrow{display:flex;align-items:center;gap:10px;background:#fff8e6;border:2px solid #c9a227;border-radius:10px;padding:8px 10px;margin-bottom:8px;box-shadow:0 2px 6px rgba(138,106,31,.25);}
+  .minthumb{font-size:30px;background:linear-gradient(180deg,#fdf6e3,#e2cd96);border:2px solid #8a6a1f;border-radius:8px;width:52px;height:52px;display:flex;align-items:center;justify-content:center;flex:none;}
+  .minport{position:relative;font-size:26px;flex:none;}
+  .minbadge{position:absolute;right:-7px;bottom:-5px;background:linear-gradient(180deg,#8a1f2d,#5a1219);border:2px solid #ffd76a;color:#ffd76a;font-size:10px;font-weight:900;border-radius:6px;padding:0 4px;font-family:ui-monospace,monospace;}
+  .minfo{flex:1;min-width:0;}
+  .minfo b{font-size:13px;color:#3a2a05;}
+  .minfo .pd{font-size:11px;color:#6b5a33;}
+  .minsegs{margin-top:4px;white-space:nowrap;}
+  .minsegs span{display:inline-block;width:30px;height:12px;margin-right:3px;border-radius:2px;background:#2e2a1e;border:1px solid #8a6a1f;}
+  .minsegs span.on{background:linear-gradient(#ffe9a8,#d9a93c);}
+  .minbtn{font-size:20px!important;padding:8px 12px!important;flex:none;}
 </style>
 </head>
 <body>
@@ -2189,7 +2208,23 @@ $('btn-sair').onclick = () => {
   send({t:'sair'});
 };
 document.querySelectorAll('.round-btn').forEach(b => b.onclick = () => { sfx('click'); send({t:'action', action:b.dataset.act}); });
-$('btn-menu').onclick = () => $('menuov').classList.toggle('hidden');
+const _ovObs = new MutationObserver(muts => {
+    for (const mt of muts) for (const n of mt.addedNodes) {
+      if (!n || n.nodeType !== 1 || n.id === 'suprema-ov') continue;
+      const st = (n.getAttribute && n.getAttribute('style')) || '';
+      if (n.id === 'newspaper' || (st.includes('position:fixed') && st.includes('inset:0'))) {
+        if (n.querySelector && !n.querySelector(':scope > .ovx') && !n.querySelector('.paper > .ovx')) {
+          const x = document.createElement('button'); x.className = 'ovx'; x.textContent = '✕'; x.title = 'Fechar';
+          x.onclick = e => { e.stopPropagation(); n.remove(); };
+          const paper = n.querySelector ? n.querySelector('.paper') : null;
+          if (paper) { paper.style.position = 'relative'; paper.appendChild(x); }
+          else { x.style.position = 'fixed'; x.style.top = '12px'; x.style.right = '12px'; n.appendChild(x); }
+        }
+      }
+    }
+  });
+  try { _ovObs.observe(document.body, { childList: true }); } catch (e) {}
+  $('btn-menu').onclick = () => $('menuov').classList.toggle('hidden');
   $('menu-x').onclick = () => $('menuov').classList.add('hidden');
   document.querySelectorAll('#menuov button[id^="btn-"]').forEach(b => { const s = document.createElement('span'); s.textContent = b.title || b.id; b.appendChild(s); b.addEventListener('click', () => $('menuov').classList.add('hidden')); });
   $('btn-snd').onclick = () => { muted = !muted; $('btn-snd').textContent = muted ? '🔇' : '🔊'; $('btn-snd').classList.toggle('active', !muted); };
@@ -2414,7 +2449,7 @@ $('btn-gov').onclick = () => {
   s += '<div class="stat-h">💼 Ministros (1⚡ + $100 cada)</div>';
   s += POSTS.map(pt=>{
     const cur = (m.ministers||{})[pt[0]];
-    return '<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:6px 10px;margin-bottom:6px"><b style="font-size:12px">'+pt[1]+'</b><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">'+Object.keys(MINISTERS[pt[0]]).map(v=>'<button data-min="'+pt[0]+':'+v+'" title="'+MINISTERS[pt[0]][v]+'" style="padding:6px 10px;cursor:pointer;font-size:12px;'+(cur===v?'border:2px solid #2e7d32':'')+'" '+((cur===v||m.ap<1||m.money<100)?'disabled':'')+'>'+MINISTERS[pt[0]][v].split(' ')[0]+(cur===v?' ✓':'')+'</button>').join('')+'</div></div>';
+    return '<div class="minrow"><div class="minport" style="font-size:30px">🧑‍💼</div><div style="flex:1"><b style="font-size:13px;color:#1f7a78">'+pt[1]+'</b><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">'+Object.keys(MINISTERS[pt[0]]).map(v=>'<button data-min="'+pt[0]+':'+v+'" title="'+MINISTERS[pt[0]][v]+'" style="padding:6px 10px;cursor:pointer;font-size:12px;'+(cur===v?'border:2px solid #2e7d32':'')+'" '+((cur===v||m.ap<1||m.money<100)?'disabled':'')+'>'+MINISTERS[pt[0]][v].split(' ')[0]+(cur===v?' ✓':'')+'</button>').join('')+'</div></div>';
   }).join('');
   s += '<div class="stat-h">🏛️ Orçamento dos ministérios (Nv 0–3)</div>';
   s += GDEF.map(d=>'<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1"><b style="font-size:12px">'+d[1]+'</b> <span style="font-size:11px;color:#6b5a33">'+d[2]+'</span></div><button data-gk="'+d[0]+'" data-gd="-1" style="width:30px;cursor:pointer">−</button><b id="gv-'+d[0]+'" style="width:20px;text-align:center">'+GB[d[0]]+'</b><button data-gk="'+d[0]+'" data-gd="1" style="width:30px;cursor:pointer">+</button></div>').join('');
@@ -2422,7 +2457,9 @@ $('btn-gov').onclick = () => {
   s += '<div class="stat-h">🏙️ Setores sociais (1⚡ + $150, máx Nv 5)</div>';
   s += SECS.map(sc=>{
     const lv = (m.sectors&&m.sectors[sc[0]])||0;
-    return '<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1"><b style="font-size:12px">'+sc[1]+'</b><div style="margin-top:2px">'+[0,1,2,3,4].map(i=>'<span style="display:inline-block;width:22px;height:10px;margin-right:2px;border-radius:2px;background:'+(i<lv?'#c9a227':'#d8cba0')+';border:1px solid #8a6a1f"></span>').join('')+'</div></div><button data-sec="'+sc[0]+'" style="padding:6px 10px;cursor:pointer" '+((lv>=5||m.ap<1||m.money<75)?'':'disabled')+'>'+(lv>=5?'MÁX':'Investir')+'</button></div>';
+    const TH = {educacao:'🎓',saude:'🏥',cultura:'🎭',esportes:'⚽',habitacao:'🏠',justica:'⚖️',turismo:'🧳'};
+    const PD = {educacao:'pesquisa −4% custo/Nv',saude:'natalidade acelerada',cultura:'desenvolvimento cultural',esportes:'Copa · Davis · FIFA',habitacao:'Nv3+ = +1/sem',justica:'Nv2+ barra golpes',turismo:'+$'+(lv*15)+'/sem'};
+    return '<div class="minrow"><div class="minthumb">'+(TH[sc[0]]||'🏛️')+'</div><div class="minport">🧑‍💼<span class="minbadge">Nv'+lv+'</span></div><div class="minfo"><b>'+sc[1]+'</b><div class="pd">'+(PD[sc[0]]||'')+'</div><div class="minsegs">'+[0,1,2,3,4].map(k=>'<span class="'+(k<lv?'on':'')+'"></span>').join('')+'</div></div><button data-sec="'+sc[0]+'" class="minbtn" title="Investir (1AP+$150)" '+((lv>=5||m.ap<1||m.money<75)?'':'disabled')+'>'+(lv>=5?'⭐':'🔨')+'</button></div>';
   }).join('');
   s += '<div style="background:#e6f4e6;border:2px solid #2e7d32;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px">Saude Nv'+(((m.sectors&&m.sectors.saude)||0))+' acelera a natalidade</div><button data-vac style="padding:6px 10px;cursor:pointer" '+((m.ap>=1&&m.money>=250)?'':'disabled')+'>Vacina (1AP+$250)</button><button data-hosp style="padding:6px 10px;cursor:pointer" '+((m.ap>=2&&m.money>=500)?'':'disabled')+'>Hospital (2AP+$500)</button></div>';
   s += '<div style="background:#fff8e6;border:2px solid #c9a227;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px">Turismo Nv'+(((m.sectors&&m.sectors.turismo)||0))+' = +$'+(((m.sectors&&m.sectors.turismo)||0)*15)+'/sem</div><button data-oli style="padding:6px 10px;cursor:pointer" '+((m.ap>=2&&m.money>=1000&&((m.sectors&&m.sectors.esportes)||0)>=2)?'':'disabled')+'>Olimpiada (2AP+$1000)</button><button data-mar style="padding:6px 10px;cursor:pointer" '+((m.ap>=2&&m.money>=700)?'':'disabled')+'>Marco (2AP+$700)</button><button data-hot style="padding:6px 10px;cursor:pointer" '+((m.ap>=1&&m.money>=400)?'':'disabled')+'>Hotel (1AP+$400)</button><button data-rst style="padding:6px 10px;cursor:pointer" '+((m.ap>=2&&m.money>=800&&((m.sectors&&m.sectors.turismo)||0)>=1)?'':'disabled')+'>Resort (2AP+$800)</button></div>';
