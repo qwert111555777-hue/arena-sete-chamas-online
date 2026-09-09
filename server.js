@@ -410,6 +410,7 @@ function techLevel(p, k){ return (p.techLv && p.techLv[k]) || 0; }
 const SECTORS = [
   ['educacao', 'Educação'], ['saude', 'Saúde'], ['cultura', 'Cultura'],
   ['esportes', 'Esportes'], ['habitacao', 'Habitação'], ['justica', 'Justiça'], ['turismo', 'Turismo'],
+  ['infraestrutura', 'Infraestrutura'], ['ciencia', 'Ciência'],
 ];
 const DEPOSIT_POOL = ['petroleo', 'minerio', 'madeira', 'ouro', 'uranio', 'terras_raras', 'comida'];
 const DEP_NAMES = { petroleo: '🛢️ Petróleo', minerio: '⛏️ Minério', madeira: '🪵 Madeira', ouro: '🏦 Ouro', uranio: '☢️ Urânio', terras_raras: '⚙️ Terras raras', comida: '🌾 Terra fértil' };
@@ -641,7 +642,7 @@ function addPlayer(room, conn, name, isHost) {
     xp: 0, blackout: false, depositos: [], upgrades: {}, pacts: {},
     buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0, mandatos: 0, conversoes: 0, doutrinacoes: 0, titulos: 0 }, famine: false,
     ministers: { eco: null, def: null, dip: null, soc: null },
-    techs: [], techLv: {}, sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 },
+    techs: [], techLv: {}, sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0, infraestrutura: 0, ciencia: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
     units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 }, builds: [], emergencyUntil: 0, leis: [],
     seguranca: { defesa: 0, secreto: 0, policia: 0, guarda: 0 },
@@ -665,7 +666,7 @@ function makeAIBot(c) {
     provinces: [{ name: c.name, infra: 1, owner: c.id, origem: c.id }],
     sanctioning: [], sanctionedBy: [], taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, budget: {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: 0, ideology: null, religion: 'laico',
     ministers: { eco: null, def: null, dip: null, soc: null },
-    techs: [], techLv: {}, sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 },
+    techs: [], techLv: {}, sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0, infraestrutura: 0, ciencia: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
     units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 },
     builds: [], emergencyUntil: 0, leis: [],
@@ -693,7 +694,7 @@ function startGame(room) {
     p.sanctioning = []; p.sanctionedBy = []; p.crise = null; p.lastCrisis = 0; p.lastTeste = 0;
     p.taxRate = 1; p.taxes = {corp:10, rend:10, prod:10, amb:5}; p.budget = {exe:1, int:1, tra:1, edu:1, ambm:1}; p.debt = 0; p.ideology = null; p.religion = 'laico';
     p.ministers = { eco: null, def: null, dip: null };
-    p.techs = []; p.techLv = {}; p.sectors = { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0 };
+    p.techs = []; p.techLv = {}; p.sectors = { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0, infraestrutura: 0, ciencia: 0 };
     p.space = 0; p.pollution = 10; p.relations = {}; p.embassies = []; p.trades = []; p.blockading = []; p.blockadedBy = [];
     p.units = { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 }; p.builds = []; p.emergencyUntil = 0; p.leis = [];
     p.seguranca = { defesa: 0, secreto: 0, policia: 0, guarda: 0 }; p.espioes = 1;
@@ -1192,6 +1193,8 @@ function aiTurn(room) {
     if (b.money > 4000 && ((b.sectors && b.sectors.habitacao) || 0) < 5 && Math.random() < 0.08) { b.money -= 600; b.sectors.habitacao = ((b.sectors && b.sectors.habitacao) || 0) + 1; b.pop += 5; }
     if (b.aprov < 45 && ((b.sectors && b.sectors.habitacao) || 0) >= 1 && b.money > 500) { b.money -= 200; b.pop += 2; b.aprov = Math.min(100, b.aprov + 5); }
     if (b.money > 4000 && ((b.sectors && b.sectors.justica) || 0) < 5 && Math.random() < 0.08) { b.money -= 600; b.sectors.justica = ((b.sectors && b.sectors.justica) || 0) + 1; b.money += 150; }
+    if (b.money > 4000 && ((b.sectors && b.sectors.infraestrutura) || 0) < 5 && Math.random() < 0.08) { b.money -= 600; b.sectors.infraestrutura = ((b.sectors && b.sectors.infraestrutura) || 0) + 1; }
+    if (b.money > 4500 && ((b.sectors && b.sectors.ciencia) || 0) < 5 && Math.random() < 0.08) { b.money -= 700; b.sectors.ciencia = ((b.sectors && b.sectors.ciencia) || 0) + 1; }
     if (((b.sectors && b.sectors.justica) || 0) >= 2 && b.money > 500 && Math.random() < 0.1) { b.money += 200 + 50 * b.sectors.justica - 250; b.aprov = Math.min(100, b.aprov + 4); }
     if (b.crise && b.money > 500) resolverCrise(room, b, 0); else if (b.crise && Math.random() < 0.1) resolverCrise(room, b, 2);
     if (b.aprov < 55 && b.money > 500) { b.money -= 50; b.aprov = Math.min(100, b.aprov + 4); }
@@ -2003,6 +2006,14 @@ function performAction(room, p, msg) {
       p.aprov = Math.min(100, p.aprov + 3); p.money += 200;
       p.influencia = Math.min(100, (p.influencia || 0) + 2);
       log(room, `🎾 ${cname(p)} sediou a COPA DAVIS de tênis! (+3❤️, +$200, +2 doutrina).`);
+      break;
+    }
+    case 'rugby': {
+      if (((p.sectors && p.sectors.esportes) || 0) < 2) { err(p.conn, '🏉 Precisa de Esportes Nv 2+ para sediar a Copa do Mundo de Rugby.'); return; }
+      if (!spend(p, 2, 900)) return;
+      p.aprov = Math.min(100, p.aprov + 5); p.money += 600;
+      p.influencia = Math.min(100, (p.influencia || 0) + 5);
+      log(room, `🏉 ${cname(p)} sediou a COPA DO MUNDO DE RUGBY! (+5❤️, +$600, +5 doutrina).`);
       break;
     }
     case 'copa_mundo': {
@@ -5593,7 +5604,7 @@ function performAction(room, p, msg) {
       const k = msg.value; if (!TECHS[k]) return;
       const lvl = techLevel(p, k);
       if (lvl >= TECH_MAX) return err(p.conn, 'Essa tecnologia já está no nível máximo.');
-      const cost = Math.round(techCost(lvl) * (p.ideology === 'republica' ? 0.75 : 1) * (1 - 0.04 * (((p.sectors && p.sectors.educacao) || 0))));
+      const cost = Math.round(techCost(lvl) * (p.ideology === 'republica' ? 0.75 : 1) * (1 - 0.04 * ((p.sectors && p.sectors.educacao) || 0) - 0.03 * ((p.sectors && p.sectors.ciencia) || 0)));
       if (!spend(p, 1, cost)) return;
       p.techLv = p.techLv || {};
       p.techLv[k] = lvl + 1;
@@ -5982,7 +5993,7 @@ function performAction(room, p, msg) {
       const need = CONCRETE_NEED[msg.kind] || 0;
       if (p.rec.concreto < need) { err(p.conn, `🧱 Precisa de ${need} de concreto — construa uma Fábrica de concreto primeiro.`); return; }
       let cCost = PROD_BUILDS[msg.kind];
-      cCost = Math.ceil(cCost * (1 - 0.05 * techLevel(p, 'infra')));
+      cCost = Math.ceil(cCost * (1 - 0.05 * techLevel(p, 'infra') - 0.03 * ((p.sectors && p.sectors.infraestrutura) || 0)));
       if (!spend(p, 1, cCost)) return;
       p.rec.concreto -= need;
       const diasObra = buildDays(cCost);
