@@ -1165,6 +1165,7 @@ function aiTurn(room) {
     if (b.money < 800 && b.money > 300) { b.money += 100 + (b.eco || 0) * 30 - 200; }
     if (b.money > 5000 && Math.random() < 0.06) { b.money -= 400; b.eco += 1; }
     if (!b.ministers.eco && b.money > 2000) { b.money -= 300; b.ministers = { eco: ['tec', 'pop', 'ind'][Math.floor(Math.random() * 3)], def: ['fal', 'estr', 'pac'][Math.floor(Math.random() * 3)], dip: ['neg', 'inf', 'esp', 'cul'][Math.floor(Math.random() * 4)] }; }
+    if (((b.sectors && b.sectors.esportes) || 0) >= 1 && b.money > 3000 && Math.random() < 0.05) { b.money -= 400; b.aprov = Math.min(100, b.aprov + 3); log(room, `🎾 ${cname(b)} sediou a Copa Davis.`); }
     if (((b.sectors && b.sectors.esportes) || 0) >= 2 && b.money > 5000 && Math.random() < 0.06) { b.money -= 700; b.aprov = Math.min(100, b.aprov + 10); b.influencia = Math.min(100, (b.influencia || 0) + 5); log(room, `🏟️ ${cname(b)} sediou os JOGOS OLÍMPICOS!`); }
     if (b.money > 4000 && ((b.sectors && b.sectors.turismo) || 0) < 5 && Math.random() < 0.08) { b.money -= 500; b.sectors.turismo = ((b.sectors && b.sectors.turismo) || 0) + 1; }
     if (b.money > 4000 && ((b.sectors && b.sectors.habitacao) || 0) < 5 && Math.random() < 0.08) { b.money -= 600; b.sectors.habitacao = ((b.sectors && b.sectors.habitacao) || 0) + 1; b.pop += 5; }
@@ -1636,6 +1637,21 @@ function performAction(room, p, msg) {
       if (!spend(p, 1, 200)) return;
       bumpRel(p, target, 10); p.eco += 1;
       log(room, `🎓 ${cname(p)} firmou INTERCÂMBIO estudantil com ${cname(target)} (+10 relações, +1 eco).`);
+      break;
+    }
+    case 'davis': {
+      if (!spend(p, 1, 400)) return;
+      p.aprov = Math.min(100, p.aprov + 3); p.money += 200;
+      p.influencia = Math.min(100, (p.influencia || 0) + 2);
+      log(room, `🎾 ${cname(p)} sediou a COPA DAVIS de tênis! (+3❤️, +$200, +2 doutrina).`);
+      break;
+    }
+    case 'copa_mundo': {
+      if (((p.sectors && p.sectors.esportes) || 0) < 2) { err(p.conn, '⚽ Precisa de Esportes Nv 2+ para sediar a Copa do Mundo.'); return; }
+      if (!spend(p, 2, 1200)) return;
+      p.aprov = Math.min(100, p.aprov + 6); p.money += 800;
+      p.influencia = Math.min(100, (p.influencia || 0) + 6);
+      log(room, `🏆 ${cname(p)} sediou a COPA DO MUNDO FIFA! (+6❤️, +$800 turismo, +6 doutrina).`);
       break;
     }
     case 'copa_nacional': {
