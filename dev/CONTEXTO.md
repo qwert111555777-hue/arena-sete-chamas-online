@@ -454,3 +454,5 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (FASE 80 MILESTONE — LIVE dep-dagaf83l550s73am9jd0/69672f3, SERVER+CLIENTE): 💼 REFORMA MINISTERIAL: 4ª pasta CULTURA/ESPORTES (Artista +1❤️/turno, Atleta +5% renda, Mecenas +1⚖️/dia) + 3 hooks + bots nomeiam + conquista Governo Completo 3→4 pastas.
 - 2026-09-08 (ESTUDO leis 100x real: MA2 dev-resposta Apple — "pass Economic laws, hire specialists"; MA2 Apple US — banco central/emprestar com juros/bens; MA3 Apple/aptoide — ministérios/economia/tecnologias — base da Fase 81.
 - 2026-09-08 (FASE 81 — LIVE dep-dagag33l550s73amfbc0/be121c1, SERVER+CLIENTE): 📜 LEIS 2.0: ZONA FRANCA ($300: +$20/sem) + BOLSA FAMÍLIA ($250: +4❤️+1 pop) + hooks. Bots aprovam genericamente.
+- 2026-09-08 (ESTUDO especialistas 100x real: MA2 dev-resposta Apple US — "hire specialists, build gold mines"; MA3 Apple/aptoide — economia/ministérios/recursos — base da Fase 82.
+- 2026-09-08 (FASE 82 — LIVE dep-dagagpou01pc738patrg/5ff6af0, SERVER+CLIENTE): 🧑‍💼 ESPECIALISTAS: ECO (1⚡+$500: +2 eco+1❤️) + MIL (1⚡+$500: +2 mil+1❤️) + bots contratam.
