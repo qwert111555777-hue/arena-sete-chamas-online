@@ -456,3 +456,5 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (FASE 81 — LIVE dep-dagag33l550s73amfbc0/be121c1, SERVER+CLIENTE): 📜 LEIS 2.0: ZONA FRANCA ($300: +$20/sem) + BOLSA FAMÍLIA ($250: +4❤️+1 pop) + hooks. Bots aprovam genericamente.
 - 2026-09-08 (ESTUDO especialistas 100x real: MA2 dev-resposta Apple US — "hire specialists, build gold mines"; MA3 Apple/aptoide — economia/ministérios/recursos — base da Fase 82.
 - 2026-09-08 (FASE 82 — LIVE dep-dagagpou01pc738patrg/5ff6af0, SERVER+CLIENTE): 🧑‍💼 ESPECIALISTAS: ECO (1⚡+$500: +2 eco+1❤️) + MIL (1⚡+$500: +2 mil+1❤️) + bots contratam.
+- 2026-09-08 (ESTUDO bens 100x real: MA2 oficial PRO/gplay — "Trade goods and resources: meat, fruits, vegetables, bread, sweets, fast food"; energia hidro/verde já saturada no jogo — base da Fase 83.
+- 2026-09-08 (FASE 83 — LIVE dep-dagaiauk1f9s73dh72o0/a782eb0, SERVER+CLIENTE): 🍖 CARNE (9º bem, $11): market+rec+floorRec+gado produz+nomes/ícones. Bots negociam genericamente.
