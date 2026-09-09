@@ -498,6 +498,34 @@
   .lflag{position:relative;border-radius:3px;}
   .lflag.sel{box-shadow:0 0 0 2px #ffd76a,0 0 14px #ffd76a!important;}
   .lbdg{position:absolute;font-size:11px;filter:drop-shadow(0 1px 1px #000);z-index:5;}
+  /* ===== UI-7 MAPA+PAINEL MA3 ===== */
+  .bottom-bar{bottom:88px!important;flex-wrap:nowrap!important;overflow-x:auto;max-width:96vw;padding:4px 6px!important;background:rgba(14,21,38,.85);border:2px solid #c9a227;border-radius:12px;}
+  .bottom-bar::-webkit-scrollbar{height:6px;}
+  .bottom-bar::-webkit-scrollbar-thumb{background:#8a6a1f;border-radius:3px;}
+  .nation-panel{bottom:auto!important;top:110px!important;max-height:calc(100vh - 300px);}
+  #np-banner{display:none!important;}
+  .np-tabs button{font-size:14px!important;padding:4px 1px 2px!important;}
+  .np-tabs button small{display:block;font-size:8px;font-weight:800;letter-spacing:.3px;color:#6b5a33;}
+  .np-tabs button.on small{color:#fff!important;}
+  .np-stats .ms.wide{grid-column:1/-1;font-size:11px;}
+  .np-stats .ms.wide b{font-size:11px;text-align:right;}
+  /* ===== UI-9 POLIMENTO ===== */
+  .paper .dipcard{background:linear-gradient(180deg,#fff8e6,#f0e2bd)!important;border:2px solid #8a6a1f!important;}
+  .paper .dipcard b{color:#3a2a05!important;}
+  .paper .dipcard small{color:#6b5a33!important;}
+  .paper .dipcard.on{background:linear-gradient(180deg,#ffe9a8,#d9a93c)!important;box-shadow:0 0 10px #c9a227;}
+  .round-btn{font-size:20px!important;color:#ffe9a8!important;}
+  .round-btn small{color:#ffe9a8!important;}
+  .round-btn:hover:not(:disabled){border-color:#ffd76a!important;}
+  /* ===== UI-10 ===== */
+  #menuov button{background:linear-gradient(180deg,#ffe9a8,#d9a93c)!important;color:#3a2a05!important;border:2px solid #8a6a1f!important;font-weight:700;}
+  #menuov button:hover{filter:brightness(1.08);}
+  #menuov #menu-x{width:auto!important;border-radius:50%!important;background:radial-gradient(circle at 35% 30%,#35b5b2,#1f7a78 70%)!important;color:#fff!important;border:2px solid #f5e3c0!important;font-weight:900;}
+  /* ===== UI-13 PAINEIS LATERAIS ===== */
+  .rank-panel{right:78px!important;}
+  #market-panel .rank-row{flex-wrap:wrap!important;}
+  #market-panel .rank-row .rs{flex:1 1 100%!important;font-size:11px!important;}
+  #market-panel .rank-row button{flex:1!important;white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -744,19 +772,19 @@
 
       <div class="bottom-bar">
         <div class="ap-dock" id="m-ap" title="Pontos de ação">●●●●</div>
-        <button class="round-btn" data-act="investir" title="Investir na economia (+2 🏭) — $250 · 1⚡"><small>ECONOMIA</small></button>
-        <button class="round-btn" data-act="emprestimo" title="Emprestimo do FMI (+$1500, +1 eco, -8 aprovacao) - $0 - 1AP"><small>FMI</small></button>
-        <button class="round-btn" data-act="privatizar" title="Privatizar estatal (+$800, +1 eco, -3 aprovacao) - $0 - 1AP"><small>PRIVATIZAR</small></button>
-        <button class="round-btn" data-act="militar" title="Recrutar tropas (+3 🪖) — $300 · 1⚡"><small>TROPAS</small></button>
-        <button class="round-btn" data-act="propaganda" title="Propaganda (+7 ❤️) — $150 · 1⚡"><small>MÍDIA</small></button>
-        <button class="round-btn" data-act="nuclear" title="Avançar programa nuclear (+1 ☢️, máx 5; requer 10 de URÂNIO; nível 3+ libera míssil) — $600 · 2⚡">️<small>NUCLEAR</small></button>
-        <button class="round-btn" data-act="ideologia" title="Expandir doutrina (+2 ⚖️ — marco de hegemonia aos 60) — $200 · 1⚡">⚖️<small>DOUTRINA</small></button>
-        <button class="round-btn" data-act="fe" title="Enviar missionários (+2 🕌 — marco de hegemonia aos 60) — $200 · 1⚡"><small>FÉ</small></button>
-        <button class="round-btn" data-act="treinar" title="Treinar exército (+1 🪖 militar) — $150 · 1⚡"><small>TREINAR</small></button>
-        <button class="round-btn" data-act="alistamento" title="Alistamento obrigatorio (+2 militar, -6 aprovacao) - $0 - 1AP"><small>ALISTAR</small></button>
-        <button class="round-btn" data-act="milicia" title="Armar milicias (+2 militar, -2 aprovacao) - $200 - 1AP"><small>MILICIA</small></button>
-        <button class="round-btn" data-act="condecorar" title="Condecorar veteranos (req 1 vitoria: +1 militar, +3 aprovacao) - $200 - 1AP"><small>MEDALHA</small></button>
-        <button class="round-btn" data-act="parada_militar" title="Parada militar (+5 aprovacao, +2 doutrina, +3 XP) - $300 - 1AP"><small>PARADA</small></button>
+        <button class="round-btn" data-act="investir" title="Investir na economia (+2 🏭) — $250 · 1⚡">💰<small>ECONOMIA</small></button>
+        <button class="round-btn" data-act="emprestimo" title="Emprestimo do FMI (+$1500, +1 eco, -8 aprovacao) - $0 - 1AP">🏦<small>FMI</small></button>
+        <button class="round-btn" data-act="privatizar" title="Privatizar estatal (+$800, +1 eco, -3 aprovacao) - $0 - 1AP">🏭<small>PRIVATIZAR</small></button>
+        <button class="round-btn" data-act="militar" title="Recrutar tropas (+3 🪖) — $300 · 1⚡">🪖<small>TROPAS</small></button>
+        <button class="round-btn" data-act="propaganda" title="Propaganda (+7 ❤️) — $150 · 1⚡">📢<small>MÍDIA</small></button>
+        <button class="round-btn" data-act="nuclear" title="Avançar programa nuclear (+1 ☢️, máx 5; requer 10 de URÂNIO; nível 3+ libera míssil) — $600 · 2⚡">️☢️<small>NUCLEAR</small></button>
+        <button class="round-btn" data-act="ideologia" title="Expandir doutrina (+2 ⚖️ — marco de hegemonia aos 60) — $200 · 1⚡">⚖️⚖️<small>DOUTRINA</small></button>
+        <button class="round-btn" data-act="fe" title="Enviar missionários (+2 🕌 — marco de hegemonia aos 60) — $200 · 1⚡">🕌<small>FÉ</small></button>
+        <button class="round-btn" data-act="treinar" title="Treinar exército (+1 🪖 militar) — $150 · 1⚡">🏋️<small>TREINAR</small></button>
+        <button class="round-btn" data-act="alistamento" title="Alistamento obrigatorio (+2 militar, -6 aprovacao) - $0 - 1AP">📋<small>ALISTAR</small></button>
+        <button class="round-btn" data-act="milicia" title="Armar milicias (+2 militar, -2 aprovacao) - $200 - 1AP">🔫<small>MILICIA</small></button>
+        <button class="round-btn" data-act="condecorar" title="Condecorar veteranos (req 1 vitoria: +1 militar, +3 aprovacao) - $200 - 1AP">🎖️<small>MEDALHA</small></button>
+        <button class="round-btn" data-act="parada_militar" title="Parada militar (+5 aprovacao, +2 doutrina, +3 XP) - $300 - 1AP">🎺<small>PARADA</small></button>
       </div>
     </div>
 
@@ -1527,7 +1555,7 @@ function renderGame(){
   $('m-aprov').textContent = m.aprov + '%';
   $('m-aprov').style.color = m.aprov > 55 ? 'var(--green)' : (m.aprov > 25 ? 'var(--gold2)' : 'var(--red)');
   // dock de AP removido a pedido: o jogo nao e mais por turno
-  const apDock = $('m-ap'); if (apDock && apDock.parentNode) apDock.parentNode.style.display = 'none';
+  const apDock = $('m-ap'); if (apDock) apDock.style.display = 'none';
 
 
   document.querySelectorAll('.round-btn').forEach(b => {
@@ -1743,11 +1771,16 @@ function renderMap(){
 /* ---------- mapa satelite (Leaflet, estilo MA3) ---------- */
 let leafMap = null, leafMarks = {};
 function leafInit(){
-  if (leafMap || typeof L === 'undefined' || !$('leafmap')) return;
+  if (leafMap || window.__leafDead || typeof L === 'undefined' || !$('leafmap')) return;
   try {
-    leafMap = L.map('leafmap', { minZoom: 2, maxZoom: 7, maxBounds: [[-85,-200],[85,200]], maxBoundsViscosity: 1, worldCopyJump: true, zoomControl: false }).setView([20, 0], 2);
-    L.control.zoom({ position: 'bottomright' }).addTo(leafMap);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Esri, Maxar, Earthstar Geographics', maxZoom: 7 }).addTo(leafMap);
+    leafMap = L.map('leafmap', { minZoom: 2, maxZoom: 7, maxBounds: [[-85,-200],[85,200]], maxBoundsViscosity: 1, worldCopyJump: true, zoomControl: false }).setView([25, 5], 3);
+    L.control.zoom({ position: 'topleft' }).addTo(leafMap);
+    const _tl = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Esri, Maxar, Earthstar Geographics', maxZoom: 7 }).addTo(leafMap);
+    try { L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 7, opacity: 0.85 }).addTo(leafMap); } catch(_){}
+    window.leafKill = () => { if (window.__leafDead) return; window.__leafDead = true; try { leafMap.remove(); } catch(_){} leafMap = null; const _lm = document.getElementById('leafmap'); if (_lm) _lm.classList.add('hidden'); document.body.classList.remove('leaf-on'); renderMap(); };
+    setTimeout(() => { try { if (!window.__leafDead && leafMap && !document.querySelector('#leafmap img.leaflet-tile-loaded')) window.leafKill(); } catch(_){} }, 9000);
+    let _terr = 0;
+    _tl.on('tileerror', () => { if (++_terr > 4 && window.leafKill) window.leafKill(); });
     $('leafmap').classList.remove('hidden');
     document.body.classList.add('leaf-on');
     window.__leaf = true;
@@ -1818,7 +1851,7 @@ function renderPanel(){
     `<div class="ms"><span>👥 População</span><b>${p.pop}</b></div>` +
     (p.rec ? `<div class="ms"><span>🌾 · ⛏️ · ⚡</span><b>${p.rec.comida} · ${p.rec.minerio} · ${p.rec.energia}</b></div>` : '') +
     (p.rec ? `<div class="ms"><span>🧱 · 🪵 · ⚙️ · ☢️</span><b>${p.rec.concreto} · ${p.rec.madeira} · ${p.rec.terras_raras} · ${p.rec.uranio}</b></div>` : '') +
-    ((p.depositos&&p.depositos.length) ? `<div class="ms"><span>🏔️ Jazidas naturais</span><b>${p.depositos.map(d=>({petroleo:'🛢️Petróleo',minerio:'⛏️Minério',madeira:'🪵Madeira',ouro:'🏦Ouro',uranio:'☢️Urânio',terras_raras:'⚙️Terras raras',comida:'🌾Terra fértil'}[d]||d)).join(', ')}</b></div>` : '') +
+    ((p.depositos&&p.depositos.length) ? `<div class="ms wide"><span>⛰️ Jazidas</span><b>${p.depositos.map(d=>({petroleo:'🛢️Petróleo',minerio:'⛏️Minério',madeira:'🪵Madeira',ouro:'🏦Ouro',uranio:'☢️Urânio',terras_raras:'⚙️Terras raras',comida:'🌾Terra fértil'}[d]||d)).join(', ')}</b></div>` : '') +
     `<div class="ms"><span>⚔️ Poder militar</span><b>${p.mil*10 + Object.values(p.units).reduce((a,b)=>a+b,0)*15 + p.nuclear*20}</b></div>`;
 
   // províncias
@@ -2286,6 +2319,7 @@ $('btn-rank').onclick = () => {
 $('btn-build').onclick = () => {
   if (!state || state.phase !== 'game' || !me()) return;
   selectedId = myId; renderPanel(); renderMap();
+  window._npTab='bld'; try{npApply();}catch(_){}
   const secs = document.querySelectorAll('#np-extra .np-sub');
   for (const s of secs){ if (s.textContent.includes('Construções')){ s.scrollIntoView({behavior:'smooth', block:'start'}); break; } }
 };
@@ -2312,7 +2346,7 @@ $('btn-sair').onclick = () => {
   send({t:'sair'});
 };
 document.querySelectorAll('.round-btn').forEach(b => b.onclick = () => { sfx('click'); send({t:'action', action:b.dataset.act}); });
-const MA3T = [['war','\u2694\uFE0F','btn-war','wr-x'],['spy','\U0001F575\uFE0F','btn-spy','sp-x'],['nuke','\u2622\uFE0F','btn-nuke','nk-x'],['dip','\U0001F91D','btn-dip','dp-x'],['onu','\U0001F310','btn-onu','un-x']];
+const MA3T = [['war','\u2694\uFE0F','btn-war','wr-x'],['spy','🕵️','btn-spy','sp-x'],['nuke','\u2622\uFE0F','btn-nuke','nk-x'],['dip','🤝','btn-dip','dp-x'],['onu','🌐','btn-onu','un-x']];
   function ma3tabs(ov){
     try {
       const cur = MA3T.find(x=>ov.querySelector('#'+x[3]));
@@ -2340,14 +2374,14 @@ const MA3T = [['war','\u2694\uFE0F','btn-war','wr-x'],['spy','\U0001F575\uFE0F',
   });
   try { _ovObs.observe(document.body, { childList: true }); } catch (e) {}
   window._npTab = window._npTab || 'info';
-  const NPTABS = [['info','📰'],['prov','🗺️'],['gov','🏛️'],['eco','💰'],['seg','🛡️'],['tec','🔬'],['aco','⚔️']];
-  const npGrp = t => /Imposto|Dívida|Divida/.test(t)?'eco':/Ideologia|Religi|Gabinete/.test(t)?'gov':/Seguran/.test(t)?'seg':/Pesquisa/.test(t)?'tec':'gov';
+  const NPTABS = [['info','📰','INFO'],['prov','🗺️','PROV'],['gov','🏛️','GOV'],['eco','💰','ECO'],['seg','🛡️','SEG'],['tec','🔬','TEC'],['aco','⚔️','AÇÃO'],['bld','🏗️','OBRAS']];
+  const npGrp = t => /Imposto|Dívida|Divida/.test(t)?'eco':/Ideologia|Religi|Gabinete/.test(t)?'gov':/Seguran/.test(t)?'seg':/Pesquisa/.test(t)?'tec':/Constru/.test(t)?'bld':'gov';
   function npApply(){
     const np = document.getElementById('np'); if (!np || np.classList.contains('hidden')) return;
     let bar = document.getElementById('np-tabs');
     if (!bar) {
       bar = document.createElement('div'); bar.id = 'np-tabs'; bar.className = 'np-tabs';
-      bar.innerHTML = NPTABS.map(([id,em])=>'<button data-npt="'+id+'">'+em+'</button>').join('');
+      bar.innerHTML = NPTABS.map(([id,em,lb])=>'<button data-npt="'+id+'" title="'+lb+'">'+em+'<small>'+lb+'</small></button>').join('');
       bar.querySelectorAll('button').forEach(b=>b.onclick=()=>{window._npTab=b.dataset.npt;npApply();});
       np.querySelector('.np-head').after(bar);
     }
@@ -2362,13 +2396,13 @@ const MA3T = [['war','\u2694\uFE0F','btn-war','wr-x'],['spy','\U0001F575\uFE0F',
     let T = window._npTab;
     const has = id => { const e=document.getElementById(id); return !!(e && e.children.length>0); };
     const exHas = g => !!(ex && [...ex.children].some(el=>el.dataset.g===g));
-    const vis = {info:has('np-stats'), prov:has('np-provs'), gov:exHas('gov'), eco:exHas('eco'), seg:exHas('seg'), tec:exHas('tec'), aco:has('np-actions')};
+    const vis = {info:has('np-stats'), prov:has('np-provs'), gov:exHas('gov'), eco:exHas('eco'), seg:exHas('seg'), tec:exHas('tec'), aco:has('np-actions'), bld:exHas('bld')};
     if (!vis[T]) { const f = NPTABS.find(([id])=>vis[id]); if (f) { window._npTab=f[0]; T=f[0]; } }
     bar.querySelectorAll('button').forEach(b=>{ b.classList.toggle('on', b.dataset.npt===T); b.style.display = vis[b.dataset.npt]?'':'none'; });
     const show = (id,on)=>{ const e=document.getElementById(id); if(e) e.style.display = on?'':'none'; };
     show('np-stats', T==='info'); show('np-note', T==='info');
     show('np-provs', T==='prov'); show('np-actions', T==='aco');
-    if (ex) { [...ex.children].forEach(el=>{ el.style.display = (el.dataset.g===T)?'':'none'; }); ex.style.display = ['eco','gov','seg','tec'].includes(T)?'':'none'; }
+    if (ex) { [...ex.children].forEach(el=>{ el.style.display = (el.dataset.g===T)?'':'none'; }); ex.style.display = ['eco','gov','seg','tec','bld'].includes(T)?'':'none'; }
   }
   new MutationObserver(()=>{ try{npApply();}catch(e){} }).observe(document.getElementById('np'), {childList:true, subtree:true});
   $('btn-menu').onclick = () => $('menuov').classList.toggle('hidden');
@@ -2596,7 +2630,7 @@ $('btn-gov').onclick = () => {
   s += '<div class="stat-h">💼 Ministros (1⚡ + $100 cada)</div>';
   s += POSTS.map(pt=>{
     const cur = (m.ministers||{})[pt[0]];
-    return '<div class="minrow"><div class="minport" style="font-size:30px">🧑‍💼</div><div style="flex:1"><b style="font-size:13px;color:#1f7a78">'+pt[1]+'</b><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">'+Object.keys(MINISTERS[pt[0]]).map(v=>'<button data-min="'+pt[0]+':'+v+'" title="'+MINISTERS[pt[0]][v]+'" style="padding:6px 10px;cursor:pointer;font-size:12px;'+(cur===v?'border:2px solid #2e7d32':'')+'" '+((cur===v||m.ap<1||m.money<100)?'disabled':'')+'>'+MINISTERS[pt[0]][v].split(' ')[0]+(cur===v?' ✓':'')+'</button>').join('')+'</div></div>';
+    return '<div class="minrow"><div class="minport" style="font-size:30px">🧑‍💼</div><div style="flex:1"><b style="font-size:13px;color:#1f7a78">'+pt[1]+'</b><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">'+Object.keys(MINISTERS[pt[0]]).map(v=>'<button data-min="'+pt[0]+':'+v+'" title="'+MINISTERS[pt[0]][v]+'" style="padding:6px 10px;cursor:pointer;font-size:12px;'+(cur===v?'border:2px solid #2e7d32':'')+'" '+((cur===v||m.ap<1||m.money<100)?'disabled':'')+'>'+MINISTERS[pt[0]][v].split(' ')[0]+(cur===v?' ✓':'')+'</button>').join('')+'</div></div></div>';
   }).join('');
   s += '<div class="stat-h">🏛️ Orçamento dos ministérios (Nv 0–3)</div>';
   s += GDEF.map(d=>'<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1"><b style="font-size:12px">'+d[1]+'</b> <span style="font-size:11px;color:#6b5a33">'+d[2]+'</span></div><button data-gk="'+d[0]+'" data-gd="-1" style="width:30px;cursor:pointer">−</button><b id="gv-'+d[0]+'" style="width:20px;text-align:center">'+GB[d[0]]+'</b><button data-gk="'+d[0]+'" data-gd="1" style="width:30px;cursor:pointer">+</button></div>').join('');
@@ -3793,7 +3827,7 @@ $('btn-tech').onclick = () => {
     ov.innerHTML = '<div class="paper" style="width:min(620px,94vw)"><h1 style="font-size:20px">🔬 PESQUISAS</h1><img src="headers/tech.jpg" style="width:100%;height:110px;object-fit:cover;border-radius:8px;border:2px solid #8a6a1f;margin-bottom:8px">'
     + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">' + TECH_TREES.map(([id,rot])=>'<button data-tree="'+id+'" style="flex:1;padding:6px 4px;cursor:pointer;font-size:12px;font-weight:800;border-radius:6px;border:2px solid '+(tAba===id?'#2e7d32':'#8a6a1f')+';background:'+(tAba===id?'#e8f5e9':'#fff8e6')+';color:#2b2416">'+rot+'</button>').join('') + '</div>'
     + '<div style="background:#e8f0ff;border:2px solid #3f6fb5;border-radius:8px;padding:6px 10px;margin-bottom:8px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px">Educacao Nv'+(((m.sectors&&m.sectors.educacao)||0))+' = -'+(((m.sectors&&m.sectors.educacao)||0)*4)+'% nas pesquisas</div><button data-univ style="padding:6px 10px;cursor:pointer" '+((m.ap>=2&&m.money>=700)?'':'disabled')+'>Universidade (2AP+$700)</button></div>'
-    + '<div class="techgrid">' + chaves.map(k=>{ const lv = techLv(m,k); const maxed = lv>=TECH_MAX; const cost = maxed?0:TECH_COSTS[lv]; const RM=['0','I','II','III','IV','V'];
+    + '<div class="techgrid">' + chaves.map(k=>{ const lv = techLv(m,k); const maxed = lv>=TECH_MAX; const cost = maxed?0:TECH_COSTS[lv]; const RM=['–','I','II','III','IV','V'];
       return '<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px">'
       + '<div class="tctier">'+RM[lv]+'</div><div class="tcinfo"><b>'+TECHS[k][1]+'</b><div class="tcdesc">'+(TECHS[k][2]||'')+'</div><div class="minsegs">'+[0,1,2,3,4].map(i=>'<span class="'+(i<lv?'on':'')+'"></span>').join('')+'</div></div>'
       + '<button data-tres="'+k+'" style="padding:8px 12px;cursor:pointer;white-space:nowrap" '+((maxed||m.ap<1||m.money<cost)?'disabled':'')+'>'+(maxed?'✔ MÁX':'Nv '+(lv+1)+' · $'+cost)+'</button></div>'; }).join('') + '</div>'
@@ -3815,7 +3849,7 @@ $('btn-war').onclick = () => {
   const wars = (m.wars||[]).map(id=>state.players.find(p=>p.id===id)).filter(Boolean);
   const ov = document.createElement('div'); ov.id='newspaper';
   ov.innerHTML = '<div class="paper" style="width:min(620px,94vw)"><h1 style="font-size:20px">⚔️ EXÉRCITO E GUERRAS</h1><img src="headers/war.jpg" style="width:100%;height:110px;object-fit:cover;border-radius:8px;border:2px solid #8a6a1f;margin-bottom:8px">'
-  + '<div class="warcards">'+[['atk','\u2694\uFE0F','ATACAR','ver frentes'],['spy','\U0001F575\uFE0F','ESPIONAGEM','abrir agentes'],['nuk','\u2622\uFE0F','NUCLEAR','abrir arsenal'],['blq','\u26F4\uFE0F','BLOQUEIO','ver frentes'],['trn','\U0001F3CB\uFE0F','TREINO','+1 militar']].map(([k,em,lb,sb])=>'<div class="warcard w-'+k+'" data-wc="'+k+'"><div class="wcart">'+em+'</div><b>'+lb+'</b><small>'+sb+'</small></div>').join('')+'</div>' + '<div class="stat-h">🎖️ Seu exército · poder ' + poder(m) + '</div>'
+  + '<div class="warcards">'+[['atk','\u2694\uFE0F','ATACAR','ver frentes'],['spy','🕵️','ESPIONAGEM','abrir agentes'],['nuk','\u2622\uFE0F','NUCLEAR','abrir arsenal'],['blq','\u26F4\uFE0F','BLOQUEIO','ver frentes'],['trn','🏋️','TREINO','+1 militar']].map(([k,em,lb,sb])=>'<div class="warcard w-'+k+'" data-wc="'+k+'"><div class="wcart">'+em+'</div><b>'+lb+'</b><small>'+sb+'</small></div>').join('')+'</div>' + '<div class="stat-h">🎖️ Seu exército · poder ' + poder(m) + '</div>'
   + '<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><span style="font-size:22px">🏋️</span><div style="flex:1"><b style="font-size:13px">Treino militar</b><div style="font-size:11px;color:#6b5a33">Poder militar '+m.mil+'/25 · cada treino +1</div></div><button data-trei style="padding:8px 10px;cursor:pointer;white-space:nowrap" '+((m.mil<25&&m.ap>=1&&m.money>=150)?'':'disabled')+'>🏋️ Treinar (1⚡+$150)</button></div>'
   + '<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><span style="font-size:22px">🛡️</span><div style="flex:1"><b style="font-size:13px">Reservas de emergência</b><div style="font-size:11px;color:#6b5a33">Convocação geral: +3 militar, −2 aprovação, 1x a cada 14 dias</div></div><button data-res style="padding:8px 10px;cursor:pointer;white-space:nowrap" '+((m.mil<25&&m.ap>=1&&m.money>=300)?'':'disabled')+'>🛡️ Convocar (1⚡+$300)</button></div>'
    + '<div class="unitgrid">' + UNITS.map(([k,em,lb,cost])=>{ const q=m.units?(m.units[k]||0):0; const maxed=q>=3; const ok=!maxed&&m.ap>=1&&m.money>=cost&&((m.rec&&m.rec.terras_raras||0)>=4);
@@ -3898,10 +3932,7 @@ $('btn-notif').onclick = () => {
   if (!p.classList.contains('hidden')){ $('notif-n').textContent = '0'; $('notif-n').classList.add('hidden'); renderNotifs(); }
 };
 ['btn-rank','btn-market','btn-help'].forEach(id => { const prev = $(id).onclick; $(id).onclick = e => { $('notif-panel').classList.add('hidden'); if (prev) prev.call($(id), e); }; });
-/* MA3: widgets na barra esquerda, pausa/velocidade na barra inferior (handlers preservados) */
-['btn-rank','btn-news','btn-notif','btn-tax','btn-stats','btn-miss','btn-orc','btn-rel','btn-build','btn-tech','btn-war','btn-leis','btn-dip','btn-spy','btn-nuke','btn-onu','btn-win','btn-space','btn-eco','btn-med','btn-gov','btn-crise','btn-doc','btn-hist'].forEach(id => { const b = $(id); if (b) $('ma3-tools').appendChild(b); });
-['btn-market','btn-help','btn-snd'].forEach(id => { const b = $(id); if (b) { b.classList.remove('tool-btn'); $('ma3-tools').appendChild(b); } });
-['btn-speed2','btn-pause'].forEach(id => { const b = $(id); if (b) document.querySelector('.bottom-bar').prepend(b); });
+/* UI-1+: docks fixos no HTML — sem realocação legada */
 document.addEventListener('click', e => {
   const x = e.target.closest('.px'); if (!x || x.id === 'ov-x') return;
   const p = x.closest('.rank-panel,.nation-panel'); if (!p) return;
