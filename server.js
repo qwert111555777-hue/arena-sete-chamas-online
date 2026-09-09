@@ -765,6 +765,8 @@ const LEIS = {
   ensino_obrigatorio:{ name: 'Ensino Obrigatório', cost: 200, desc: '+2 aprovação, +1 ciência' },
   saude_universal:  { name: 'Saúde Universal',   cost: 250, desc: '+3 aprovação, +2 pop' },
   codigo_florestal: { name: 'Código Florestal',  cost: 150, desc: '+1 economia' },
+  zona_franca: { name: 'Zona Franca', cost: 300, desc: '+$20/semana' },
+  bolsa_familia: { name: 'Bolsa Família', cost: 250, desc: '+4 aprovação, +1 pop' },
 };
 
 function incomeOf(room, p) {
@@ -788,6 +790,7 @@ function incomeOf(room, p) {
   base += 20 * techLevel(p, 'valor_agreg');
   if (p.leis.includes('reforma_agraria')) base += 10;
   if (p.leis.includes('abertura_comercial')) base += 10;
+  if (p.leis.includes('zona_franca')) base += 20;
   if (p.budget){ base *= 1 + (p.budget.tra-1)*0.03 + (p.budget.edu-1)*0.02; }
   let mult = 1;
   if (p.ideology === 'democracia') mult += 0.05;
@@ -2161,6 +2164,7 @@ function performAction(room, p, msg) {
       if (msg.value === 'ensino_obrigatorio') { p.aprov = Math.min(100, p.aprov + 2); p.ciencia = (p.ciencia || 0) + 1; }
       if (msg.value === 'saude_universal') { p.aprov = Math.min(100, p.aprov + 3); p.pop += 2; }
       if (msg.value === 'codigo_florestal') p.eco += 1;
+      if (msg.value === 'bolsa_familia') { p.aprov = Math.min(100, p.aprov + 4); p.pop += 1; }
       log(room, `📜 ${cname(p)} aprova a lei "${lei.name}" (${lei.desc}).`);
       break;
     }
