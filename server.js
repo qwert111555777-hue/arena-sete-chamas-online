@@ -1213,6 +1213,7 @@ function aiTurn(room) {
     if (b.money > 3000 && Math.random() < 0.08) { b.money -= 500; b.eco += 2; }
     if (b.money > 2000 && Math.random() < 0.06) { b.money -= 350; b.ciencia = (b.ciencia || 0) + 1; b.aprov = Math.min(100, b.aprov + 3); }
     if (b.money > 2500 && Math.random() < 0.06) { b.money -= 400; b.mil += 1; }
+    if (b.mil > 8 && b.money > 500 && Math.random() < 0.05) { b.money -= 100; b.aprov = Math.min(100, b.aprov + 3); }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -1999,6 +2000,23 @@ function performAction(room, p, msg) {
       if (!spend(p, 1, 250)) return;
       p.ciencia = (p.ciencia || 0) + 1; p.aprov = Math.min(100, p.aprov + 2);
       log(room, `📚 ${cname(p)} abriu uma BIBLIOTECA pública (+1 ciência, +2❤️).`);
+      break;
+    }
+    case 'saquear_provincia': {
+      const mines = ownProvinces(p).sort((x, y) => x.infra - y.infra);
+      if (mines.length < 2) { err(p.conn, '🗺️ Você precisa de ao menos 2 províncias para saquear uma.'); return; }
+      if (!spend(p, 1, 0)) return;
+      const v = mines[0]; const loot = 150 + (v.infra || 0) * 50;
+      v.infra = Math.max(0, (v.infra || 1) - 1); p.money += loot; p.aprov = Math.max(0, p.aprov - 3);
+      const conq = v.origem !== p.id ? ' conquistada' : '';
+      log(room, `🏴 ${cname(p)} SAQUEOU a província${conq} ${v.name} (+$${loot}, −1 infra, −3❤️).`);
+      break;
+    }
+    case 'intimidar_provincia': {
+      if (!spend(p, 1, 100)) return;
+      p.aprov = Math.min(100, p.aprov + 3); p.money += 100;
+      for (const o of room.players) if (o.alive && o.id !== p.id) bumpRel(p, o, -3);
+      log(room, `😠 ${cname(p)} INTIMIDOU as províncias: ordem pelo medo (+3❤️, +$100, −3 relações).`);
       break;
     }
     case 'fundar_provincia': {
