@@ -458,3 +458,5 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (FASE 82 — LIVE dep-dagagpou01pc738patrg/5ff6af0, SERVER+CLIENTE): 🧑‍💼 ESPECIALISTAS: ECO (1⚡+$500: +2 eco+1❤️) + MIL (1⚡+$500: +2 mil+1❤️) + bots contratam.
 - 2026-09-08 (ESTUDO bens 100x real: MA2 oficial PRO/gplay — "Trade goods and resources: meat, fruits, vegetables, bread, sweets, fast food"; energia hidro/verde já saturada no jogo — base da Fase 83.
 - 2026-09-08 (FASE 83 — LIVE dep-dagaiauk1f9s73dh72o0/a782eb0, SERVER+CLIENTE): 🍖 CARNE (9º bem, $11): market+rec+floorRec+gado produz+nomes/ícones. Bots negociam genericamente.
+- 2026-09-08 (ESTUDO orgs 100x real: MA2 updatestar — "Take leadership in Interpol/IMF/WTO"; MA3 aptoide/Apple/gplay — vitórias militar/religiosa/ideológica/rankings — base da Fase 84.
+- 2026-09-08 (FASE 84 — LIVE dep-dagaj6e1egvs739u29r0/38bde19, SERVER+CLIENTE): 🏛️ LIDERANÇA EM ORGS: liderar_org (2⚡+$800, score por org, contestável) + $150/sem ao líder + bots disputam + orgs no state.
