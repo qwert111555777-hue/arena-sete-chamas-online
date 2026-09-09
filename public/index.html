@@ -386,6 +386,36 @@
   .bt-acoes span{color:#6b5a33 !important;}
   #bt-legenda{color:#6b5a33 !important;}
   #bt-legenda b{color:#7a2e1f !important;}
+  /* ===== MA3 SHELL UI-1 (arte original) ===== */
+  .hud{background:linear-gradient(180deg,rgba(42,30,16,.97),rgba(28,20,10,.97))!important;border-bottom:3px solid #c9a227!important;flex-wrap:nowrap!important;overflow-x:auto;gap:8px!important;padding:6px 10px!important;}
+  .hud .res{background:#1a1206!important;border:1px solid #8a6a1f!important;border-radius:8px!important;color:#ffe9a8!important;font-size:12px!important;padding:4px 8px!important;white-space:nowrap;}
+  .hud .res b{color:#ffd76a!important;}
+  .hud .res.inc b{color:#39d98a!important;}
+  .portrait{position:relative;font-size:30px;line-height:1;background:radial-gradient(circle at 35% 30%,#fff3d6,#d9a93c 70%);border:3px solid #c9a227;border-radius:50%;width:46px;height:46px;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 0 10px rgba(201,162,39,.7);}
+  .vipbadge{position:absolute;right:-8px;bottom:-6px;background:linear-gradient(180deg,#8a1f2d,#5a1219);border:2px solid #ffd76a;color:#ffd76a;font-size:11px;border-radius:999px;padding:0 6px;font-family:ui-monospace,monospace;}
+  .hud .me-flag{font-size:26px!important;}
+  #g-mename{color:#ffe9a8!important;font-size:12px!important;white-space:nowrap;}
+  #bottomnav{position:fixed;left:50%;transform:translateX(-50%);bottom:10px;display:flex;gap:10px;z-index:50;}
+  #bottomnav button{width:56px!important;height:56px!important;border-radius:50%!important;font-size:24px!important;background:radial-gradient(circle at 35% 30%,#ffe9a8,#d9a93c 55%,#8a6a1f)!important;border:3px solid #f5e3c0!important;box-shadow:0 4px 14px rgba(0,0,0,.6),inset 0 2px 4px #fff8!important;padding:0!important;}
+  #bottomnav button:hover{transform:scale(1.08);}
+  #transport{position:fixed;right:10px;bottom:10px;display:flex;gap:8px;align-items:center;z-index:50;background:rgba(28,20,10,.9);border:2px solid #c9a227;border-radius:12px;padding:6px 8px;}
+  #transport .date-badge{background:#1a1206;border:1px solid #8a6a1f;color:#ffe9a8;border-radius:8px;padding:6px 10px;font-family:ui-monospace,monospace;font-size:13px;font-weight:700;}
+  #transport button{width:44px!important;height:38px!important;font-size:17px!important;}
+  #rightrail{position:fixed;right:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:10px;z-index:50;align-items:center;}
+  #rightrail button{width:46px!important;height:46px!important;border-radius:50%!important;font-size:20px!important;padding:0!important;}
+  #rightrail .timer-big{font-size:13px!important;font-weight:900;font-family:ui-monospace,monospace;color:#ffe9a8;background:rgba(28,20,10,.9);border:2px solid #c9a227;border-radius:10px;padding:4px 6px;}
+  #leftdock{position:fixed;left:10px;bottom:10px;display:flex;gap:8px;z-index:50;}
+  #leftdock button{width:46px!important;height:46px!important;border-radius:10px!important;font-size:20px!important;background:linear-gradient(180deg,#2a9d9a,#1f7a78)!important;border:2px solid #f5e3c0!important;color:#fff!important;padding:0!important;box-shadow:0 4px 12px rgba(0,0,0,.5);}
+  #menuov{position:fixed;left:10px;bottom:66px;width:250px;max-height:60%;overflow-y:auto;z-index:60;background:linear-gradient(180deg,#f5e9c8,#e8d5a0);border:3px solid #c9a227;border-radius:12px;padding:10px;box-shadow:0 12px 32px rgba(0,0,0,.6);}
+  #menuov h3{margin:0 0 8px;color:#5a4210;font-size:13px;text-transform:uppercase;letter-spacing:1px;text-align:center;}
+  #menuov button{display:flex!important;width:100%!important;height:auto!important;border-radius:8px!important;font-size:14px!important;margin-bottom:5px!important;align-items:center;gap:8px;padding:7px 10px!important;text-align:left;}
+  #menuov button span{font-size:12px;font-weight:600;}
+  #menuov .date-badge{display:block;text-align:center;background:#1a1206;color:#ffe9a8;border-radius:8px;padding:5px;font-family:ui-monospace,monospace;margin-bottom:8px;}
+  .rank-panel{background:linear-gradient(180deg,#fbf3da,#efe0bd)!important;border:3px solid #c9a227!important;}
+  .rank-panel h3{color:#1f7a78!important;}
+  .rank-panel .px{background:#1f7a78!important;border-color:#145a58!important;color:#fff!important;border-radius:50%!important;width:26px;height:26px;padding:0!important;font-size:13px!important;}
+  .rank-row{background:#fff8e6!important;border:1px solid #c9a227!important;color:#3a2a05!important;}
+  @media (max-width:900px){ #bottomnav{gap:6px;bottom:6px;} #bottomnav button{width:46px!important;height:46px!important;font-size:19px!important;} .hud{gap:5px!important;} }
 </style>
 </head>
 <body>
@@ -482,9 +512,9 @@
 <!-- ============ JOGO ============ -->
 <div id="scr-game" class="hidden">
   <div class="hud">
-    <span class="logo">🏛️ PRESIDENTE ONLINE</span>
-    <span class="date-badge" id="g-date">01-01-2025</span>
-    <span class="me-flag" id="g-meflag">🏳️</span>
+    <span class="portrait">🧑‍💼<b id="g-vip" class="vipbadge" title="Títulos">0</b></span>
+    
+    
     <span style="font-weight:800; font-size:14px;" id="g-mename">—</span>
     <div class="res">💰 <b id="m-money">$0</b></div>
     <div class="res">🏭 <b id="m-eco">0</b></div>
@@ -496,27 +526,46 @@
     <div class="res" title="Pontos de ação">⚡ <b id="m-ap2">4</b></div>
     <div class="res" title="Doutrina">⚖️ <b id="m-ideo">—</b></div>
     <div class="res" title="Religião">🕌 <b id="m-rel">—</b></div>
+    <span class="me-flag" id="g-meflag">🏳️</span>
     
-    <div class="spacer"></div>
-    <span class="timer-big" id="g-timer">--:--</span>
-    <span class="date-badge" id="g-code" title="Código da sala">----</span>
-    <button id="btn-pause" title="Pausar/retomar (anfitrião)">⏸️</button>
-    <button id="btn-rank" title="Ranking mundial (renda, militar, população, indústria)">📊</button>
-    <button id="btn-news" title="Jornal mundial">📰</button>
-    <button id="btn-notif" title="Notificações" style="position:relative">🔔<b id="notif-n" class="nbadge hidden">0</b></button>
-    <button id="btn-tax" title="Impostos (4 sliders, estilo MA3)">🧾</button>
-    <button id="btn-stats" title="Estatísticas do país">📈</button>
-    <button id="btn-miss" title="Missões do presidente">🎯</button>
-    <button id="btn-orc" title="Orçamento dos ministérios">🏛️</button>
-    <button id="btn-rel" title="Religiões do mundo">🕌</button>
+    
+  </div>
+
+    <div id="bottomnav" title="Navegação">
     <button id="btn-build" title="Construir (suas construções)">🏗️</button>
     <button id="btn-tech" title="Pesquisas e tecnologias">🔬</button>
     <button id="btn-war" title="Exército e guerras">⚔️</button>
-    <button id="btn-leis" title="Leis nacionais">📜</button>
     <button id="btn-dip" title="Diplomacia">🤝</button>
     <button id="btn-spy" title="Operações secretas">🕵️</button>
     <button id="btn-nuke" title="Programa nuclear">☢️</button>
     <button id="btn-onu" title="ONU">🇺🇳</button>
+  </div>
+  <div id="transport">
+    <span class="date-badge" id="g-date">01-01-2025</span>
+    <button id="btn-pause" title="Pausar/retomar (anfitrião)">⏸️</button>
+    <button id="btn-speed2" title="Velocidade: 1x, 2x, 3x ou 5x (anfitrião)">⏱️ 1x</button>
+  </div>
+  <div id="rightrail">
+    <span class="timer-big" id="g-timer">--:--</span>
+    <button id="btn-news" title="Jornal mundial">📰</button>
+    <button id="btn-notif" title="Notificações" style="position:relative">🔔<b id="notif-n" class="nbadge hidden">0</b></button>
+    <button id="btn-rank" title="Ranking mundial (renda, militar, população, indústria)">📊</button>
+    <button id="btn-miss" title="Missões do presidente">🎯</button>
+  </div>
+  <div id="leftdock">
+    <button id="btn-menu" title="Menu">☰</button>
+    <button class="tool-btn" id="btn-market" title="Compras e vendas">🛒</button>
+    <button class="tool-btn" id="btn-help" title="Como jogar">❓</button>
+    <button class="tool-btn" id="btn-snd" title="Som liga/desliga">🔊</button>
+  </div>
+  <div id="menuov" class="hidden">
+    <h3>🏛️ Menu <button class="px" id="menu-x" style="float:right">✕</button></h3>
+    <span class="date-badge" id="g-code" title="Código da sala">----</span>
+    <button id="btn-tax" title="Impostos (4 sliders, estilo MA3)">🧾</button>
+    <button id="btn-stats" title="Estatísticas do país">📈</button>
+    <button id="btn-orc" title="Orçamento dos ministérios">🏛️</button>
+    <button id="btn-rel" title="Religiões do mundo">🕌</button>
+    <button id="btn-leis" title="Leis nacionais">📜</button>
     <button id="btn-win" title="Caminhos da vitória">🏆</button>
     <button id="btn-space" title="Programa espacial">🚀</button>
     <button id="btn-eco" title="Ecologia">🌍</button>
@@ -525,11 +574,10 @@
     <button id="btn-crise" title="Crises">🚨</button>
     <button id="btn-doc" title="Doutrina">🗽</button>
     <button id="btn-hist" title="História">📜</button>
-    <button id="btn-speed2" title="Velocidade: 1x, 2x, 3x ou 5x (anfitrião)">⏱️ 1x</button>
+    <button class="tool-btn" id="btn-rank2" title="Ranking das nações">📊</button>
     <button id="btn-sair" title="Sair do jogo (o anfitrião salva automaticamente)" style="background:linear-gradient(#ffd0d0,#d98a8a);border:2px solid #8a3040;border-radius:10px;width:38px;height:38px;font-size:16px;cursor:pointer;">⏻</button>
   </div>
-
-  <div class="game-body">
+<div class="game-body">
     <div class="map-wrap">
       
       <div id="leafmap" class="hidden"></div>
@@ -581,12 +629,7 @@
       <div id="propose-bar"></div>
       <div class="ma3-tools" id="ma3-tools"></div>
 
-      <div class="side-tools">
-        <button class="tool-btn" id="btn-snd" title="Som liga/desliga">🔊</button>
-        <button class="tool-btn" id="btn-rank2" title="Ranking das nações">📊</button>
-        <button class="tool-btn" id="btn-market" title="Compras e vendas">🛒</button>
-        <button class="tool-btn" id="btn-help" title="Como jogar">❓</button>
-      </div>
+      
       <div class="rank-panel hidden" id="rank-panel"></div>
       <div class="rank-panel hidden" id="market-panel"></div>
       <div class="rank-panel hidden" id="notif-panel"></div>
@@ -1213,7 +1256,7 @@ function updateDayHUD(){
   const m = me(); if (!m || !state) return;
   $('g-date').textContent = gameDate(state.day || 1);
   $('g-timer').textContent = '📅 DIA ' + (state.day || 1);
-  $('m-money').textContent = fmt(m.money);
+  $('m-money').textContent = fmt(m.money); const _v=document.getElementById('g-vip'); if(_v) _v.textContent=((m.stats&&m.stats.titulos)||0);
   $('m-inc').textContent = '+$' + fmt(m.dailyIncome||0) + '/d';
   $('m-ap2').textContent = m.ap;
   $('m-ideo').textContent = (IDEOLOGIES[m.ideology]||'—').split(' ')[0];
@@ -1390,7 +1433,7 @@ function renderGame(){
   $('btn-speed2').classList.toggle('hidden', !m.isHost || state.phase!=='game');
   if (state.phase==='game') $('btn-speed2').textContent = '⏱️ ' + (state.speedMul || 1) + 'x';
   $('btn-pause').textContent = state.paused ? '▶️' : '⏸️';
-  $('m-money').textContent = fmt(m.money);
+  $('m-money').textContent = fmt(m.money); const _v=document.getElementById('g-vip'); if(_v) _v.textContent=((m.stats&&m.stats.titulos)||0);
   $('m-inc').textContent = '+$' + fmt(m.dailyIncome||0) + '/d';
   $('m-ap2').textContent = m.ap;
   $('m-ideo').textContent = (IDEOLOGIES[m.ideology]||'—').split(' ')[0];
@@ -2146,7 +2189,10 @@ $('btn-sair').onclick = () => {
   send({t:'sair'});
 };
 document.querySelectorAll('.round-btn').forEach(b => b.onclick = () => { sfx('click'); send({t:'action', action:b.dataset.act}); });
-$('btn-snd').onclick = () => { muted = !muted; $('btn-snd').textContent = muted ? '🔇' : '🔊'; $('btn-snd').classList.toggle('active', !muted); };
+$('btn-menu').onclick = () => $('menuov').classList.toggle('hidden');
+  $('menu-x').onclick = () => $('menuov').classList.add('hidden');
+  document.querySelectorAll('#menuov button[id^="btn-"]').forEach(b => { const s = document.createElement('span'); s.textContent = b.title || b.id; b.appendChild(s); b.addEventListener('click', () => $('menuov').classList.add('hidden')); });
+  $('btn-snd').onclick = () => { muted = !muted; $('btn-snd').textContent = muted ? '🔇' : '🔊'; $('btn-snd').classList.toggle('active', !muted); };
 
 $('inp-code').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-join').click(); });
 $('inp-name').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-create').click(); });
