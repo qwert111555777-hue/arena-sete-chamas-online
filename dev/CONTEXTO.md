@@ -473,3 +473,5 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (FASE 89 — LIVE dep-dagb0a1t0dsc73cdh7i0/cd835b2, SERVER+CLIENTE): 🏴 PÓS-CONQUISTA: SAQUEAR (1⚡: +$150+50×infra, −1 infra, −3❤️, req 2 prov) + INTIMIDAR (1⚡+$100: +3❤️+$100, −3 rel) + bots intimidam. Cadeia 4AP validada.
 - 2026-09-08 (ESTUDO leis 100x real: gplay MA2 — "Enact new laws / Issue laws"; apkpure — maravilhas/eventos globais; memu/sharebie MA3 diplomacia/ONU — base da Fase 90.
 - 2026-09-08 (FASE 90 — LIVE dep-dagb10tbedkc73fqnimg/17812b6, SERVER+CLIENTE): ⚖️ LEIS: ECONÔMICA (1⚡+$200: +1eco+$250−2❤️) + SOCIAL (1⚡+$200: +5❤️) + bots sociais. Cadeia 2AP validada.
+- 2026-09-08 (ESTUDO seguranca 100x real: MA2 — "Defend against pirate and terrorist attacks / Manage Pirates and Terrorists" (mumuplayer/modcombo/happymod); MA3 — crises + ministerios (memu/prodroid) — base da Fase 91.
+- 2026-09-08 (FASE 91 — LIVE dep-dagb1kht0dsc73cdmlv0/528d5f0, SERVER+CLIENTE): ☠️ SEGURANÇA: CAÇAR PIRATAS (1⚡+$150: +$200+2❤️) + ANTITERROR (1⚡+$250: +4❤️+$100) + bots caçam. Cadeia 2AP validada.
