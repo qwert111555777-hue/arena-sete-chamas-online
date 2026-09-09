@@ -435,6 +435,31 @@
   .minsegs span{display:inline-block;width:30px;height:12px;margin-right:3px;border-radius:2px;background:#2e2a1e;border:1px solid #8a6a1f;}
   .minsegs span.on{background:linear-gradient(#ffe9a8,#d9a93c);}
   .minbtn{font-size:20px!important;padding:8px 12px!important;flex:none;}
+  /* ===== UI-3 PARIDADE MA3 (arte original) ===== */
+  .nation-panel{background:linear-gradient(180deg,#f7efdb,#e9d9b2)!important;border:3px solid #c9a227!important;color:#2b2416!important;max-height:72vh;overflow-y:auto;width:284px!important;}
+  .nation-panel .nm small{color:#6b5a33!important;}
+  .nation-panel .px{background:radial-gradient(circle at 35% 30%,#35b5b2,#1f7a78 70%)!important;border:2px solid #f5e3c0!important;color:#fff!important;border-radius:50%!important;width:26px;height:26px;padding:0!important;font-weight:900;}
+  .np-tabs{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;}
+  .np-tabs button{flex:1 1 20%;padding:5px 2px;font-size:15px;background:#e2cd96;border:2px solid #8a6a1f;border-radius:8px;cursor:pointer;line-height:1;}
+  .np-tabs button.on{background:linear-gradient(180deg,#2a9d9a,#1f7a78)!important;border-color:#c9a227!important;box-shadow:0 0 8px #c9a227;color:#fff!important;}
+  .np-stats .ms{background:#fff8e6!important;border:1px solid #c9b98b!important;color:#2b2416!important;}
+  .nation-panel .prov{background:#fff8e6!important;border:1px solid #c9b98b!important;border-radius:8px;color:#2b2416;}
+  .nation-panel .xrow{background:#fff8e6!important;border:1px solid #c9b98b!important;color:#2b2416!important;}
+  .nation-panel .xn{color:#2b2416!important;}
+  .nation-panel .pips{color:#8a6a1f!important;}
+  .nation-panel .chip{background:#fff8e6!important;border:2px solid #8a6a1f!important;color:#2b2416!important;font-weight:700;cursor:pointer;}
+  .nation-panel .chip.on{background:#e8f5e9!important;border-color:#2e7d32!important;}
+  .nation-panel .xrow button,.np-provs button{background:linear-gradient(180deg,#2a9d9a,#1f7a78)!important;color:#fff!important;border:2px solid #145a58!important;border-radius:8px;font-weight:700;cursor:pointer;padding:4px 10px;}
+  .nation-panel button:disabled{opacity:.45;}
+  .np-actions button{background:linear-gradient(180deg,#ffe9a8,#d9a93c)!important;border:2px solid #8a6a1f!important;border-radius:10px!important;color:#3a2a05!important;font-weight:800;}
+  .np-note{color:#6b5a33!important;}
+  .techgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  @media (max-width:560px){.techgrid{grid-template-columns:1fr;}}
+  .tctier{flex:none;width:44px;height:44px;border-radius:10px;background:linear-gradient(180deg,#8a1f2d,#5a1219);border:2px solid #ffd76a;color:#ffd76a;font-weight:900;font-size:15px;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;}
+  .tcinfo{flex:1;min-width:0;}
+  .tcinfo b{font-size:13px;color:#3a2a05;display:block;}
+  .tcdesc{font-size:11px;color:#6b5a33;}
+  .dipport{flex:none;font-size:26px;background:linear-gradient(180deg,#fdf6e3,#e2cd96);border:2px solid #8a6a1f;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;}
 </style>
 </head>
 <body>
@@ -1760,7 +1785,7 @@ function renderPanel(){
 
   if (p.id === myId && canAct){
     note.textContent = '🫵 Sua nação — ações internas nos botões redondos e abaixo.';
-    const sub2 = t => { const d=document.createElement('div'); d.className='np-sub'; d.textContent=t; extra.appendChild(d); };
+    const sub2 = t => { const d=document.createElement('div'); d.className='np-sub'; d.dataset.grp=t; d.textContent=t; extra.appendChild(d); };
     // economia: impostos + dívida
     sub2('🧾 Impostos · 🏦 Dívida ' + fmt(p.debt));
     const r1 = document.createElement('div'); r1.className='xrow';
@@ -1852,7 +1877,7 @@ function renderPanel(){
       a.onclick = ()=>{ window.techAba = id; renderPanel(); };
       abasDiv.appendChild(a);
     });
-    extra.appendChild(abasDiv);
+    abasDiv.dataset.tab='tec'; extra.appendChild(abasDiv);
 
     const chaves = Object.keys(TECHS).filter(k=>TECHS[k][0]===window.techAba);
     sub2('🔬 Pesquisa (1⚡) — ' + chaves.length + ' tecnologias');
@@ -2224,6 +2249,38 @@ const _ovObs = new MutationObserver(muts => {
     }
   });
   try { _ovObs.observe(document.body, { childList: true }); } catch (e) {}
+  window._npTab = window._npTab || 'info';
+  const NPTABS = [['info','📰'],['prov','🗺️'],['gov','🏛️'],['eco','💰'],['seg','🛡️'],['tec','🔬'],['aco','⚔️']];
+  const npGrp = t => /Imposto|Dívida|Divida/.test(t)?'eco':/Ideologia|Religi|Gabinete/.test(t)?'gov':/Seguran/.test(t)?'seg':/Pesquisa/.test(t)?'tec':'gov';
+  function npApply(){
+    const np = document.getElementById('np'); if (!np || np.classList.contains('hidden')) return;
+    let bar = document.getElementById('np-tabs');
+    if (!bar) {
+      bar = document.createElement('div'); bar.id = 'np-tabs'; bar.className = 'np-tabs';
+      bar.innerHTML = NPTABS.map(([id,em])=>'<button data-npt="'+id+'">'+em+'</button>').join('');
+      bar.querySelectorAll('button').forEach(b=>b.onclick=()=>{window._npTab=b.dataset.npt;npApply();});
+      np.querySelector('.np-head').after(bar);
+    }
+    const ex = document.getElementById('np-extra');
+    if (ex) {
+      let cur = null;
+      [...ex.children].forEach(el=>{
+        if (el.classList && el.classList.contains('np-sub')) { cur = npGrp(el.textContent||''); el.dataset.g = cur; }
+        else if (!el.dataset.g) el.dataset.g = el.dataset.tab || cur || 'gov';
+      });
+    }
+    let T = window._npTab;
+    const has = id => { const e=document.getElementById(id); return !!(e && e.children.length>0); };
+    const exHas = g => !!(ex && [...ex.children].some(el=>el.dataset.g===g));
+    const vis = {info:has('np-stats'), prov:has('np-provs'), gov:exHas('gov'), eco:exHas('eco'), seg:exHas('seg'), tec:exHas('tec'), aco:has('np-actions')};
+    if (!vis[T]) { const f = NPTABS.find(([id])=>vis[id]); if (f) { window._npTab=f[0]; T=f[0]; } }
+    bar.querySelectorAll('button').forEach(b=>{ b.classList.toggle('on', b.dataset.npt===T); b.style.display = vis[b.dataset.npt]?'':'none'; });
+    const show = (id,on)=>{ const e=document.getElementById(id); if(e) e.style.display = on?'':'none'; };
+    show('np-stats', T==='info'); show('np-note', T==='info');
+    show('np-provs', T==='prov'); show('np-actions', T==='aco');
+    if (ex) { [...ex.children].forEach(el=>{ el.style.display = (el.dataset.g===T)?'':'none'; }); ex.style.display = ['eco','gov','seg','tec'].includes(T)?'':'none'; }
+  }
+  new MutationObserver(()=>{ try{npApply();}catch(e){} }).observe(document.getElementById('np'), {childList:true, subtree:true});
   $('btn-menu').onclick = () => $('menuov').classList.toggle('hidden');
   $('menu-x').onclick = () => $('menuov').classList.add('hidden');
   document.querySelectorAll('#menuov button[id^="btn-"]').forEach(b => { const s = document.createElement('span'); s.textContent = b.title || b.id; b.appendChild(s); b.addEventListener('click', () => $('menuov').classList.add('hidden')); });
@@ -3612,7 +3669,7 @@ $('btn-dip').onclick = () => {
     + '<div>'+list.map(p=>{ const r=rel(p); const atWar=m.wars.includes(p.id); const ally=m.allies.includes(p.id);
       const col = r>=70?'#2e7d32':(r>=40?'#8a6a1f':'#a33');
       return '<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:7px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px">'
-      + '<div style="flex:1;min-width:0"><b style="font-size:13px">'+esc(cname(p))+'</b> <small style="color:#6b5a33">'+status(p)+'</small>'
+      + '<div class="dipport">🧑‍💼</div><div style="flex:1;min-width:0"><b style="font-size:13px;color:#1f7a78">'+esc(cname(p))+'</b> <small style="color:#6b5a33">'+status(p)+'</small>'
       + '<div style="height:8px;background:#d9c795;border-radius:4px;margin-top:4px"><div style="height:8px;width:'+Math.max(0,Math.min(100,r))+'%;background:'+col+';border-radius:4px"></div></div></div>'
       + '<span style="font-size:11px;font-weight:800;color:'+col+'">'+r+'</span>'
       + '<button data-gift="'+p.id+'" title="Presente $100 (+8)" style="padding:6px 8px;cursor:pointer" '+((!atWar&&m.ap>=1&&m.money>=100)?'':'disabled')+'>🎁</button>'
@@ -3646,9 +3703,9 @@ $('btn-tech').onclick = () => {
     ov.innerHTML = '<div class="paper" style="width:min(620px,94vw)"><h1 style="font-size:20px">🔬 PESQUISAS</h1><img src="headers/tech.jpg" style="width:100%;height:110px;object-fit:cover;border-radius:8px;border:2px solid #8a6a1f;margin-bottom:8px">'
     + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">' + TECH_TREES.map(([id,rot])=>'<button data-tree="'+id+'" style="flex:1;padding:6px 4px;cursor:pointer;font-size:12px;font-weight:800;border-radius:6px;border:2px solid '+(tAba===id?'#2e7d32':'#8a6a1f')+';background:'+(tAba===id?'#e8f5e9':'#fff8e6')+';color:#2b2416">'+rot+'</button>').join('') + '</div>'
     + '<div style="background:#e8f0ff;border:2px solid #3f6fb5;border-radius:8px;padding:6px 10px;margin-bottom:8px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px">Educacao Nv'+(((m.sectors&&m.sectors.educacao)||0))+' = -'+(((m.sectors&&m.sectors.educacao)||0)*4)+'% nas pesquisas</div><button data-univ style="padding:6px 10px;cursor:pointer" '+((m.ap>=2&&m.money>=700)?'':'disabled')+'>Universidade (2AP+$700)</button></div>'
-    + '<div>' + chaves.map(k=>{ const lv = techLv(m,k); const maxed = lv>=TECH_MAX; const cost = maxed?0:TECH_COSTS[lv];
+    + '<div class="techgrid">' + chaves.map(k=>{ const lv = techLv(m,k); const maxed = lv>=TECH_MAX; const cost = maxed?0:TECH_COSTS[lv]; const RM=['0','I','II','III','IV','V'];
       return '<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px">'
-      + '<div style="flex:1"><b style="font-size:13px">'+TECHS[k][1]+'</b><div style="font-size:11px;color:#6b5a33">'+(TECHS[k][2]||'')+'</div><div class="segs" style="margin-top:4px">'+[0,1,2,3,4].map(i=>'<span class="seg'+(i<lv?' on':'')+'"></span>').join('')+'</div></div>'
+      + '<div class="tctier">'+RM[lv]+'</div><div class="tcinfo"><b>'+TECHS[k][1]+'</b><div class="tcdesc">'+(TECHS[k][2]||'')+'</div><div class="minsegs">'+[0,1,2,3,4].map(i=>'<span class="'+(i<lv?'on':'')+'"></span>').join('')+'</div></div>'
       + '<button data-tres="'+k+'" style="padding:8px 12px;cursor:pointer;white-space:nowrap" '+((maxed||m.ap<1||m.money<cost)?'disabled':'')+'>'+(maxed?'✔ MÁX':'Nv '+(lv+1)+' · $'+cost)+'</button></div>'; }).join('') + '</div>'
     + '<div style="text-align:center;margin-top:10px"><button id="tx-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
     ov.querySelectorAll('[data-tree]').forEach(b=>b.onclick=()=>{tAba=b.dataset.tree;render();});
