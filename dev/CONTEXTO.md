@@ -460,3 +460,5 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (FASE 83 — LIVE dep-dagaiauk1f9s73dh72o0/a782eb0, SERVER+CLIENTE): 🍖 CARNE (9º bem, $11): market+rec+floorRec+gado produz+nomes/ícones. Bots negociam genericamente.
 - 2026-09-08 (ESTUDO orgs 100x real: MA2 updatestar — "Take leadership in Interpol/IMF/WTO"; MA3 aptoide/Apple/gplay — vitórias militar/religiosa/ideológica/rankings — base da Fase 84.
 - 2026-09-08 (FASE 84 — LIVE dep-dagaj6e1egvs739u29r0/38bde19, SERVER+CLIENTE): 🏛️ LIDERANÇA EM ORGS: liderar_org (2⚡+$800, score por org, contestável) + $150/sem ao líder + bots disputam + orgs no state.
+- 2026-09-08 (ESTUDO energia 100x real: MA3 mwm — vassalos/envio de tropas/contratos; MA2/MA3 — energia/apagões; enviar_tropas e acordos já existem no jogo — base da Fase 85.
+- 2026-09-08 (FASE 85 — LIVE dep-dagajvpt0dsc73cbdbqg/eb5ede6, SERVER+CLIENTE): ⚡ ENERGIA EMERGENCIAL: GERADOR (1⚡+$300: +40⚡) + RACIONAMENTO (1⚡: −50% consumo 7d, −2❤️) + hook needEn. Bots já se salvam (L1172).
