@@ -1370,6 +1370,13 @@ function aiTurn(room) {
     if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
     if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 200; }
     if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
+    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 150; }
+    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
+    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
+    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
+    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
+    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
+    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -4061,6 +4068,90 @@ function performAction(room, p, msg) {
       if (!spend(p, 1, 200)) return;
       p.money += 150; p.aprov = Math.min(100, p.aprov + 4);
       log(room, `✝️ ${cname(p)} caminhou VIA-SACRA (+$150, +4❤️).`);
+      break;
+    }
+    case 'ganza': {
+      if (!spend(p, 1, 150)) return;
+      p.money += 150; p.aprov = Math.min(100, p.aprov + 3);
+      log(room, `🪇 ${cname(p)} chacoalhou GANZÁ (+$150, +3❤️).`);
+      break;
+    }
+    case 'jabuticaba': {
+      if (!spend(p, 1, 150)) return;
+      p.money += 200; p.aprov = Math.min(100, p.aprov + 2);
+      log(room, `🍇 ${cname(p)} colheu JABUTICABA (+$200, +2❤️).`);
+      break;
+    }
+    case 'jaca': {
+      if (!spend(p, 1, 150)) return;
+      p.money += 200; p.aprov = Math.min(100, p.aprov + 2);
+      log(room, `🍈 ${cname(p)} abriu JACA (+$200, +2❤️).`);
+      break;
+    }
+    case 'fruta_pao': {
+      if (!spend(p, 1, 150)) return;
+      p.money += 200; p.aprov = Math.min(100, p.aprov + 2);
+      log(room, `🍞 ${cname(p)} assou FRUTA-PÃO (+$200, +2❤️).`);
+      break;
+    }
+    case 'surubim': {
+      if (!spend(p, 1, 250)) return;
+      p.money += 300; p.aprov = Math.min(100, p.aprov + 1);
+      log(room, `🐟 ${cname(p)} pescou SURUBIM (+$300, +1❤️).`);
+      break;
+    }
+    case 'pintado': {
+      if (!spend(p, 1, 250)) return;
+      p.money += 300; p.aprov = Math.min(100, p.aprov + 1);
+      log(room, `🐠 ${cname(p)} fisgou PINTADO (+$300, +1❤️).`);
+      break;
+    }
+    case 'dourada': {
+      if (!spend(p, 1, 250)) return;
+      p.money += 300; p.aprov = Math.min(100, p.aprov + 1);
+      log(room, `🐠 ${cname(p)} grelhou DOURADA (+$300, +1❤️).`);
+      break;
+    }
+    case 'robalo': {
+      if (!spend(p, 1, 250)) return;
+      p.money += 300; p.aprov = Math.min(100, p.aprov + 1);
+      log(room, `🐟 ${cname(p)} serviu ROBALO (+$300, +1❤️).`);
+      break;
+    }
+    case 'pato_tucupi': {
+      if (!spend(p, 1, 250)) return;
+      p.money += 300; p.aprov = Math.min(100, p.aprov + 1);
+      log(room, `🦆 ${cname(p)} cozinhou PATO NO TUCUPI (+$300, +1❤️).`);
+      break;
+    }
+    case 'pequi': {
+      if (!spend(p, 1, 150)) return;
+      p.money += 200; p.aprov = Math.min(100, p.aprov + 2);
+      log(room, `🫒 ${cname(p)} roeu PEQUI (+$200, +2❤️).`);
+      break;
+    }
+    case 'lava_pes': {
+      if (!spend(p, 1, 200)) return;
+      p.money += 150; p.aprov = Math.min(100, p.aprov + 4);
+      log(room, `🦶 ${cname(p)} celebrou LAVA-PÉS (+$150, +4❤️).`);
+      break;
+    }
+    case 'setenario': {
+      if (!spend(p, 1, 200)) return;
+      p.money += 150; p.aprov = Math.min(100, p.aprov + 4);
+      log(room, `🙏 ${cname(p)} cumpriu SETENÁRIO (+$150, +4❤️).`);
+      break;
+    }
+    case 'angelus': {
+      if (!spend(p, 1, 200)) return;
+      p.money += 150; p.aprov = Math.min(100, p.aprov + 4);
+      log(room, `🔔 ${cname(p)} tocou ANGELUS (+$150, +4❤️).`);
+      break;
+    }
+    case 'te_deum': {
+      if (!spend(p, 1, 200)) return;
+      p.money += 150; p.aprov = Math.min(100, p.aprov + 4);
+      log(room, `🎶 ${cname(p)} entoou TE DEUM (+$150, +4❤️).`);
       break;
     }
     case 'fundar_provincia': {
