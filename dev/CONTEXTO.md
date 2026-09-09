@@ -462,3 +462,5 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (FASE 84 — LIVE dep-dagaj6e1egvs739u29r0/38bde19, SERVER+CLIENTE): 🏛️ LIDERANÇA EM ORGS: liderar_org (2⚡+$800, score por org, contestável) + $150/sem ao líder + bots disputam + orgs no state.
 - 2026-09-08 (ESTUDO energia 100x real: MA3 mwm — vassalos/envio de tropas/contratos; MA2/MA3 — energia/apagões; enviar_tropas e acordos já existem no jogo — base da Fase 85.
 - 2026-09-08 (FASE 85 — LIVE dep-dagajvpt0dsc73cbdbqg/eb5ede6, SERVER+CLIENTE): ⚡ ENERGIA EMERGENCIAL: GERADOR (1⚡+$300: +40⚡) + RACIONAMENTO (1⚡: −50% consumo 7d, −2❤️) + hook needEn. Bots já se salvam (L1172).
+- 2026-09-08 (ESTUDO educação 100x real: Reddit Age of Modernity — "fully fund ministry of education then research and science"; MA3 soft112 — educação/infraestrutura/ciência; natalidade fiscal já existia — base da Fase 86.
+- 2026-09-08 (FASE 86 — LIVE dep-dagaknnqj5pc738a1dg0/0ae2b4d, SERVER+CLIENTE): 🎓 EDUCAÇÃO 2.0: ESCOLA TÉCNICA (1⚡+$350: +1 ciência+3❤️+1 eco) + ALFABETIZAÇÃO (1⚡+$250: +5❤️+2 pop) + bots educam.
