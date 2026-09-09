@@ -578,7 +578,7 @@ function snapshot(room) {
       isHost: p.id === room.hostId, reason: p.eliminatedReason,
       nuclear: p.nuclear, influencia: Math.round(p.influencia), fe: Math.round(p.fe), wars: p.wars, abrigo: !!p.abrigo,
       provinces: p.provinces, sanctioning: p.sanctioning, sanctionedBy: p.sanctionedBy,
-      taxRate: p.taxRate, taxes: p.taxes || {corp:10, rend:10, prod:10, amb:5}, budget: p.budget || {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: p.debt, ideology: p.ideology, religion: p.religion,
+      orgs: p.orgs || [], taxRate: p.taxRate, taxes: p.taxes || {corp:10, rend:10, prod:10, amb:5}, budget: p.budget || {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: p.debt, ideology: p.ideology, religion: p.religion,
       ministers: p.ministers, techs: p.techs, techLv: p.techLv || {}, sectors: p.sectors, space: p.space, pollution: Math.round(p.pollution != null ? p.pollution : 10),
       relations: p.bot ? {} : p.relations, embassies: p.embassies, trades: p.trades,
       blockading: p.blockading, blockadedBy: p.blockadedBy,
@@ -1011,6 +1011,8 @@ function premiosSemanais(room) {
   }
   const tops = cats.map(([nm, f]) => `${nm}: ${cname(alive.slice().sort((x, y) => f(y) - f(x))[0])}`).join(' | ');
   log(room, `PRÊMIOS SEMANAIS: ${tops}. Líderes recebem bônus + títulos!`);
+  room.orgLeader = room.orgLeader || { interpol: null, fmi: null, omc: null };
+  for (const k of ['interpol', 'fmi', 'omc']) { const ld = room.players.find(x => x.id === room.orgLeader[k] && x.alive && (x.orgs || []).includes(k)); if (ld) { ld.money += 150; ld.stats.titulos = (ld.stats.titulos || 0) + 1; } }
 }
 
 function resolveWeek(room) {
@@ -1194,6 +1196,7 @@ function aiTurn(room) {
     if (b.money > 2500 && ((b.sectors && b.sectors.turismo) || 0) < 5 && Math.random() < 0.06) { b.money -= 500; b.sectors.turismo = ((b.sectors && b.sectors.turismo) || 0) + 1; }
     if (b.crise && b.crise.tipo === 'pandemia' && b.money > 500 && Math.random() < 0.3) { b.money -= 250; b.crise = null; b.pop += 3; log(room, `💉 ${cname(b)} erradicou a pandemia com vacinação em massa!`); }
     if (b.money > 3000 && Math.random() < 0.05) { b.orgs = b.orgs || []; const oo = ['interpol','fmi','omc'].filter(k => !b.orgs.includes(k)); if (oo.length) { b.money -= 400; b.orgs.push(oo[0]); } }
+    if ((b.orgs || []).length && b.money > 4000 && Math.random() < 0.05) { b.money -= 800; room.orgLeader = room.orgLeader || { interpol: null, fmi: null, omc: null }; const k = b.orgs[Math.floor(Math.random() * b.orgs.length)]; const sc = o => k === 'interpol' ? o.mil : k === 'fmi' ? o.eco + Math.floor(o.money / 1000) : (o.trades || []).length * 2 + o.eco; const cur = room.players.find(x => x.id === room.orgLeader[k] && x.alive); if (!cur || sc(b) > sc(cur)) { room.orgLeader[k] = b.id; log(room, `🏛️ ${cname(b)} assumiu a liderança da ${k.toUpperCase()}!`); } }
     if (b.money > 5000 && Math.random() < 0.03) { const poor = room.players.find(o => o.alive && o !== b && (o.money || 0) < 800 && relBetween(b, o) >= 50); if (poor) { b.money -= 1000; poor.money += 1000; poor.dividas = poor.dividas || []; poor.dividas.push({ to: b.id, valor: 1200, dia: room.day + 28 }); log(room, `💸 ${cname(b)} emprestou $1000 a ${cname(poor)}.`); } }
     if (b.money > 3000 && Math.random() < 0.05) { const so = room.players.find(o => o.alive && o !== b && o.crise && relBetween(b, o) >= 50); if (so) { b.money -= 300; so.money += 300; bumpRel(b, so, 10); } }
     if (((b.stats && b.stats.vitorias) || 0) > 0 && b.money > 1000 && Math.random() < 0.1) { b.money -= 200; b.mil = Math.min(25, b.mil + 1); b.aprov = Math.min(100, b.aprov + 3); }
@@ -1749,6 +1752,22 @@ function performAction(room, p, msg) {
       if (!spend(p, 2, 600)) return;
       p.pop += 5; p.aprov = Math.min(100, p.aprov + 6); p.ciencia = (p.ciencia || 0) + 1;
       log(room, `🎗️ ${cname(p)} lançou o programa COMBATE AO CÂNCER (+5 pop, +6❤️, +1 ciência).`);
+      break;
+    }
+    case 'liderar_org': {
+      const oid = msg.value; const ON2 = { interpol: '🚔 INTERPOL', fmi: '🏦 FMI', omc: '🌐 OMC' };
+      if (!ON2[oid]) return;
+      if (!(p.orgs || []).includes(oid)) { err(p.conn, 'Só membros podem disputar a liderança.'); return; }
+      if (!spend(p, 2, 800)) return;
+      room.orgLeader = room.orgLeader || { interpol: null, fmi: null, omc: null };
+      const score = o => oid === 'interpol' ? o.mil + ((o.seguranca && o.seguranca.policia) || 0) * 2 : oid === 'fmi' ? o.eco + Math.floor(o.money / 1000) : (o.trades || []).length * 2 + o.eco;
+      const cur = room.players.find(x => x.id === room.orgLeader[oid] && x.alive);
+      if (!cur || score(p) > score(cur)) {
+        room.orgLeader[oid] = p.id;
+        log(room, `${ON2[oid]} ${cname(p)} assumiu a LIDERANÇA da organização! (+$150/sem).`);
+      } else {
+        log(room, `${ON2[oid]} ${cname(p)} disputou a liderança mas ${cname(cur)} segue no comando.`);
+      }
       break;
     }
     case 'org_interpol': case 'org_fmi': case 'org_omc': {
