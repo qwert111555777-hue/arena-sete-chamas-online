@@ -442,3 +442,5 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (FASE 74 — LIVE dep-daga0qmq1p3s73c92130/35030e4, SERVER+CLIENTE): 🎭 CULTURA 2.0: MUSEU (1⚡+$300: +3 doutrina+$100+2❤️) + BIBLIOTECA (1⚡+$250: +1 ciência+2❤️) + bots culturam.
 - 2026-09-08 (ESTUDO províncias 100x real: MA3/aptoide — expandir território, anexar estados, conceder independência; MA2 mumu — desenvolvimento de províncias — base da Fase 75.
 - 2026-09-08 (FASE 75 — LIVE dep-daga21m1egvs739rf3h0/12506e6, SERVER+CLIENTE): 🏘️ PROVÍNCIAS 2.0: FUNDAR (2⚡+$1000: +1 província, máx 6) + VENDER (1⚡: +$300+100×infra da mais fraca, req 2+) + bots vendem se pobres. Cadeia 3AP validada.
+- 2026-09-08 (ESTUDO esportes 100x real: MA2 oficial Play Store — "hold concerts, film festivals, carnivals, the Davis Cup, FIFA World Cup, Olympic Games" + Ministério do Turismo; MA3 aptoide — vitórias por rankings — base da Fase 76.
+- 2026-09-08 (FASE 76 — LIVE dep-dagabl6k1f9s73dgau6g/d0ca555, SERVER+CLIENTE): ⚽🎾 ESPORTES 2.0: DAVIS (1⚡+$400: +3❤️+$200+2 doutrina) + COPA DO MUNDO FIFA (Esp2, 2⚡+$1200: +6❤️+$800+6 doutrina) + bots sediam Davis. 2 smokes verdes.
