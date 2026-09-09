@@ -464,3 +464,5 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (FASE 85 — LIVE dep-dagajvpt0dsc73cbdbqg/eb5ede6, SERVER+CLIENTE): ⚡ ENERGIA EMERGENCIAL: GERADOR (1⚡+$300: +40⚡) + RACIONAMENTO (1⚡: −50% consumo 7d, −2❤️) + hook needEn. Bots já se salvam (L1172).
 - 2026-09-08 (ESTUDO educação 100x real: Reddit Age of Modernity — "fully fund ministry of education then research and science"; MA3 soft112 — educação/infraestrutura/ciência; natalidade fiscal já existia — base da Fase 86.
 - 2026-09-08 (FASE 86 — LIVE dep-dagaknnqj5pc738a1dg0/0ae2b4d, SERVER+CLIENTE): 🎓 EDUCAÇÃO 2.0: ESCOLA TÉCNICA (1⚡+$350: +1 ciência+3❤️+1 eco) + ALFABETIZAÇÃO (1⚡+$250: +5❤️+2 pop) + bots educam.
+- 2026-09-08 (ESTUDO militar 100x real: MA1 oficial gplay/Apple — campanhas militares, frotas/unidades, enviar tropas; enviar_tropas e parada já existiam — base da Fase 87.
+- 2026-09-08 (FASE 87 — LIVE dep-dagaljuq1p3s73b84go0/f618c76, SERVER+CLIENTE): 🪖 EXERCÍCIOS: NAVAL (1⚡+$400: +1 mil+2❤️+3 XP) + CONJUNTO (2⚡+$600: +2 mil+4 XP+5 rel aliados) + bots treinam.
