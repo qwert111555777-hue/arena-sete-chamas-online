@@ -466,3 +466,6 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (FASE 86 — LIVE dep-dagaknnqj5pc738a1dg0/0ae2b4d, SERVER+CLIENTE): 🎓 EDUCAÇÃO 2.0: ESCOLA TÉCNICA (1⚡+$350: +1 ciência+3❤️+1 eco) + ALFABETIZAÇÃO (1⚡+$250: +5❤️+2 pop) + bots educam.
 - 2026-09-08 (ESTUDO militar 100x real: MA1 oficial gplay/Apple — campanhas militares, frotas/unidades, enviar tropas; enviar_tropas e parada já existiam — base da Fase 87.
 - 2026-09-08 (FASE 87 — LIVE dep-dagaljuq1p3s73b84go0/f618c76, SERVER+CLIENTE): 🪖 EXERCÍCIOS: NAVAL (1⚡+$400: +1 mil+2❤️+3 XP) + CONJUNTO (2⚡+$600: +2 mil+4 XP+5 rel aliados) + bots treinam.
+- 2026-09-08 (ESTUDO crises 100x real: MA2 playmods/updatestar — eventos internos (comícios/manifestações/passeatas), downturns econômicos, soft-vs-ditador; MA1 oficial — campanhas/frotas — base da Fase 88.
+- 2026-09-08 (FASE 88 — LIVE dep-dagavbtbedkc73fqecf0/e39d414, SERVER+CLIENTE): 🚨 CRISES 2.0: MANIFESTAÇÃO (negociar/dispersar/ignorar) + RECESSÃO (pacote/austeridade/ignorar). 12 crises, switch 22. Bots ajudam genericamente.
+- 2026-09-08 (INFRA entre turnos): snapshots excluem .git/config+remotes, identity, node_modules e processos — restaurados via Render API + GH_TOKEN (dep-dagauu3l550s73bb7v00 foi deploy falso de código antigo, ignorar).
