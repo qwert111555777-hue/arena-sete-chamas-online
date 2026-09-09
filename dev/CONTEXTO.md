@@ -469,3 +469,5 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-08 (ESTUDO crises 100x real: MA2 playmods/updatestar — eventos internos (comícios/manifestações/passeatas), downturns econômicos, soft-vs-ditador; MA1 oficial — campanhas/frotas — base da Fase 88.
 - 2026-09-08 (FASE 88 — LIVE dep-dagavbtbedkc73fqecf0/e39d414, SERVER+CLIENTE): 🚨 CRISES 2.0: MANIFESTAÇÃO (negociar/dispersar/ignorar) + RECESSÃO (pacote/austeridade/ignorar). 12 crises, switch 22. Bots ajudam genericamente.
 - 2026-09-08 (INFRA entre turnos): snapshots excluem .git/config+remotes, identity, node_modules e processos — restaurados via Render API + GH_TOKEN (dep-dagauu3l550s73bb7v00 foi deploy falso de código antigo, ignorar).
+- 2026-09-08 (ESTUDO pós-conquista 100x real: MA2 mwm UX — "Post-Conquest Policies: Plunder Province, Intimidate"; MA3 soft112 — vitórias/desenvolvimento — base da Fase 89.
+- 2026-09-08 (FASE 89 — LIVE dep-dagb0a1t0dsc73cdh7i0/cd835b2, SERVER+CLIENTE): 🏴 PÓS-CONQUISTA: SAQUEAR (1⚡: +$150+50×infra, −1 infra, −3❤️, req 2 prov) + INTIMIDAR (1⚡+$100: +3❤️+$100, −3 rel) + bots intimidam. Cadeia 4AP validada.
