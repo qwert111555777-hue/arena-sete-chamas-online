@@ -928,7 +928,7 @@ function dayTick(room) {
     const infra = ownProvinces(p).reduce((sx, x) => sx + x.infra, 0);
     let nBld = 0;
     for (const k in p.buildings) nBld += (p.buildings[k] || 0);
-    const needEn = Math.ceil(nBld / 4);
+    const needEn = Math.ceil(nBld / 4) * (room.day < (p.racionUntil || 0) ? 0.5 : 1);
     p.rec.energia += (3 + infra * 2 + (p.solar ? 14 : 0)) / DAY_DIV;
     let mult = 1;
     if (nBld > 0 && p.rec.energia < needEn / DAY_DIV) {
@@ -1390,6 +1390,18 @@ function performAction(room, p, msg) {
 
   switch (msg.action) {
     /* --- internos --- */
+    case 'gerador_emergencia': {
+      if (!spend(p, 1, 300)) return;
+      p.rec.energia += 40;
+      log(room, `🔌 ${cname(p)} ligou GERADORES de emergência (+40⚡).`);
+      break;
+    }
+    case 'racionamento': {
+      if (!spend(p, 1, 0)) return;
+      p.racionUntil = room.day + 7; p.aprov = Math.max(0, p.aprov - 2);
+      log(room, `💡 ${cname(p)} decretou RACIONAMENTO de energia (−2❤️, consumo −50% por 7 dias).`);
+      break;
+    }
     case 'especialista_eco': {
       if (!spend(p, 1, 500)) return;
       p.eco += 2; p.aprov = Math.min(100, p.aprov + 1);
