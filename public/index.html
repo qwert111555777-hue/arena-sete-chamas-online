@@ -492,6 +492,12 @@
   .dipcard .dcem{font-size:24px;display:block;}
   .dipcard b{font-size:16px;color:#3a2a05;display:block;font-family:ui-monospace,monospace;}
   .dipcard small{font-size:10px;color:#6b5a33;font-weight:800;text-transform:uppercase;}
+  /* ===== UI-5 MAPA MA3 (arte original) ===== */
+  .mk{filter:drop-shadow(0 2px 2px rgba(0,0,0,.6));}
+  .mk:hover .ring{stroke-width:4;}
+  .lflag{position:relative;border-radius:3px;}
+  .lflag.sel{box-shadow:0 0 0 2px #ffd76a,0 0 14px #ffd76a!important;}
+  .lbdg{position:absolute;font-size:11px;filter:drop-shadow(0 1px 1px #000);z-index:5;}
 </style>
 </head>
 <body>
@@ -1621,6 +1627,23 @@ function renderMap(){
     });
   }
 
+  // linhas de guerra (vermelho) — display only
+  if (m && m.country){
+    const wa = proj(cbid(m.country) || {lat:0,lon:0});
+    (m.wars||[]).forEach(wid => {
+      const en = state.players.find(p=>p.id===wid);
+      if (en && en.country && en.alive){
+        const wb2 = proj(cbid(en.country) || {lat:0,lon:0});
+        const wl2 = document.createElementNS('http://www.w3.org/2000/svg','line');
+        wl2.setAttribute('x1',wa.x); wl2.setAttribute('y1',wa.y);
+        wl2.setAttribute('x2',wb2.x); wl2.setAttribute('y2',wb2.y);
+        wl2.setAttribute('stroke','#ff5252'); wl2.setAttribute('stroke-width','2');
+        wl2.setAttribute('stroke-dasharray','7 4'); wl2.setAttribute('opacity','0.8');
+        gLines.appendChild(wl2);
+      }
+    });
+  }
+
   // navios animados nas minhas rotas comerciais
   if (m && m.country){
     const my = proj(cbid(m.country) || {lat:0,lon:0});
@@ -1657,6 +1680,14 @@ function renderMap(){
     mk.setAttribute('class','mk');
     mk.setAttribute('transform',`translate(${pos.x},${pos.y})`);
     mk.setAttribute('opacity', p.alive ? '1' : '0.4');
+    const _sh = document.createElementNS('http://www.w3.org/2000/svg','ellipse');
+    _sh.setAttribute('cx','0'); _sh.setAttribute('cy','13'); _sh.setAttribute('rx','14'); _sh.setAttribute('ry','4');
+    _sh.setAttribute('fill','rgba(0,0,0,.45)'); mk.appendChild(_sh);
+    const _rg = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    _rg.setAttribute('class','ring'); _rg.setAttribute('r', String(r+4));
+    _rg.setAttribute('fill','none'); _rg.setAttribute('stroke', ringColor); _rg.setAttribute('stroke-width','2.5');
+    mk.appendChild(_rg);
+    if (p.id === selectedId){ const _pu = document.createElementNS('http://www.w3.org/2000/svg','circle'); _pu.setAttribute('class','pulse'); _pu.setAttribute('r','16'); _pu.setAttribute('fill','none'); _pu.setAttribute('stroke', ringColor); _pu.setAttribute('stroke-width','2'); mk.appendChild(_pu); }
 
     if (p.id === selectedId){ mk.style.filter = 'drop-shadow(0 0 6px ' + ringColor + ')'; }
     const isoM = isoOf(p.country);
@@ -1696,6 +1727,13 @@ function renderMap(){
       wb.textContent = '⚔️';
       mk.appendChild(wb);
     }
+    if (m && m.blockading && m.blockading.includes(p.id)){
+      const bb = document.createElementNS('http://www.w3.org/2000/svg','text');
+      bb.setAttribute('x', '-20'); bb.setAttribute('y', '24');
+      bb.setAttribute('font-size','11');
+      bb.textContent = '\u26F4\uFE0F';
+      mk.appendChild(bb);
+    }
     mk.onclick = () => { if (dragged) return; selectedId = (selectedId === p.id ? null : p.id); renderMap(); renderPanel(); };
     g.appendChild(mk);
   });
@@ -1725,10 +1763,14 @@ function syncLeaflet(){
     seen[p.id] = 1;
     const iso = isoOf(p.country);
     const sel = (p.id === selectedId) ? ' sel' : '';
+    const _me0 = state.players.find(x=>x.id===myId);
+    const _r0 = relTo(p);
+    const _rc = !p.alive ? '#5a6478' : _r0==='me' ? '#ffd76a' : _r0==='ally' ? '#39d98a' : '#ff6b6b';
+    const _bdg = ((p.nuclear>=1)?'<span class="lbdg" style="right:-9px;top:-11px">\u2622\uFE0F</span>':'') + ((_me0 && _me0.wars && _me0.wars.includes(p.id) && p.id!==myId)?'<span class="lbdg" style="left:-9px;top:-11px">\u2694\uFE0F</span>':'');
     const dim = p.alive ? '' : ';opacity:.45';
     const html = iso
-      ? '<div class="lflag' + sel + '" style="box-shadow:0 1px 4px rgba(0,0,0,.6)' + dim + '"><img src="flags/' + iso + '.svg" alt=""></div>'
-      : '<div class="lflag lcus' + sel + '" style="background:' + PALETTE[(p.color||0)%60] + ';box-shadow:0 1px 4px rgba(0,0,0,.6)' + dim + '">' + (c.flag||p.customFlag||'🏳️') + '</div>';
+      ? '<div class="lflag' + sel + '" style="border:2px solid '+_rc+';box-shadow:0 2px 6px rgba(0,0,0,.65)' + dim + '"><img src="flags/' + iso + '.svg" alt="">' + _bdg + '</div>'
+      : '<div class="lflag lcus' + sel + '" style="background:' + PALETTE[(p.color||0)%60] + ';border:2px solid '+_rc+';box-shadow:0 2px 6px rgba(0,0,0,.65)' + dim + '">' + (c.flag||p.customFlag||'🏳️') + _bdg + '</div>';
     const ic = L.divIcon({ html: html, className: '', iconSize: [30,21], iconAnchor: [15,10] });
     if (leafMarks[p.id]){ leafMarks[p.id].setLatLng([c.lat, c.lon]); leafMarks[p.id].setIcon(ic); }
     else { leafMarks[p.id] = L.marker([c.lat, c.lon], { icon: ic }).addTo(leafMap); leafMarks[p.id].on('click', () => { selectedId = (selectedId===p.id?null:p.id); renderMap(); renderPanel(); }); }
@@ -1743,6 +1785,11 @@ function syncLeaflet(){
       const al = state.players.find(p=>p.id===aid);
       const b = (al && al.country) ? (cbid(al.country)||{}) : {};
       if (a.lat != null && b.lat != null) leafMap._al.push(L.polyline([[a.lat,a.lon],[b.lat,b.lon]],{color:'#e8b93c',weight:2,dashArray:'6 5',opacity:.8}).addTo(leafMap));
+    (mm.wars||[]).forEach(wid => {
+      const en = state.players.find(p=>p.id===wid);
+      const e2 = (en && en.country) ? (cbid(en.country)||{}) : {};
+      if (a.lat != null && e2.lat != null) leafMap._al.push(L.polyline([[a.lat,a.lon],[e2.lat,e2.lon]],{color:'#ff5252',weight:2,dashArray:'7 4',opacity:.85}).addTo(leafMap));
+    });
     });
   }
 }
