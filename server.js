@@ -569,6 +569,7 @@ function snapshot(room) {
   return {
     t: 'state', phase: room.phase, code: room.code, turn: room.turn, day: room.day || 1,
     winner: room.winner,
+    suprema: room.suprema || null,
     log: room.log.slice(0, 60), proposals: room.proposals,
     un: room.un, noWarUntil: room.noWarUntil, noArmsUntil: room.noArmsUntil, embargo: room.embargo, inverno: room.invernoUntil || 0, era: room.era || 1, timeline: room.timeline || [],
     players: room.players.map(p => ({
@@ -746,6 +747,15 @@ function checkVictory(room) {
   marco('convR', alive.find(p => p.religion && p.religion !== 'laico' && alive.filter(o => o.religion === p.religion).length > alive.length / 2), 'sua fé converteu a maioria das nações');
   marco('convI', alive.find(p => p.ideology && alive.filter(o => o.ideology === p.ideology).length > alive.length / 2), 'sua doutrina governa a maioria das nações');
   marco('sociedade', alive.find(p => { const s = p.sectors || {}; return ['educacao','saude','cultura','esportes','habitacao','justica','turismo'].every(k => (s[k] || 0) >= 4); }), 'sociedade perfeita (7 setores Nv4+)');
+  const supM = room.players.length > 1 && alive.length === 1 ? alive[0] : null;
+  const supR = alive.find(p => p.religion && p.religion !== 'laico' && alive.length > 1 && alive.every(o => o.religion === p.religion));
+  const supI = alive.find(p => p.ideology && alive.length > 1 && alive.every(o => o.ideology === p.ideology));
+  const sup = supM || supR || supI;
+  if (sup) {
+    const tipo = supM ? 'MILITAR' : (supR ? 'RELIGIOSA' : 'IDEOLÓGICA');
+    if (!room.marcos['suprema_' + sup.id]) { room.marcos['suprema_' + sup.id] = 1; log(room, `🌟 VITÓRIA SUPREMA ${tipo}: ${cname(sup)} dominou o mundo! (o jogo continua: defenda seu título!)`); record(room, `🌟 ${cname(sup)}: VITÓRIA SUPREMA ${tipo}`); }
+    room.suprema = { by: sup.id, name: cname(sup), tipo };
+  } else room.suprema = null;
 }
 
 // Aparato de segurança interna (nível 0..3 cada). Custo cresce por nível.
@@ -842,7 +852,7 @@ function resolveUN(room) {
         f.blockading = (f.blockading || []).filter(id => id !== tgt.id); tgt.blockadedBy = (tgt.blockadedBy || []).filter(id => id !== fid); }
       log(room, `🇺🇳🕊️ MISSÃO DE PAZ: a ONU encerrou ${foes.length} guerra(s) de ${cname(tgt)}! Capacetes azuis nas fronteiras.`);
     }
-    if (u.type === 'autorizar') { room.warAuth = { by: u.proposer, target: u.target, until: room.turn + 8 }; log(room, `🇺🇳 A ONU AUTORIZOU a intervenção militar! Válido por 8 semanas.`); }
+    if (u.type === 'autorizar') { room.warAuth = { by: u.proposer, target: u.target, until: room.turn + (u.duracao || 8) }; log(room, `🇺🇳 A ONU AUTORIZOU a intervenção militar! Válido por ${(u.duracao || 8)} semanas.`); }
   } else {
     log(room, '🇺🇳 A ONU REJEITOU a resolução.');
   }
@@ -1025,6 +1035,8 @@ function resolveWeek(room) {
     const a = alive[i], b = alive[j];
     let dec = 2;
     if (a.ideology === 'fascismo' || b.ideology === 'fascismo') dec = 3;
+    if (a.ideology && b.ideology && a.ideology !== b.ideology) dec += 1;
+    if ((a.religion || 'laico') !== (b.religion || 'laico')) dec += 1;
     let v = relBetween(a, b) - dec;
     if (a.embassies.includes(b.id)) v += 3;
     if (b.embassies.includes(a.id)) v += 3;
@@ -1475,6 +1487,13 @@ function aiTurn(room) {
     if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
     if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
     if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
+    if ((b.nukeShieldUntil || 0) <= room.turn && b.money > 1500 && Math.random() < 0.05) { b.money -= 400; b.nukeShieldUntil = room.turn + 6; }
+    if ((b.debt || 0) > 0 && b.money > 2000 && Math.random() < 0.08) { b.money -= 300; b.debt = Math.max(0, b.debt - 360); }
+    if (b.money > 3000 && Math.random() < 0.05) { b.money -= 400; b.units.infantaria = (b.units.infantaria || 0) + 2; }
+    if ((b.armsEmbargoUntil || 0) > room.turn && b.money > 1200 && Math.random() < 0.1) { b.money -= 300; b.armsEmbargoUntil = 0; }
+    if (b.money > 2500 && Math.random() < 0.04) { b.money -= 500; b.aprov = Math.min(100, b.aprov + 3); }
+    if (b.money > 1500 && Math.random() < 0.05) { b.money -= 200; b.aprov = Math.min(100, b.aprov + 2); }
+    if (b.money > 2000 && Math.random() < 0.04) { b.money -= 100; b.influencia = Math.min(100, (b.influencia || 0) + 2); }
     if (b.ideology && b.money > 500 && Math.random() < 0.25) { const tgts2 = room.players.filter(o => o.alive && o !== b && o.ideology !== b.ideology); if (tgts2.length) { const t4 = tgts2[Math.floor(Math.random() * tgts2.length)]; if (Math.random() < 0.3 + relBetween(b, t4) / 200) { t4.ideology = b.ideology; bumpRel(b, t4, 10); b.stats.doutrinacoes = (b.stats.doutrinacoes || 0) + 1; log(room, `⚖️ ${cname(b)} espalhou sua ideologia para ${cname(t4)}!`); } } }
     if ((b.nuclear || 0) >= 3 && (b.wars || []).length && (b.mil || 0) < 6 && Math.random() < 0.3) { const fw = room.players.find(o => o.alive && (b.wars || []).includes(o.id)); if (fw) { b.nuclear -= 1; const sh = techLevel(fw, 'interceptadores') > 0 || (fw.space || 0) >= 5; fw.mil = Math.max(1, Math.round(fw.mil * (sh ? 0.7 : 0.4))); fw.aprov = Math.max(0, fw.aprov - (sh ? 10 : 20)); b.aprov = Math.max(0, b.aprov - 10); room.nukesUsed = (room.nukesUsed || 0) + 1; if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); } log(room, `☢️💥 ${cname(b)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(fw)}!${sh ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`); record(room, `☢️ ${cname(b)} lançou ogiva em ${cname(fw)} (dia ${room.day}).`); } }
     if ((b.space || 0) < 3 && b.money > 5000 && Math.random() < 0.1) { b.money -= 1200; b.space = (b.space || 0) + 1; }
@@ -1635,8 +1654,8 @@ function randomEvent(room) {
     case 5: pick.aprov = Math.min(100, pick.aprov + 5); log(room, `🎉 Festival nacional em ${cname(pick)}: aprovação +5.`); break;
     case 6: { const provs = ownProvinces(pick).filter(pr => pr.infra < 5); if (provs.length) { provs[0].infra += 1; log(room, `🏗️ Obra concluída em ${provs[0].name} (${cname(pick)}): infraestrutura +1.`); } break; }
     case 7: pick.influencia += 2; log(room, `🎬 Cultura de ${cname(pick)} conquista o mundo: influência +2.`); break;
-    case 8: { const provs = ownProvinces(pick).filter(pr => pr.infra > 0); if (provs.length) { const pr = provs[0]; pr.infra -= 1; pick.emergencyUntil = room.turn + 3; log(room, `🌪️ DESASTRE em ${pr.name} (${cname(pick)}): infra -1 e EMERGÊNCIA (-20% renda por 3 turnos). Peça ou receba ajuda!`); } break; }
-    case 9: { const ks = Object.keys(pick.buildings).filter(k => pick.buildings[k] > 0); if (ks.length) { const k = ks[Math.floor(Math.random() * ks.length)]; pick.buildings[k] -= 1; pick.aprov = Math.max(0, pick.aprov - 5); pick.emergencyUntil = room.turn + 3; log(room, `🌍 TERREMOTO em ${cname(pick)}: ${PROD_NAMES[k] || k} destruído, -5 aprovação, EMERGÊNCIA declarada!`); } break; }
+    case 8: { if ((pick.defCivilUntil || 0) > room.turn) { log(room, `🛡️ Defesa Civil de ${cname(pick)} conteve o desastre (sem danos)!`); break; } const provs = ownProvinces(pick).filter(pr => pr.infra > 0); if (provs.length) { const pr = provs[0]; pr.infra -= 1; pick.emergencyUntil = room.turn + 3; log(room, `🌪️ DESASTRE em ${pr.name} (${cname(pick)}): infra -1 e EMERGÊNCIA (-20% renda por 3 turnos). Peça ou receba ajuda!`); } break; }
+    case 9: { if ((pick.defCivilUntil || 0) > room.turn) { log(room, `🛡️ Defesa Civil de ${cname(pick)} conteve o terremoto (sem danos)!`); break; } const ks = Object.keys(pick.buildings).filter(k => pick.buildings[k] > 0); if (ks.length) { const k = ks[Math.floor(Math.random() * ks.length)]; pick.buildings[k] -= 1; pick.aprov = Math.max(0, pick.aprov - 5); pick.emergencyUntil = room.turn + 3; log(room, `🌍 TERREMOTO em ${cname(pick)}: ${PROD_NAMES[k] || k} destruído, -5 aprovação, EMERGÊNCIA declarada!`); } break; }
     case 10: novaCrise(room, pick, 'terremoto'); break;
     case 11: novaCrise(room, pick, 'pandemia'); break;
     case 12: novaCrise(room, pick, 'seca'); break;
@@ -1692,7 +1711,7 @@ function performAction(room, p, msg) {
     }
     case 'investir': if (!spend(p, 1, 250)) return; p.eco += 2; log(room, `🏭 ${cname(p)} investiu na economia (+2).`); break;
     case 'militar': {
-      if (room.turn < room.noArmsUntil) { err(p.conn, '🇺🇳 Recrutamento proibido por resolução da ONU.'); return; }
+      if (room.turn < room.noArmsUntil) { err(p.conn, '🇺🇳 Recrutamento proibido por resolução da ONU.'); return; } if ((p.armsEmbargoUntil || 0) > room.turn) { err(p.conn, '🚫 Embargo de armas contra você — sem recrutar.'); return; }
       const cost = p.ideology === 'fascismo' ? 150 : 300;
       if (!spend(p, 1, cost)) return; p.mil += 3; log(room, `🪖 ${cname(p)} recrutou tropas (+3 militar).`); break;
     }
@@ -2490,8 +2509,8 @@ function performAction(room, p, msg) {
     }
     case 'defesa_civil': {
       if (!spend(p, 1, 250)) return;
-      p.aprov = Math.min(100, p.aprov + 4);
-      log(room, `🌍 ${cname(p)} acionou a DEFESA CIVIL (+4❤️).`);
+      p.aprov = Math.min(100, p.aprov + 4); p.defCivilUntil = room.turn + 6;
+      log(room, `🌍 ${cname(p)} acionou a DEFESA CIVIL (+4❤️, protege de desastres por 6 semanas).`);
       break;
     }
     case 'ajuda_humanitaria': {
@@ -5428,6 +5447,126 @@ function performAction(room, p, msg) {
       log(room, `🐠 ${cname(p)} grelhou ENXOVA (+$250, +1❤️).`);
       break;
     }
+    case 'autorizar_1mes': {
+      if (room.un) { err(p.conn, 'A ONU já está em sessão.'); return; }
+      if (!target || target === p || !target.alive) { err(p.conn, 'Escolha uma nação-alvo viva.'); return; }
+      if (!spend(p, 1, 300)) return;
+      room.un = { type: 'autorizar', desc: `Autorizar intervenção militar de ${cname(p)} contra ${cname(target)} (1 mês)`, target: target.id, proposer: p.id, duracao: 4, votes: {}, deadline: Date.now() + 20000 };
+      log(room, `🇺🇳 ${cname(p)} propôs AUTORIZAÇÃO-1MÊS contra ${cname(target)}. Votação aberta!`);
+      for (const b of room.players) if (b.bot && b.alive) room.un.votes[b.id] = relBetween(b, p) >= 45 || Math.random() < 0.25;
+      break;
+    }
+    case 'autorizar_3anos': {
+      if (room.un) { err(p.conn, 'A ONU já está em sessão.'); return; }
+      if (!target || target === p || !target.alive) { err(p.conn, 'Escolha uma nação-alvo viva.'); return; }
+      if (!spend(p, 1, 500)) return;
+      room.un = { type: 'autorizar', desc: `Autorizar intervenção militar de ${cname(p)} contra ${cname(target)} (3 anos)`, target: target.id, proposer: p.id, duracao: 24, votes: {}, deadline: Date.now() + 20000 };
+      log(room, `🇺🇳 ${cname(p)} propôs AUTORIZAÇÃO-3ANOS contra ${cname(target)}. Votação aberta!`);
+      for (const b of room.players) if (b.bot && b.alive) room.un.votes[b.id] = relBetween(b, p) >= 45 || Math.random() < 0.25;
+      break;
+    }
+    case 'escudo_abm': {
+      if (!spend(p, 1, 400)) return;
+      p.nukeShieldUntil = room.turn + 6;
+      log(room, `🛡️ ${cname(p)} ativou o ESCUDO-ABM (proteção nuclear por 6 semanas).`);
+      break;
+    }
+    case 'exigir_tributo': {
+      if (!target || target === p || !target.alive) return;
+      if (!spend(p, 1, 0)) return;
+      if (p.mil >= target.mil * 2) {
+        if (Math.random() < 0.7 && target.money >= 100) {
+          const v = Math.min(300, Math.round(target.money));
+          target.money -= v; p.money += v;
+          log(room, `💰 ${cname(target)} PAGOU TRIBUTO de $${v} a ${cname(p)}!`);
+        } else { bumpRel(p, target, -10); target.mil = Math.min(25, target.mil + 1); log(room, `💰❌ ${cname(target)} RECUSOU O TRIBUTO exigido por ${cname(p)} (-10 relações, +1 mil).`); }
+      } else { bumpRel(p, target, -5); log(room, `💰 ${cname(target)} ignorou o TRIBUTO de ${cname(p)} (fraco demais, -5 relações).`); }
+      break;
+    }
+    case 'embargo_armas': {
+      if (!target || target === p || !target.alive) return;
+      if (!spend(p, 1, 200)) return;
+      target.armsEmbargoUntil = room.turn + 3;
+      bumpRel(p, target, -10);
+      log(room, `🚫 ${cname(p)} impôs EMBARGO DE ARMAS a ${cname(target)} (sem recrutar por 3 semanas).`);
+      break;
+    }
+    case 'apelar_sancoes': {
+      const hasS = (p.sanctionedBy || []).length > 0;
+      const hasE = (p.armsEmbargoUntil || 0) > room.turn;
+      if (!hasS && !hasE) { err(p.conn, 'Nenhuma sanção ou embargo contra você.'); return; }
+      if (!spend(p, 1, 300)) return;
+      if (hasS) { const sid = p.sanctionedBy.shift(); const s = room.players.find(x => x.id === sid); if (s) s.sanctioning = s.sanctioning.filter(id => id !== p.id); }
+      p.armsEmbargoUntil = 0;
+      log(room, `⚖️ ${cname(p)} conseguiu APELAÇÃO: sanções/embargos removidos!`);
+      break;
+    }
+    case 'comprar_tropas': {
+      if (!spend(p, 1, 400)) return;
+      p.units.infantaria = (p.units.infantaria || 0) + 2;
+      p.mil = Math.min(25, p.mil + 1);
+      log(room, `🪖 ${cname(p)} COMPROU TROPAS mercenárias (+2 infantaria, +1 mil).`);
+      break;
+    }
+    case 'doar_ouro': {
+      if (!target || target === p || !target.alive) return;
+      if (!spend(p, 0, 300)) return;
+      target.money += 300; bumpRel(p, target, 6);
+      log(room, `💛 ${cname(p)} DOOU OURO ($300) a ${cname(target)} (+6 relações).`);
+      break;
+    }
+    case 'apoiar_nacao': {
+      if (!target || target === p || !target.alive) return;
+      if (!spend(p, 1, 100)) return;
+      bumpRel(p, target, 8); target.aprov = Math.min(100, target.aprov + 2);
+      log(room, `🤝 ${cname(p)} APOIOU ${cname(target)} publicamente (+8 relações, +2❤️).`);
+      break;
+    }
+    case 'condenar_publico': {
+      if (!target || target === p || !target.alive) return;
+      if (!spend(p, 1, 50)) return;
+      bumpRel(p, target, -8); target.aprov = Math.max(0, target.aprov - 4); p.influencia = Math.min(100, (p.influencia || 0) + 2);
+      log(room, `📢 ${cname(p)} CONDENOU ${cname(target)} publicamente (-8 relações, -4❤️).`);
+      break;
+    }
+    case 'ajuda_emergencia': {
+      if (!target || target === p || !target.alive) return;
+      if (!spend(p, 1, 500)) return;
+      target.money += 500; target.aprov = Math.min(100, target.aprov + 3);
+      const em = (target.emergencyUntil || 0) > room.turn;
+      bumpRel(p, target, em ? 12 : 6);
+      if (em) p.stats.titulos = (p.stats.titulos || 0) + 1;
+      log(room, `🚑 ${cname(p)} enviou AJUDA EMERGENCIAL de $500 a ${cname(target)} (+${em ? 12 : 6} relações${em ? ', +1 título humanitário' : ''}).`);
+      break;
+    }
+    case 'perdoar_divida': {
+      if (!target || target === p || !target.alive) return;
+      if ((target.debt || 0) <= 0) { err(p.conn, 'Essa nação não tem dívidas com o banco.'); return; }
+      if (!spend(p, 1, 200)) return;
+      target.debt = 0; bumpRel(p, target, 10);
+      log(room, `🕊️ ${cname(p)} PERDOOU A DÍVIDA bancária de ${cname(target)} (+10 relações).`);
+      break;
+    }
+    case 'amortizar_divida': {
+      if ((p.debt || 0) <= 0) { err(p.conn, 'Você não tem dívidas com o banco.'); return; }
+      if (!spend(p, 1, 300)) return;
+      p.debt = Math.max(0, p.debt - 360); p.aprov = Math.min(100, p.aprov + 1);
+      log(room, `🏦 ${cname(p)} AMORTIZOU a dívida bancária (-$360, restam $${Math.round(p.debt)}).`);
+      break;
+    }
+    case 'cobrar_emprestimo': {
+      if (!target || target === p || !target.alive) return;
+      target.dividas = target.dividas || [];
+      const my = target.dividas.filter(d => d.to === p.id);
+      if (!my.length) { err(p.conn, 'Essa nação não te deve nada.'); return; }
+      if (!spend(p, 1, 0)) return;
+      let tot = 0;
+      for (const d of my) { const v = Math.min(d.valor, Math.round(target.money)); target.money -= v; p.money += v; tot += v; }
+      target.dividas = target.dividas.filter(d => d.to !== p.id);
+      bumpRel(p, target, -5);
+      log(room, `🧾 ${cname(p)} COBROU EMPRÉSTIMOS de ${cname(target)} (+$${tot}, -5 relações).`);
+      break;
+    }
     case 'fundar_provincia': {
       if (p.provinces.length >= 6) { err(p.conn, '🗺️ Limite de 6 províncias atingido.'); return; }
       if (!spend(p, 2, 1000)) return;
@@ -5767,6 +5906,9 @@ function performAction(room, p, msg) {
       if (room.batalha && !room.batalha.fim) { err(p.conn, 'Já há uma batalha em andamento nesta sala.'); return; }
       if (p.pacts && p.pacts[target.id] > room.turn) { err(p.conn, 'Pacto de não-agressão vigente com essa nação.'); return; }
       p.ap -= 2;
+      const fuel = ((p.buildings && p.buildings.petroleo) || 0) >= 1 ? 0 : 150;
+      if (p.money < fuel) { p.ap += 2; err(p.conn, '⛽ Sem combustível: construa Torre de Petróleo ou tenha $150.'); return; }
+      p.money -= fuel;
       allyDefend(room, p, target);
       iniciarBatalha(room, p, target);
       btEnviar(room);
@@ -5779,7 +5921,7 @@ function performAction(room, p, msg) {
       if (p.nuclear < NUKE_MIN_LEVEL) { err(p.conn, `Programa nuclear insuficiente (nível ${NUKE_MIN_LEVEL}+ necessário).`); return; }
       if (p.ap < 3) { err(p.conn, 'Lançar um míssil custa 3 pontos de ação.'); return; }
       p.ap -= 3; p.nuclear -= 1;
-      const shield = techLevel(target, 'interceptadores') > 0 || (target.space || 0) >= 5;
+      const shield = techLevel(target, 'interceptadores') > 0 || (target.space || 0) >= 5 || ((target.buildings && target.buildings.antimisseis) || 0) > 0 || (target.nukeShieldUntil || 0) > room.turn;
       const abrig = !!target.abrigo; if (abrig) target.abrigo = false;
       target.mil = Math.max(1, Math.round(target.mil * (abrig ? 0.75 : (shield ? 0.7 : 0.4))));
       target.aprov = Math.max(0, target.aprov - (abrig ? 5 : (shield ? 10 : 20)));
@@ -5790,6 +5932,13 @@ function performAction(room, p, msg) {
       log(room, `☢️💥 ${cname(p)} LANÇOU UM MÍSSIL NUCLEAR em ${cname(target)}!${shield ? ' (Defesa Antiaérea reduziu os danos!)' : ' Devastação total.'}`);
       record(room, `☢️ ${cname(p)} lançou ogiva em ${cname(target)} (dia ${room.day}).`);
       room.nukesUsed = (room.nukesUsed || 0) + 1;
+      if (target.alive && (target.nuclear || 0) >= NUKE_MIN_LEVEL && Math.random() < 0.5) {
+        target.nuclear -= 1;
+        const pShield = techLevel(p, 'interceptadores') > 0 || (p.space || 0) >= 5 || ((p.buildings && p.buildings.antimisseis) || 0) > 0 || (p.nukeShieldUntil || 0) > room.turn;
+        p.mil = Math.max(1, Math.round(p.mil * (pShield ? 0.7 : 0.4)));
+        p.aprov = Math.max(0, p.aprov - (pShield ? 10 : 20));
+        log(room, `☢️💥 RETALIAÇÃO NUCLEAR! ${cname(target)} revidou contra ${cname(p)}!${pShield ? ' (Defesas reduziram os danos!)' : ' Devastação total.'}`);
+      }
       if (abrig) log(room, `🛡️ Abrigos nucleares de ${cname(target)} salvaram vidas (dano reduzido, abrigo consumido)!`);
       if (room.nukesUsed >= 3 && !(room.turn < room.invernoUntil)) { room.invernoUntil = room.turn + 6; log(room, `❄️ INVERNO NUCLEAR! ${room.nukesUsed} ogivas detonadas — renda global -10% por 6 semanas.`); record(room, `❄️ INVERNO NUCLEAR começou (dia ${room.day}).`); }
       break;
@@ -6007,6 +6156,7 @@ function performAction(room, p, msg) {
       break;
     }
     case 'treinar': {
+      if ((p.armsEmbargoUntil || 0) > room.turn) { err(p.conn, '🚫 Embargo de armas contra você — sem treinar.'); return; }
       if (!spend(p, 1, 150)) return;
       p.mil = Math.min(25, p.mil + 1); p.stats.treinos = (p.stats.treinos || 0) + 1;
       log(room, `🏋️ ${cname(p)} treina suas forças armadas (poder militar +1).`);

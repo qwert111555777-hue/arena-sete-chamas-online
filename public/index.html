@@ -1274,11 +1274,27 @@ function gameDate(day){
 function showScreen(id){
   ['scr-home','scr-lobby','scr-game','scr-batalha'].forEach(s => $(s).classList.toggle('hidden', s!==id));
 }
+let _supShown = null;
+function renderSuprema(){
+  const s = (state && state.suprema) || null;
+  const key = s ? (s.by + s.tipo) : null;
+  let d = document.getElementById('suprema-ov');
+  if (!key) { if (d) d.remove(); _supShown = null; return; }
+  if (_supShown === key && d) return;
+  _supShown = key;
+  if (d) d.remove();
+  d = document.createElement('div'); d.id = 'suprema-ov';
+  d.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;display:flex;align-items:center;justify-content:center';
+  const t = s.tipo === 'MILITAR' ? '⚔️' : (s.tipo === 'RELIGIOSA' ? '🛐' : '🗽');
+  d.innerHTML = '<div style="background:#fff8e1;border:4px solid #f9a825;border-radius:14px;padding:26px 34px;text-align:center;max-width:420px"><div style="font-size:44px">' + t + '</div><h2 style="margin:6px 0">🌟 VITÓRIA SUPREMA ' + s.tipo + '</h2><div style="font-size:15px;margin-bottom:12px">' + s.name + ' dominou o mundo!</div><div style="font-size:12px;color:#6b5a33;margin-bottom:14px">O jogo continua — defenda seu título!</div><button id="suprema-x" style="padding:8px 26px;cursor:pointer">Continuar jogando</button></div>';
+  document.body.appendChild(d);
+  document.getElementById('suprema-x').onclick = () => d.remove();
+}
 function render(){
   if (!state) return;
   if (bt && !bt.fim){ showScreen('scr-batalha'); btRender(); return; }
   if (state.phase === 'lobby'){ showScreen('scr-lobby'); renderLobby(); }
-  else { showScreen('scr-game'); renderGame(); updateDayHUD(); renderOverlay(); renderMarket(); }
+  else { showScreen('scr-game'); renderGame(); updateDayHUD(); renderOverlay(); renderMarket(); renderSuprema(); }
 }
 
 /* ---------- lobby ---------- */
@@ -2649,10 +2665,31 @@ $('btn-gov').onclick = () => {
   s += '<div style="background:#fffde7;border:2px solid #f57f17;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px">Pulpito: predica ou preceito</div><button data-qzx348a style="padding:6px 10px;cursor:pointer" '+(m.ap>=1&&m.money>=200?'':'disabled')+'>Predica (1AP+$200)</button><button data-qzx348b style="padding:6px 10px;cursor:pointer" '+(m.ap>=1&&m.money>=200?'':'disabled')+'>Preceito (1AP+$200)</button></div>';
   s += '<div style="background:#e8f5e9;border:2px solid #1b5e20;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px">Botica: capimsanto ou arnica</div><button data-qzx349a style="padding:6px 10px;cursor:pointer" '+(m.ap>=1&&m.money>=150?'':'disabled')+'>Capimsanto (1AP+$150)</button><button data-qzx349b style="padding:6px 10px;cursor:pointer" '+(m.ap>=1&&m.money>=150?'':'disabled')+'>Arnica (1AP+$150)</button></div>';
   s += '<div style="background:#e3f2fd;border:2px solid #0d47a1;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px">Corredeira: sororoca ou enxova</div><button data-qzx350a style="padding:6px 10px;cursor:pointer" '+(m.ap>=1&&m.money>=250?'':'disabled')+'>Sororoca (1AP+$250)</button><button data-qzx350b style="padding:6px 10px;cursor:pointer" '+(m.ap>=1&&m.money>=200?'':'disabled')+'>Enxova (1AP+$200)</button></div>';
+  s += '<div style="background:#e8eaf6;border:2px solid #283593;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px">ONU autoriza: 1 mes ou 3 anos</div><select data-tgt351 style="max-width:100px">' + (state.players.filter(p=>p.alive&&p.id!==m.id).map(p=>'<option value="'+p.id+'">'+cname(p)+'</option>').join('')) + '</select><button data-qzx351a style="padding:6px 10px;cursor:pointer" '+(m.ap>=1&&m.money>=300?'':'disabled')+'>Autorizar 1 mes (1AP+$300)</button><button data-qzx351b style="padding:6px 10px;cursor:pointer" '+(m.ap>=1&&m.money>=500?'':'disabled')+'>Autorizar 3 anos (1AP+$500)</button></div>';
+  s += '<div style="background:#fce4ec;border:2px solid #ad1457;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px">Dissuasao: escudo ABM ou tributo</div><select data-tgt352 style="max-width:100px">' + (state.players.filter(p=>p.alive&&p.id!==m.id).map(p=>'<option value="'+p.id+'">'+cname(p)+'</option>').join('')) + '</select><button data-qzx352a style="padding:6px 10px;cursor:pointer" '+(m.ap>=1&&m.money>=400?'':'disabled')+'>Escudo ABM (1AP+$400)</button><button data-qzx352b style="padding:6px 10px;cursor:pointer" '+(m.ap>=1?'':'disabled')+'>Exigir tributo (1AP)</button></div>';
+  s += '<div style="background:#fff3e0;border:2px solid #e65100;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px">Embargo: impor ou apelar</div><select data-tgt353 style="max-width:100px">' + (state.players.filter(p=>p.alive&&p.id!==m.id).map(p=>'<option value="'+p.id+'">'+cname(p)+'</option>').join('')) + '</select><button data-qzx353a style="padding:6px 10px;cursor:pointer" '+(m.ap>=1&&m.money>=200?'':'disabled')+'>Embargo armas (1AP+$200)</button><button data-qzx353b style="padding:6px 10px;cursor:pointer" '+(m.ap>=1&&m.money>=300?'':'disabled')+'>Apelar (1AP+$300)</button></div>';
+  s += '<div style="background:#e0f7fa;border:2px solid #006064;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px">Forca/ouro: tropas ou doar</div><select data-tgt354 style="max-width:100px">' + (state.players.filter(p=>p.alive&&p.id!==m.id).map(p=>'<option value="'+p.id+'">'+cname(p)+'</option>').join('')) + '</select><button data-qzx354a style="padding:6px 10px;cursor:pointer" '+(m.ap>=1&&m.money>=400?'':'disabled')+'>Comprar tropas (1AP+$400)</button><button data-qzx354b style="padding:6px 10px;cursor:pointer" '+(m.money>=300?'':'disabled')+'>Doar ouro ($300)</button></div>';
+  s += '<div style="background:#f3e5f5;border:2px solid #6a1b9a;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px">Voz: apoiar ou condenar</div><select data-tgt355 style="max-width:100px">' + (state.players.filter(p=>p.alive&&p.id!==m.id).map(p=>'<option value="'+p.id+'">'+cname(p)+'</option>').join('')) + '</select><button data-qzx355a style="padding:6px 10px;cursor:pointer" '+(m.ap>=1&&m.money>=100?'':'disabled')+'>Apoiar (1AP+$100)</button><button data-qzx355b style="padding:6px 10px;cursor:pointer" '+(m.ap>=1&&m.money>=50?'':'disabled')+'>Condenar (1AP+$50)</button></div>';
+  s += '<div style="background:#e8f5e9;border:2px solid #1b5e20;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px">Ajuda: emergencia ou divida</div><select data-tgt356 style="max-width:100px">' + (state.players.filter(p=>p.alive&&p.id!==m.id).map(p=>'<option value="'+p.id+'">'+cname(p)+'</option>').join('')) + '</select><button data-qzx356a style="padding:6px 10px;cursor:pointer" '+(m.ap>=1&&m.money>=500?'':'disabled')+'>Ajuda emerg. (1AP+$500)</button><button data-qzx356b style="padding:6px 10px;cursor:pointer" '+(m.ap>=1&&m.money>=200?'':'disabled')+'>Perdoar divida (1AP+$200)</button></div>';
+  s += '<div style="background:#fff8e1;border:2px solid #f9a825;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px">Dividas: amortizar ou cobrar</div><select data-tgt357 style="max-width:100px">' + (state.players.filter(p=>p.alive&&p.id!==m.id).map(p=>'<option value="'+p.id+'">'+cname(p)+'</option>').join('')) + '</select><button data-qzx357a style="padding:6px 10px;cursor:pointer" '+(m.ap>=1&&m.money>=300?'':'disabled')+'>Amortizar (1AP+$300)</button><button data-qzx357b style="padding:6px 10px;cursor:pointer" '+(m.ap>=1?'':'disabled')+'>Cobrar (1AP)</button></div>';
   s += '<div style="text-align:center;margin-top:6px"><button id="gv-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
   ov.innerHTML = s;
   document.body.appendChild(ov);
   ov.querySelector('#gv-x').onclick=()=>ov.remove();
+  const qzx351a = ov.querySelector('[data-qzx351a]'); if (qzx351a) qzx351a.onclick=()=>{ const tg=ov.querySelector('[data-tgt351]'); send({t:'action',action:'autorizar_1mes',target:tg?tg.value:null}); ov.remove(); };
+  const qzx351b = ov.querySelector('[data-qzx351b]'); if (qzx351b) qzx351b.onclick=()=>{ const tg=ov.querySelector('[data-tgt351]'); send({t:'action',action:'autorizar_3anos',target:tg?tg.value:null}); ov.remove(); };
+  const qzx352a = ov.querySelector('[data-qzx352a]'); if (qzx352a) qzx352a.onclick=()=>{ send({t:'action',action:'escudo_abm'}); ov.remove(); };
+  const qzx352b = ov.querySelector('[data-qzx352b]'); if (qzx352b) qzx352b.onclick=()=>{ const tg=ov.querySelector('[data-tgt352]'); send({t:'action',action:'exigir_tributo',target:tg?tg.value:null}); ov.remove(); };
+  const qzx353a = ov.querySelector('[data-qzx353a]'); if (qzx353a) qzx353a.onclick=()=>{ const tg=ov.querySelector('[data-tgt353]'); send({t:'action',action:'embargo_armas',target:tg?tg.value:null}); ov.remove(); };
+  const qzx353b = ov.querySelector('[data-qzx353b]'); if (qzx353b) qzx353b.onclick=()=>{ send({t:'action',action:'apelar_sancoes'}); ov.remove(); };
+  const qzx354a = ov.querySelector('[data-qzx354a]'); if (qzx354a) qzx354a.onclick=()=>{ send({t:'action',action:'comprar_tropas'}); ov.remove(); };
+  const qzx354b = ov.querySelector('[data-qzx354b]'); if (qzx354b) qzx354b.onclick=()=>{ const tg=ov.querySelector('[data-tgt354]'); send({t:'action',action:'doar_ouro',target:tg?tg.value:null}); ov.remove(); };
+  const qzx355a = ov.querySelector('[data-qzx355a]'); if (qzx355a) qzx355a.onclick=()=>{ const tg=ov.querySelector('[data-tgt355]'); send({t:'action',action:'apoiar_nacao',target:tg?tg.value:null}); ov.remove(); };
+  const qzx355b = ov.querySelector('[data-qzx355b]'); if (qzx355b) qzx355b.onclick=()=>{ const tg=ov.querySelector('[data-tgt355]'); send({t:'action',action:'condenar_publico',target:tg?tg.value:null}); ov.remove(); };
+  const qzx356a = ov.querySelector('[data-qzx356a]'); if (qzx356a) qzx356a.onclick=()=>{ const tg=ov.querySelector('[data-tgt356]'); send({t:'action',action:'ajuda_emergencia',target:tg?tg.value:null}); ov.remove(); };
+  const qzx356b = ov.querySelector('[data-qzx356b]'); if (qzx356b) qzx356b.onclick=()=>{ const tg=ov.querySelector('[data-tgt356]'); send({t:'action',action:'perdoar_divida',target:tg?tg.value:null}); ov.remove(); };
+  const qzx357a = ov.querySelector('[data-qzx357a]'); if (qzx357a) qzx357a.onclick=()=>{ send({t:'action',action:'amortizar_divida'}); ov.remove(); };
+  const qzx357b = ov.querySelector('[data-qzx357b]'); if (qzx357b) qzx357b.onclick=()=>{ const tg=ov.querySelector('[data-tgt357]'); send({t:'action',action:'cobrar_emprestimo',target:tg?tg.value:null}); ov.remove(); };
   const qzx344a = ov.querySelector('[data-qzx344a]'); if (qzx344a) qzx344a.onclick=()=>{ send({t:'action',action:'kirie'}); ov.remove(); };
   const qzx344b = ov.querySelector('[data-qzx344b]'); if (qzx344b) qzx344b.onclick=()=>{ send({t:'action',action:'pater'}); ov.remove(); };
   const qzx345a = ov.querySelector('[data-qzx345a]'); if (qzx345a) qzx345a.onclick=()=>{ send({t:'action',action:'gabiroba'}); ov.remove(); };
