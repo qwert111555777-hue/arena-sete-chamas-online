@@ -566,3 +566,44 @@ git -c user.name="Arena Agent" -c user.email="agent@arena.ai" commit -m "mensage
 - 2026-09-09 (BUGFIX MOBILE — LAYOUT SOBREPOSTO): medido em 414x860 -> #leftdock x10-218 / #bottomnav x28-386 / #transport x180-404. Os tres precisavam de ~790px numa tela de 414px; `elementFromPoint` no centro do #btn-build retornava #btn-menu, ou seja, o botao CONSTRUIR estava INUTILIZAVEL no celular. Corrigido: em <=900px o leftdock vira coluna vertical acima da barra e o transport sobe junto; <=560px recebe escala menor. Verificado por `dev-tools/dbg_cliques.js`: 7/7 botoes clicaveis em 1440x860, 414x860 e 360x780.
 - 2026-09-09 (CAPTURAS PARA COMPARACAO): geradas 28 telas do nosso jogo em 1600x720 (mesma resolucao das do MA3) espelhando as 25 do album, em `shots/comparativo/` + zip `capturas-nosso-jogo-2026-09-09.zip`. Script `dev-tools/shot_comparativo.js`. Zero erros de console.
 - 2026-09-09 (FASE 361 — OVERHAUL VISUAL DA HUD, itens 1-5 do avaliador externo): avaliacao externa deu 65/100 para interface — o ponto mais fraco do jogo (todos os sistemas ficaram 70-95%). Diagnostico de codigo confirmou 6/6 causas: 3299 emojis como icone, 4 keyframes, 4 transitions, 0 fonte propria, 1 backdrop-filter. Fase 361 ataca os 5 itens ALTO de interface: (1) 7 icones SVG proprios stroke-based substituindo os emojis da barra inferior; (2) barra redesenhada como HUD de estrategia com icone + rotulo + estado selecionado (glow pulsante via @keyframes bnGlow, elevacao, borda dourada); (3) tokens de design unificados no :root (--e0..--e3 elevacao, --glass vidro, --r-s/m/l raios, --ease/--t movimento); (4) profundidade real (backdrop-filter blur 10px, sombras em camadas, inset highlight); (5) camada de movimento (transitions 140-200ms em transform/box-shadow/background/color/border, hover com elevacao, active com escala). JS marca .sel no ultimo botao clicado e limpa ao fechar overlay ou Esc. Responsivo: dock/transporte sobem para 104px (<=900px) e 96px (<=560px) para nao colidir com a barra mais alta. Verificado 7/7 botoes clicaveis em 1440x860, 414x860 e 360x780.
+
+## FASES 361-372 (2026-09-09) — resposta a auditoria externa
+Avaliador externo deu 65/100 para interface e rebaixou Economia de 85% para 70%.
+Diagnostico de codigo confirmou 6/6 causas. Plano executado na ordem de impacto que ele pediu.
+
+- FASE 361 (itens 1-5): 7 icones SVG proprios substituindo os emojis da HUD; barra inferior
+  redesenhada como HUD de estrategia (icone + rotulo + estado selecionado com glow pulsante);
+  tokens de design (--e0..--e3 elevacao, --glass, raios, --ease/--t); profundidade com
+  backdrop-filter; camada de movimento (transitions 140-200ms). JS marca .sel e limpa no Esc.
+- FASE 365 (item 7, ECONOMIA INTERLIGADA): criado INSUMOS com 37 industrias de transformacao
+  que CONSOMEM recursos. Industria sem insumo rende apenas 30% (v *= 0.30 + 0.70*suprimento).
+  Novas funcoes: insumoNecessario, taxaSuprimento, empregosOf, pibOf. O dayTick agora desconta
+  os insumos consumidos. PIB passa a alimentar a receita (pibOf/90). Snapshot expoe
+  pib, empregos, suprimento, grupos, pressao. Cadeia: recursos -> producao -> industria ->
+  empregos -> PIB -> receita.
+- FASE 367 (item 9, GUERRA ESTRATEGICA): fatoresGuerra() soma tecnologia militar, terreno
+  (defensor), logistica (estradas/porto/centro), suprimento, ministro da defesa e penalidade
+  de sancoes/bloqueios. Os fatores aparecem no log da batalha para o jogador entender.
+- FASE 368 (item 8, IA DIPLOMATICA REATIVA): reacaoDiplomatica() dispara em toda batalha.
+  Aliados do agredido entram na guerra (75%), inimigos do agressor sancionam (55%), amigos
+  enviam ajuda humanitaria (35%), pacifistas/democracias condenam publicamente (45%).
+- FASE 367b (item 11, LEIS COM CONSEQUENCIA): LEI_GRUPOS com 11 leis x 5 grupos politicos
+  (militares/pacifistas/empresarios/religiosos/intelectuais). pressaoPolitica() vira
+  modificador de receita: contestado -12%, apoiado +6%.
+- FASE 368b (item 12, MINISTROS REAIS): MINISTRO_EFEITOS — cada ministro mexe em renda,
+  pesquisa, aprovacao, desemprego, defesa, militar, cultura e doutrina ao mesmo tempo.
+- FASE 366 (item 10, EVENTOS SISTEMICOS): 6 eventos (terremoto, seca, crise financeira,
+  pandemia, revolta, boom) que mexem em varios sistemas de uma vez. 40% das crises viram
+  evento sistemico.
+- FASE 369 (item 19, ESPIONAGEM COM RISCO): riscoEspionagem() considera contraespionagem,
+  servico secreto e ideologia do alvo. Sabotagem descoberta = -22 relacoes, -4 aprovacao e
+  crise diplomatica. Espionagem detectada = -14 relacoes.
+- FASES 371-377 (itens 4,5,6,13,14,15,16,17,18,20): fonte display Rajdhani com hierarquia
+  tipografica; paineis com vidro/camadas/bordas internas; transicoes 150-250ms globais;
+  numeros flutuantes de ganho/perda; mapa vivo com hover, brilho e selecao pulsante;
+  jornal com capitular; voto da ONU com destaque; polimento (separadores, alerta, brilho).
+- VERIFICACAO: test_funcoes_362_372.js -> 21/21 (cadeia, guerra, diplomacia, espionagem,
+  eventos, leis, ministros). smoke_fases362_372.js -> 9/9. dbg_cliques -> 7/7 em 3 tamanhos.
+  node-check duplo OK.
+- DESCOBERTA: o jogo tem periodo de paz da ONU ate o turno 20 (noWarUntil=20). Nao e bug.
+  Por isso guerra nao pode ser testada por smoke curto — testar via test_funcoes_362_372.js.

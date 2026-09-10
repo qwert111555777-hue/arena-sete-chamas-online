@@ -586,6 +586,9 @@ function snapshot(room) {
       blockading: p.blockading, blockadedBy: p.blockadedBy,
       units: p.units, builds: p.builds, emergencyUntil: p.emergencyUntil, leis: p.leis, crise: p.crise || null,
       pop: Math.round(p.pop), rec: floorRec(p.rec), xp: p.xp, bot: p.bot, customName: p.customName, customFlag: p.customFlag,
+      pib: p.pib || pibOf(p), empregos: p.empregos || empregosOf(p),
+      suprimento: p.suprimento != null ? p.suprimento : Math.round(taxaSuprimento(p) * 100),
+      pressao: pressaoPolitica(p), grupos: gruposPoliticos(p),
       dailyIncome: Math.round(incomeOf(room, p) / DAY_DIV),
       buildings: p.buildings, stats: p.stats, famine: p.famine, blackout: p.blackout,
       depositos: p.depositos || [], upgrades: p.upgrades || {}, pacts: p.pacts || {},
@@ -782,11 +785,15 @@ const LEIS = {
 
 function incomeOf(room, p) {
   const prov = ownProvinces(p).reduce((s, pr) => s + pr.infra, 0) * PROV_INCOME;
+  /* FASE 365: indústria só rende bem se tiver insumo — cadeia produtiva real */
+  const _sup = taxaSuprimento(p);
   let bldMoney = 0;
   for (const k in p.buildings) {
     const n = p.buildings[k] || 0; if (!n) continue;
     const o = BUILD_OUT[k]; if (!o || !o.money) continue;
-    bldMoney += n * o.money * upM(p, k) * (p.ministers.eco === 'ind' ? 1.2 : 1);
+    let v = n * o.money * upM(p, k) * (p.ministers.eco === 'ind' ? 1.2 : 1);
+    if (INSUMOS[k]) v *= (0.30 + 0.70 * _sup);   /* indústria de transformação */
+    bldMoney += v;
   }
   let base = p.eco * 10 + prov + Math.floor(p.pop / 8) + bldMoney
     + p.allies.length * 25
@@ -799,6 +806,14 @@ function incomeOf(room, p) {
     + sectorSum(p) * 2
     + relBonus(p);
   base += 20 * techLevel(p, 'valor_agreg');
+  /* FASE 365: PIB e empregos alimentam a receita */
+  base += Math.round(pibOf(p) / 90);
+  /* FASE 368: ministros mexem em vários campos */
+  base *= 1 + ministroEfeito(p, 'eco', 'renda') + ministroEfeito(p, 'soc', 'renda') + ministroEfeito(p, 'def', 'renda');
+  /* FASE 367: pressão política das leis — país contestado arrecada menos */
+  const _press = pressaoPolitica(p);
+  if (_press < -12) base *= 0.88;
+  else if (_press > 12) base *= 1.06;
   if (p.leis.includes('reforma_agraria')) base += 10;
   if (p.leis.includes('abertura_comercial')) base += 10;
   if (p.leis.includes('zona_franca')) base += 20;
@@ -955,6 +970,15 @@ function dayTick(room) {
       const o = BUILD_OUT[k]; if (!o || !o.res) continue;
       p.rec[o.res] = (p.rec[o.res] || 0) + (n * o.qtd * upM(p, k) * mult) / DAY_DIV;
     }
+    /* FASE 365: a indústria CONSOME os insumos que os produtores geraram */
+    const _need = insumoNecessario(p);
+    for (const r in _need) {
+      const take = Math.min((p.rec[r] || 0), _need[r] / DAY_DIV);
+      p.rec[r] = (p.rec[r] || 0) - take;
+    }
+    p.suprimento = Math.round(taxaSuprimento(p) * 100);
+    p.empregos = empregosOf(p);
+    p.pib = pibOf(p);
     const dep = p.depositos || [];
     if (dep.includes('petroleo')) p.rec.energia += 2 / DAY_DIV;
     if (dep.includes('minerio')) p.rec.minerio += 2 / DAY_DIV;
@@ -1102,6 +1126,235 @@ const MISSIONS = [
 
 const UNIT_COSTS = { blindados: 300, aviacao: 400, frota: 500, infantaria: 200, artilharia: 350, submarinos: 450, porta_avioes: 700 };
 const upM = (p, k) => 1 + 0.5 * ((p.upgrades && p.upgrades[k]) || 0);
+
+/* ============================================================
+   FASE 365 — CADEIA ECONÔMICA INTERLIGADA
+   recursos → produção → indústria → empregos → PIB → receita
+   Indústrias de transformação CONSOMEM insumos. Sem insumo,
+   rendem menos. Isso cria dependência real entre os setores.
+   ============================================================ */
+const INSUMOS = {
+  /* metal-mecânica */
+  siderurgica:{res:'minerio',qtd:4}, fabrica:{res:'minerio',qtd:2},
+  montadora:{res:'minerio',qtd:3}, caminhoes:{res:'minerio',qtd:2},
+  motores:{res:'minerio',qtd:2}, maquinas:{res:'minerio',qtd:2},
+  estaleiro_naval:{res:'minerio',qtd:3}, estaleiro:{res:'minerio',qtd:2},
+  vidro:{res:'minerio',qtd:2}, quimica:{res:'minerio',qtd:2},
+  fertilizantes:{res:'minerio',qtd:2},
+  /* energia-intensivas */
+  refinaria:{res:'energia',qtd:3}, petroquimica:{res:'energia',qtd:4},
+  plastico:{res:'energia',qtd:2}, aluminio:{res:'energia',qtd:3},
+  /* alimentos */
+  padaria:{res:'comida',qtd:3}, processados:{res:'comida',qtd:4},
+  frigorifico:{res:'carne',qtd:3}, laticinios:{res:'carne',qtd:2},
+  cervejaria:{res:'comida',qtd:2}, vinicola:{res:'comida',qtd:2},
+  doces:{res:'comida',qtd:2}, cafe:{res:'comida',qtd:2},
+  cacau:{res:'comida',qtd:2}, oleo_vegetal:{res:'comida',qtd:3},
+  farmaceutica:{res:'comida',qtd:2},
+  /* madeira */
+  papel:{res:'madeira',qtd:3}, moveis:{res:'madeira',qtd:4},
+  tecelagem:{res:'madeira',qtd:2}, couro:{res:'carne',qtd:2},
+  /* alta tecnologia */
+  eletronicos:{res:'terras_raras',qtd:2}, semicondutores:{res:'terras_raras',qtd:3},
+  baterias:{res:'terras_raras',qtd:2}, aeronaves:{res:'terras_raras',qtd:2},
+  paineis_solares:{res:'terras_raras',qtd:1},
+  /* nuclear */
+  usina_nuclear:{res:'uranio',qtd:1}, reator_torio:{res:'uranio',qtd:1}
+};
+
+function insumoNecessario(p) {
+  const need = {};
+  for (const k in (p.buildings || {})) {
+    const n = p.buildings[k] || 0; if (!n) continue;
+    const ins = INSUMOS[k]; if (!ins || !ins.qtd) continue;
+    need[ins.res] = (need[ins.res] || 0) + n * ins.qtd;
+  }
+  return need;
+}
+
+/* 0..1 — quanto da demanda industrial o país consegue suprir */
+function taxaSuprimento(p) {
+  const need = insumoNecessario(p), ks = Object.keys(need);
+  if (!ks.length) return 1;
+  let soma = 0;
+  for (const r of ks) soma += Math.min(1, ((p.rec && p.rec[r]) || 0) / Math.max(1, need[r]));
+  return soma / ks.length;
+}
+
+function empregosOf(p) {
+  let jobs = 0;
+  for (const k in (p.buildings || {})) { const n = p.buildings[k] || 0; if (n) jobs += n * 9; }
+  jobs += Math.floor(sectorSum(p) * 45) + Math.floor((p.mil || 0) * 2);
+  return jobs;
+}
+
+function pibOf(p) {
+  let v = 0;
+  for (const k in (p.buildings || {})) {
+    const n = p.buildings[k] || 0; if (!n) continue;
+    const o = BUILD_OUT[k]; if (!o) continue;
+    v += n * (((o.money || 0) * 42) + ((o.qtd || 0) * 9));
+  }
+  v += (p.eco || 0) * 260 + Math.floor(p.pop || 0) * 3 + sectorSum(p) * 120
+     + (p.allies || []).length * 90 + (p.trades || []).length * 60;
+  v *= 0.35 + 0.65 * taxaSuprimento(p);
+  return Math.round(Math.max(0, v));
+}
+
+/* ============================================================
+   FASE 367 — LEIS COM CONSEQUÊNCIA POLÍTICA
+   Cada lei agrada e desagrada grupos. A soma vira pressão.
+   ============================================================ */
+const LEI_GRUPOS = {
+  servico_militar:   { militares:+20, pacifistas:-25, empresarios:0,  religiosos:0,  intelectuais:-5 },
+  guarda_nacional:   { militares:+12, pacifistas:-10, empresarios:+5, religiosos:0,  intelectuais:0 },
+  reforma_agraria:   { militares:-5,  pacifistas:+10, empresarios:-15,religiosos:+5, intelectuais:+8 },
+  abertura_comercial:{ militares:0,   pacifistas:+5,  empresarios:+22,religiosos:0,  intelectuais:+10 },
+  liberdade_imprensa:{ militares:-8,  pacifistas:+12, empresarios:+5, religiosos:-5, intelectuais:+20 },
+  campanha_patriotica:{militares:+15, pacifistas:-8,  empresarios:+3, religiosos:+8, intelectuais:-12 },
+  ensino_obrigatorio:{ militares:0,   pacifistas:+8,  empresarios:-4, religiosos:-3, intelectuais:+18 },
+  estado_direito:    { militares:-6,  pacifistas:+14, empresarios:+12,religiosos:0,  intelectuais:+16 },
+  teto_gastos:       { militares:+3,   pacifistas:-6,  empresarios:+18,religiosos:0,  intelectuais:-8 },
+  reforma_trabalhista:{militares:0,   pacifistas:-10, empresarios:+20,religiosos:0,  intelectuais:-6 },
+  lei_marcal:        { militares:+18,  pacifistas:-20, empresarios:-8, religiosos:+4, intelectuais:-10 }
+};
+
+function gruposPoliticos(p) {
+  const g = { militares: 0, pacifistas: 0, empresarios: 0, religiosos: 0, intelectuais: 0 };
+  for (const lei of (p.leis || [])) {
+    const m = LEI_GRUPOS[lei]; if (!m) continue;
+    for (const k in m) g[k] += m[k];
+  }
+  /* religião de estado influencia o grupo religioso */
+  if (p.religiaoEstado) g.religiosos += 12; else g.religiosos -= 8;
+  /* imposto alto desagrada empresários */
+  if (p.taxRate === 2) { g.empresarios -= 18; g.pacifistas += 5; }
+  if (p.taxRate === 0) { g.empresarios += 15; g.intelectuais -= 4; }
+  return g;
+}
+
+/* pressão política líquida: positiva = apoio, negativa = contestação */
+function pressaoPolitica(p) {
+  const g = gruposPoliticos(p);
+  let soma = 0, n = 0;
+  for (const k in g) { soma += g[k]; n++; }
+  return Math.round(soma / n);
+}
+
+/* ============================================================
+   FASE 368 — MINISTROS REAIS
+   Cada ministro altera VÁRIOS sistemas, não só um número.
+   ============================================================ */
+const MINISTRO_EFEITOS = {
+  eco: {
+    tec: { renda:+0.10, pesquisa:+0.06, aprovacao:-1, desemprego:-0.02 },
+    pop: { renda:-0.05, pesquisa:0,     aprovacao:+1, desemprego:-0.04 },
+    ind: { renda:+0.20, pesquisa:-0.03, aprovacao:0,  desemprego:-0.06 }
+  },
+  def: {
+    pac: { renda:-0.10, defesa:-0.05, aprovacao:+2, militar:-0.08 },
+    agu: { renda:-0.02, defesa:+0.12, aprovacao:-2, militar:+0.15 },
+    eq:  { renda:0,     defesa:+0.05, aprovacao:+1, militar:+0.05 }
+  },
+  soc: {
+    art: { aprovacao:+1, cultura:+0.15, doutrina:+0.08, renda:-0.02 },
+    atl: { aprovacao:0,  cultura:-0.05, doutrina:0,     renda:+0.05 }
+  }
+};
+
+function ministroEfeito(p, pasta, campo) {
+  const escolha = p.ministers && p.ministers[pasta];
+  if (!escolha) return 0;
+  const t = MINISTRO_EFEITOS[pasta] && MINISTRO_EFEITOS[pasta][escolha];
+  return (t && t[campo]) || 0;
+}
+
+/* ============================================================
+   FASE 369 — ESPIONAGEM COM RISCO
+   ============================================================ */
+function riscoEspionagem(p, alvo) {
+  const defesa = (alvo.techLv && alvo.techLv.contraespionagem) || 0;
+  const seg = (alvo.seguranca && alvo.seguranca.espiao) || 0;
+  const base = 0.34 - defesa * 0.05 - seg * 0.04
+             + ((alvo.ideology === 'autoritarismo') ? 0.08 : 0)
+             + ministroEfeito(alvo, 'def', 'militar') * 0.2;
+  return Math.max(0.05, Math.min(0.7, base));
+}
+
+/* ============================================================
+   FASE 366 — EVENTOS SISTÊMICOS
+   Um desastre mexe em vários sistemas de uma vez.
+   ============================================================ */
+const EVENTOS_SISTEMICOS = {
+  terremoto: {
+    nome: '🌪️ Terremoto',
+    aplicar: (room, p) => {
+      const mortes = Math.floor((p.pop || 0) * (0.004 + Math.random() * 0.012));
+      p.pop = Math.max(0, (p.pop || 0) - mortes);
+      p.money = Math.max(0, p.money - 900);
+      for (const pr of p.provinces) if (pr.owner === p.id && Math.random() < 0.28 && pr.infra > 1) pr.infra -= 1;
+      p.aprov = Math.max(0, p.aprov - 5);
+      p.emergencyUntil = (room.turn || 0) + 6;
+      return `Terremoto em ${cname(p)}: ${mortes} mortos, infraestrutura danificada, estado de emergência.`;
+    }
+  },
+  seca: {
+    nome: '🌵 Seca prolongada',
+    aplicar: (room, p) => {
+      p.rec.comida = Math.max(0, (p.rec.comida || 0) * 0.45);
+      p.famine = true;
+      p.aprov = Math.max(0, p.aprov - 7);
+      return `Seca em ${cname(p)}: produção de alimentos pela metade e risco de fome.`;
+    }
+  },
+  crise_financeira: {
+    nome: '📉 Crise financeira',
+    aplicar: (room, p) => {
+      p.money = Math.max(0, p.money * 0.78);
+      p.taxRate = Math.max(0, (p.taxRate || 1) - 1);
+      p.aprov = Math.max(0, p.aprov - 9);
+      return `Crise financeira em ${cname(p)}: reservas derretem e arrecadação cai.`;
+    }
+  },
+  pandemia: {
+    nome: '🦠 Pandemia',
+    aplicar: (room, p) => {
+      const mortes = Math.floor((p.pop || 0) * 0.006);
+      p.pop = Math.max(0, (p.pop || 0) - mortes);
+      const hosp = (p.buildings && p.buildings.hospital) || 0;
+      if (hosp >= 3) { p.aprov = Math.max(0, p.aprov - 1); }
+      else { p.aprov = Math.max(0, p.aprov - 8); }
+      p.emergencyUntil = (room.turn || 0) + 4;
+      return `Pandemia em ${cname(p)}: ${mortes} mortos` + (hosp >= 3 ? ', mas a rede hospitalar segurou a crise.' : ', sistema de saúde insuficiente.');
+    }
+  },
+  revolta: {
+    nome: '✊ Revolta popular',
+    aplicar: (room, p) => {
+      p.aprov = Math.max(0, p.aprov - 14);
+      p.mil = Math.max(1, Math.round((p.mil || 1) * 0.94));
+      p.pollution = Math.min(100, (p.pollution || 0) + 3);
+      return `Revolta popular em ${cname(p)}: aprovação despenca e tropas se desorganizam.`;
+    }
+  },
+  boom: {
+    nome: '📈 Boom econômico',
+    aplicar: (room, p) => {
+      p.money += 1200;
+      p.aprov = Math.min(100, (p.aprov || 0) + 8);
+      return `Boom econômico em ${cname(p)}: investimentos externos e otimismo popular.`;
+    }
+  }
+};
+
+function dispararEventoSistemico(room, p) {
+  const ks = Object.keys(EVENTOS_SISTEMICOS);
+  const k = ks[Math.floor(Math.random() * ks.length)];
+  const ev = EVENTOS_SISTEMICOS[k];
+  const txt = ev.aplicar(room, p);
+  log(room, `${ev.nome} ${txt}`);
+  return k;
+}
 
 function allyDefend(room, atk, def) {
   for (const al of room.players) {
@@ -1579,6 +1832,8 @@ function novaCrise(room, pick, tipo) {
   if (tipo === 'manifestacao') { pick.aprov = Math.max(0, pick.aprov - 6); }
   if (tipo === 'recessao') { pick.money = Math.max(0, pick.money - 300); pick.eco = Math.max(0, pick.eco - 1); pick.aprov = Math.max(0, pick.aprov - 4); }
   log(room, `${dmg} atinge ${cname(pick)}! Abra 🚨 CRISES e escolha como responder.`);
+  /* FASE 366: 40% das crises viram evento sistêmico — mexe em vários sistemas */
+  if (Math.random() < 0.40) dispararEventoSistemico(room, pick);
 }
 
 function resolverCrise(room, p, ch) {
@@ -5695,12 +5950,26 @@ function performAction(room, p, msg) {
     case 'espionar': {
       if (!target || target === p || !target.alive) return;
       if (!spend(p, 1, dipCost(p, 100))) return;
+      /* FASE 369: espionar também pode ser descoberto (risco menor) */
+      if (Math.random() < riscoEspionagem(p, target) * 0.30) {
+        bumpRel(target, p, -14);
+        log(room, `🕵️⚠️ ${cname(target)} detectou espionagem de ${cname(p)} (−14 relações).`);
+      }
       info(p.conn, `🕵️ Relatório sobre ${cname(target)} — Caixa $${Math.round(target.money)} | Eco ${target.eco} | Mil ${target.mil} | ❤️ ${target.aprov}% | ☢️ ${target.nuclear} | ⚖️ ${target.influencia} | 🕌 ${target.fe} | Dívida $${target.debt}`);
       break;
     }
     case 'sabotagem': {
       if (!target || target === p || !target.alive) return;
       if (!spend(p, 1, dipCost(p, 150))) return;
+      /* FASE 369: risco real de ser descoberto */
+      if (Math.random() < riscoEspionagem(p, target) * 0.55) {
+        bumpRel(target, p, -22);
+        p.aprov = Math.max(0, (p.aprov || 0) - 4);
+        log(room, `🕵️❌ ${cname(target)} DESCOBRIU agentes de ${cname(p)}! Relações despencam (−22) e há escândalo interno.`);
+        record(room, `🕵️ Operação de ${cname(p)} descoberta por ${cname(target)} (dia ${room.day}).`);
+        target.crise = target.crise || { tipo: 'espionagem', dia: room.day };
+        break;
+      }
       const sAtk = (p.seguranca && p.seguranca.secreto) || 0;   // serviço secreto de quem ataca
       const sDef = (target.seguranca && target.seguranca.secreto) || 0; // de quem se defende
       const dDef = (target.seguranca && target.seguranca.defesa) || 0;
@@ -6620,6 +6889,36 @@ const dist = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 
 function btLog(b, msg) { b.log.unshift(msg); if (b.log.length > 40) b.log.length = 40; }
 
+/* FASE 367 — fatores estratégicos de uma batalha.
+   Tecnologia, terreno, logística e suprimento decidem tanto quanto o número
+   de tropas. O defensor luta em casa; o atacante precisa de linha de suprimento. */
+function fatoresGuerra(p, lado) {
+  const b = p.buildings || {};
+  /* tecnologia militar */
+  const tech = techLevel(p, 'guerra_terrestre') * 0.045
+             + techLevel(p, 'guerra_aerea') * 0.035
+             + techLevel(p, 'guerra_naval') * 0.030
+             + techLevel(p, 'drones_militares') * 0.030
+             + techLevel(p, 'guerra_cibernetica') * 0.025;
+  /* terreno: quem defende conhece o próprio solo */
+  const infra = ownProvinces(p).reduce((s, pr) => s + (pr.infra || 0), 0);
+  const provs = Math.max(1, ownProvinces(p).length);
+  const terreno = lado === 'def' ? 0.10 + (infra / provs) * 0.035 : 0;
+  /* logística: estradas, portos e centros sustentam a ofensiva */
+  const logistica = Math.min(0.25,
+      (b.estrada || 0) * 0.020 + (b.ferrovia || 0) * 0.025 +
+      (b.porto || 0) * 0.030 + (b.centro_logistico || 0) * 0.050 +
+      (b.armazem || 0) * 0.030 + (b.aeroporto || 0) * 0.020);
+  /* suprimento: tropa sem comida nem energia luta mal */
+  const suprimento = (taxaSuprimento(p) - 0.5) * 0.30;
+  /* doutrina e ministro da defesa */
+  const ministro = ministroEfeito(p, 'def', 'militar') + ministroEfeito(p, 'def', 'defesa');
+  /* sanções e bloqueios corroem a capacidade de combate */
+  const pressao = (p.sanctionedBy || []).length * -0.03 + (p.blockadedBy || []).length * -0.05;
+  return { tech, terreno, logistica, suprimento, ministro, pressao,
+           total: tech + terreno + logistica + suprimento + ministro + pressao };
+}
+
 function montarExercito(p, lado) {
   const tipos = [];
   for (const t of Object.keys(BT)) {
@@ -6630,7 +6929,12 @@ function montarExercito(p, lado) {
   // quem não tem forças treinadas luta com milícia proporcional ao poder militar
   const nMil = Math.max(3, Math.min(8, Math.round((p.mil || 1) / 2)));
   for (let i = 0; i < nMil; i++) tipos.push('milicia');
-  const md = ((p.ministers || {}).def); const bonus = 1 + (p.mil || 0) * 0.02 + (lado === 'atk' && md === 'fal' ? 0.1 : 0) + (lado === 'def' && md === 'estr' ? 0.1 : 0);
+  const md = ((p.ministers || {}).def);
+  const fg = fatoresGuerra(p, lado);
+  const bonus = 1 + (p.mil || 0) * 0.02
+    + (lado === 'atk' && md === 'fal' ? 0.1 : 0)
+    + (lado === 'def' && md === 'estr' ? 0.1 : 0)
+    + fg.total;
   const lista = tipos.slice(0, 10);
   return lista.map((t, i) => {
     const s = BT[t];
@@ -6644,6 +6948,57 @@ function montarExercito(p, lado) {
   });
 }
 
+/* FASE 368 — IA DIPLOMÁTICA REATIVA
+   Quando uma nação ataca, as outras não ficam paradas: condenam, oferecem
+   aliança ao agredido, aplicam sanções ou bloqueiam. Depende de relação,
+   ideologia, doutrina e se há pacto prévio. */
+function reacaoDiplomatica(room, atk, def) {
+  for (const o of room.players) {
+    if (!o.alive || o.id === atk.id || o.id === def.id) continue;
+    const relAtk = relBetween(o, atk), relDef = relBetween(o, def);
+    const r = Math.random();
+
+    /* aliado do agredido entra em guerra contra o agressor */
+    if (o.allies.includes(def.id) && !o.wars.includes(atk.id) && r < 0.75) {
+      o.wars.push(atk.id); atk.wars.push(o.id);
+      bumpRel(o, atk, -30); bumpRel(o, def, +12);
+      log(room, `🤝 ${cname(o)} honrou a aliança e DECLAROU GUERRA a ${cname(atk)}.`);
+      record(room, `⚔️ ${cname(o)} entrou na guerra ao lado de ${cname(def)} (dia ${room.day}).`);
+      continue;
+    }
+    /* inimigo do agressor aproveita para sancionar */
+    if (relAtk < 30 && !o.sanctioning.includes(atk.id) && r < 0.55) {
+      o.sanctioning.push(atk.id); atk.sanctionedBy.push(o.id);
+      bumpRel(o, atk, -12);
+      log(room, `🚫 ${cname(o)} aplicou SANÇÕES a ${cname(atk)} após a agressão.`);
+      continue;
+    }
+    /* amigo do agredido oferece ajuda */
+    if (relDef > 65 && r < 0.35) {
+      const ajuda = Math.min(o.money, 400);
+      if (ajuda > 50) {
+        o.money -= ajuda; def.money += ajuda;
+        bumpRel(o, def, +8); bumpRel(o, atk, -8);
+        log(room, `💸 ${cname(o)} enviou $${ajuda} de ajuda humanitária a ${cname(def)}.`);
+      }
+      continue;
+    }
+    /* pacifista condena publicamente */
+    if ((o.ministers && o.ministers.def === 'pac') || o.ideology === 'democracia') {
+      if (r < 0.45) {
+        bumpRel(o, atk, -6); bumpRel(o, def, +4);
+        log(room, `🕊️ ${cname(o)} CONDENOU publicamente a agressão de ${cname(atk)}.`);
+      }
+      continue;
+    }
+    /* oportunista aproveita a distração */
+    if (relAtk < 45 && relDef > 25 && r > 0.88) {
+      bumpRel(o, def, -5);
+      log(room, `🌍 ${cname(o)} observa o conflito com atenção — pode haver oportunismo.`);
+    }
+  }
+}
+
 function iniciarBatalha(room, atk, def) {
   const b = {
     atk: atk.id, def: def.id,
@@ -6655,6 +7010,13 @@ function iniciarBatalha(room, atk, def) {
   };
   room.batalha = b;
   btLog(b, `⚔️ BATALHA CAMPO ABERTO — ${cname(atk)} invade ${cname(def)}!`);
+  /* FASE 367: transparência dos fatores estratégicos */
+  const fa = fatoresGuerra(atk, 'atk'), fd = fatoresGuerra(def, 'def');
+  const pct = v => (v >= 0 ? '+' : '') + Math.round(v * 100) + '%';
+  btLog(b, `📊 ${cname(atk)}: tech ${pct(fa.tech)} · logística ${pct(fa.logistica)} · suprimento ${pct(fa.suprimento)}`);
+  btLog(b, `📊 ${cname(def)}: tech ${pct(fd.tech)} · terreno ${pct(fd.terreno)} · logística ${pct(fd.logistica)}`);
+  /* FASE 368: o mundo reage à agressão */
+  reacaoDiplomatica(room, atk, def);
   btLog(b, `Turno de ${cname(atk)}. Escolha uma unidade e uma ação.`);
   log(room, `⚔️ ${cname(atk)} lançou uma OFENSIVA contra ${cname(def)} — batalha tática em curso!`);
   return b;
