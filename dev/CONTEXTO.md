@@ -726,3 +726,35 @@ cuidava do resto.)
   sorteio); o 368 agora repete 40x ate sortear e o 366 tambem aceita variacao de aprovacao
 - `test_381_383.js`: **12/12** · `test_ui_nova.js`: **11/11** · `test_ui_384_395.js`: **14/14**
 - `dbg_cliques`: 7/7 em 1440x860, 414x860, 360x780
+
+## 🔒 SEGURANÇA — ATUALIZAÇÃO 2026-09-10 (muda o que estava escrito acima)
+
+**O repo do handover FINALMENTE virou PRIVADO.** Ele ficou público por várias sessões
+e toda tentativa anterior de torná-lo privado falhava. Hoje funcionou:
+
+```
+curl -X PATCH -H "Authorization: Bearer $GH" \
+  -H "Content-Type: application/json" -d '{"private":true}' \
+  https://api.github.com/repos/qwert111555777-hue/handover-presidente-online
+```
+
+**Verificado em 2026-09-10:**
+- handover `private: true` → leitura anônima de `raw.githubusercontent.com` dá **404** ✅
+- repo do **jogo** continua **público** e com **0 segredos** (`grep ghp_|rnd_` em `server.js` = 0) ✅
+- `GH_TOKEN` **ainda vivo** (API `/user` → 200). O usuário pediu expressamente
+  **"precisa revogar não"** — ele quer que o token passe pro próximo chat.
+
+**LIÇÃO NOVA — push protection:** ao copiar `CONTEXTO-PROXIMO-CHAT.md` pro handover,
+o push foi **rejeitado** (`GH013: Push cannot contain secrets`) porque aquele arquivo
+tem as duas chaves em texto puro. Enquanto o repo estava público, isso era um vazamento
+garantido. **Sempre remover `ghp_*` e `rnd_*` antes de copiar arquivos pro handover:**
+
+```python
+s = re.sub(r'ghp_[A-Za-z0-9]{20,}', '[GH_TOKEN — ver .chaves]', s)
+s = re.sub(r'rnd_[A-Za-z0-9]{20,}', '[RENDER_API_KEY — idem]', s)
+```
+
+**⚠️ NOTA DE PROCESSO:** a credencial da Render atualmente está em
+`/home/user/CONTEXTO-PROXIMO-CHAT.md` em texto puro. Para o usuário repassar ao
+próximo chat, ele cola o arquivo direto na conversa (não passa por repo público).
+Recriar `~/.chaves` no início de cada sessão continua sendo a regra.
