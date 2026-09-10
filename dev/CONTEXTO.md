@@ -758,3 +758,96 @@ s = re.sub(r'rnd_[A-Za-z0-9]{20,}', '[RENDER_API_KEY — idem]', s)
 `/home/user/CONTEXTO-PROXIMO-CHAT.md` em texto puro. Para o usuário repassar ao
 próximo chat, ele cola o arquivo direto na conversa (não passa por repo público).
 Recriar `~/.chaves` no início de cada sessão continua sendo a regra.
+
+## RETORNO DO AUDITOR EXTERNO (2026-09-10) — 3 mudancas aceitas
+
+O auditor aprovou o metodo ("existir != ser percebido"), mas **nao consegue clicar**
+na aplicacao — so le o HTML publico. Disse que nao vai fingir que um sistema foi
+percebido jogando quando so achou a funcao na descricao. Correto.
+
+### 1. Falso positivo que ele pegou — os emojis (CONFIRMADO E CORRIGIDO)
+Ele viu emojis no DOM e desconfiou do item 1 ("7 icones SVG"). Investigacao:
+- `bottomnav` (a HUD principal): **7 SVG, 0 emoji** — item 1 era verdadeiro
+- `rightrail`: **6 emoji**, 0 SVG
+- `leftdock`: **4 emoji**, 0 SVG
+
+Ou seja: a barra de baixo ja era SVG, mas os **dois trilhos laterais continuavam em
+emoji**. Inconsistencia real. **Corrigido:** os 10 icones viraram SVG no mesmo traco
+dos 7 da barra de baixo, e o emoji do letreiro "DIA n" saiu. Verificado renderizado:
+**17/17 icones SVG visiveis, 0 emoji na navegacao, 0 erros de pagina.**
+Os ~1000 emojis de menus/paineis/log foram preservados: sao conteudo, nao cromo.
+
+**ARMADILHA NOVA (erro meu):** na primeira tentativa fiz `replace` global do emoji e
+troquei **53 ocorrencias no arquivo inteiro** (o globo aparecia 11x, o alvo 10x).
+Isso teria baguncado menus e paineis. Revertido com `git checkout` e refeito com
+troca **cirurgica** (so dentro das duas divs). Antes de trocar emoji, conferir
+quantas vezes ele aparece — quase sempre ele e conteudo em outro lugar.
+
+### 2. As 3 mudancas que ele pediu no auditor (todas aplicadas)
+- aviso explicito: **"a existencia de uma funcao nao e evidencia de qualidade"**
+- estados **🟢 perceptivel / 🟡 perceptivel com investigacao / 🔴 morto** em vez de "tem / nao tem"
+- **rubrica ponderada** por bloco: 40 causalidade + 25 feedback visual + 20 profundidade
+  + 15 facilidade de entendimento. Assim uma economia sofisticada mas incompreensivel
+  tira 65, e uma simples mas cristalina tira 85.
+
+### 3. Evidencia para suprir a limitacao dele (eu clico por ele)
+Criado `dev-tools/provocacao.js`: cria sala, acelera o tempo, **provoca cada sistema**
+e verifica a consequencia no que o JOGADOR VE (HUD, log, paineis). Nao le codigo.
+Resultado **8 🟢 · 5 🟡 · 0 🔴 · 0 erros**, identico local e producao.
+
+**Armadilhas do propio teste (todas minhas, nao do jogo):**
+- `tela()` nao incluia `#market-panel` → mercado dava 🔴 falso
+- o overlay do PIB e **modal** e intercepta cliques → tem que fechar antes do proximo passo
+- `fecharTudo()` removia `#np` do DOM → o jogo guarda referencia e quebra com
+  `Cannot read properties of null (reading 'classList')`. **Nunca remover `#np`,
+  apenas `classList.add('hidden')`.**
+
+### Sobre o item 25 (explicacao do PIB)
+O auditor destacou que "de onde vem seu PIB" e mais importante do que parece, e deu
+o exemplo do jogador clicar em "PIB -3,7%" e receber "-1,8% falta de minerio /
+-0,9% energia / +0,4% tecnologia". **Prioridade maxima em preservar isso.**
+Painel real hoje: "📊 DE ONDE VEM O SEU PIB · $780 · Suprimento industrial: 100% ·
+Industrias e construcoes · Populacao e economia · Setores sociais · Comercio ·
+Aliancas · Perda por falta de insumo".
+
+## 🐛 RELATO DO USUARIO — MAPA BUGADO (2026-09-10)
+
+Texto dele: *"o mapa ta bugado, deixando o jogo instavel, alem de estar bugado e
+lento, o mapa nao ta completo e as bandeiras, estao de forma desorganizada"*.
+
+Quatro queixas: **bugado · deixa o jogo instavel · lento · bandeiras desorganizadas.**
+Investigacao em andamento (proximo passo). O que ja se apurou:
+
+### O que NAO e o problema (ja descartado)
+- **Bandeiras faltando? NAO.** O jogo tem **195 paises** e existem **195 arquivos
+  em `public/flags/`**. Conferido um a um: **0 faltando, 0 sobrando.**
+  (Cuidado: um regex ingênuo sobre `const COUNTRIES = [` pega 238 ids porque
+  invade os arrays de missoes/eventos/logros que vem depois. Os ids reais
+  de paises sao 195.)
+
+### Suspeitas principais (a verificar com o browser)
+1. **`renderMap()` reconstroi tudo do zero.** Comeca com
+   `gT.innerHTML=''; gLines.innerHTML=''; g.innerHTML='';` e depois recria os
+   **195 marcadores**, cada um com elipse de sombra + circulo de anel + `<image>`
+   da bandeira + badges (☢️ ⚔️ ⛴️). E chamado em **todo clique de marcador**
+   (linha 2093) e dentro de `renderPanel()` — ou seja, um clique pode disparar
+   varios redesenhos completos.
+2. **195 `<image href="flags/xx.svg">` recriados a cada redesenho.** Mesmo com
+   cache HTTP, a chuva de nos novos no DOM e o gargalo provavel.
+3. **Existem DOIS mapas ao mesmo tempo:** o SVG (`#map-root`) e um **Leaflet
+   satelite** sincronizado no final de `renderMap()` por `syncLeaflet()`.
+   Dois mapas = tiles + marcadores duplicados.
+4. **`animateMotion` com `repeatCount="indefinite"`** nos navios de rotas
+   comerciais — animacoes SMIL eternas competindo por CPU.
+5. **Desorganizacao das bandeiras** vem de `declutter(state.players...)`, que
+   calcula as posicoes. Ainda nao medido.
+
+### Ferramenta criada
+`dev-tools/diag_mapa.js` — mede: requests de bandeira e falhas, nos no DOM do
+mapa, tempo de um `renderMap()`, quantas vezes ele roda em 10 s, pares de
+bandeiras colidindo (< 18 px) e marcadores fora do viewBox.
+
+### Armadilha de ambiente (importante)
+`node_modules` **nao persiste entre turnos**. Ao voltar, `playwright` somiu e
+foi preciso `npm i playwright` + `npx playwright install chromium` (~114 MB).
+Refazer isso no inicio de cada sessao que for usar browser.
