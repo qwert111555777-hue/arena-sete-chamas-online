@@ -667,3 +667,62 @@ Leis 90->95, Crises 80->91, Interface 65->82. Mas ele marcou 4 coisas que eu PIO
 - smoke_fases362_372.js   -> 9/9
 - dbg_cliques -> 7/7 em 1440x860, 414x860, 360x780
 - node-check duplo OK · zero erros de console
+
+## FASES 384-395 (2026-09-10) — MUNDO VIVO (lote final antes da auditoria)
+
+Pedido do usuario: *"faca tudo para no final auditar"* — implementar todos os itens
+MÉDIO/BAIXO (27-38) do relatorio de auditoria ANTES de auditar.
+
+### Servidor
+- **384 Feed Mundial**: `montarFeed(room)` varre `room.log` e **classifica por peso**
+  (`FEED_PESO`: nuclear 100, guerra 90, alianca 70, obra 20...). Ordena do mais
+  importante pro menos e manda so os **18 primeiros**. Recalculado uma vez por dia.
+- **385 Coalizoes**: `coalizoes(p)` -> `{contra[], aFavor[], ativa, forca, texto}`.
+  Coalizao ativa = 2+ grupos politicos com pressao <= -18.
+- **386 Protestos**: `riscoProtesto(p)` devolve 0..0,55 (escala com pressao/aprovacao/
+  fome/coalizao; cai com autoritarismo/toque de recolher/policia). `aplicarProtesto()`
+  tira 6..12 de aprovacao, $150..650 e abre `protestoUntil = dia+3`.
+- **387 Crises ministeriais**: `criseMinisterial()` 2,5%/dia sobre as 3 pastas
+  (eco/def/soc). Pesos: orcamento 35%, erro 30%, critica 25%, renuncia 10%.
+- **388 Deltas**: `deltasDe(p)` guarda a diferenca do dia em `p.deltas` para
+  dinheiro, pop, PIB, aprovacao, militar, economia, fe, doutrina, empregos,
+  suprimento, guerras, aliados e sancoes.
+- **389 Estados visuais**: `estadoVisual(p)` devolve marcas (`fome`, `apagao`,
+  `emergencia`, `protesto`, `guerra`, `sancionado`, `bloqueado`, `nuclear`,
+  `falimentar`, `crise`) que o mapa e o painel usam pra colorir.
+- **390 Vitorias hibridas**: 3 novas alem das 4 classicas — `hegemonia_economica`
+  (maior PIB, >= 40000, 2+ acordos, sem divida), `potencia_diplomatica` (3+ aliados,
+  3+ organizacoes, influencia >= 60), `sociedade_modelo` (7 setores nivel 5,
+  aprovacao >= 70, sem guerras).
+- **391 Eventos unicos**: 5 acontecimentos que so ocorrem **uma vez por partida**
+  (`alianca_secreta`, `ouro_enterrado`, `desertor`, `milagre_medico`,
+  `ciberataque`), 1,2%/dia, nunca repetem.
+
+### Cliente
+- **392 Painel do mapa completo**: ao clicar num pais mostra **PIB, empregos,
+  tecnologias, ideologia, relacao, aliancas, sancoes e situacao** alem do que ja tinha.
+- **393 Animacao de guerra no mapa**: ataque desenha linha de marcha, pais ocupado
+  muda de cor e a frente de batalha aparece.
+- **394 Som contextual**: modulo WebAudio, uma nota por tipo de acontecimento, com
+  botao liga/desliga salvo em `localStorage`.
+- **395 Microinteracoes**: cada clique importante responde na hora (verde/vermelho/dourado).
+- **395b Tutorial**: licao nova **"Como o mundo pensa"** — mostra a reacao em cadeia
+  (ataque -> aliado declara guerra -> sancao -> ajuda -> ONU vota) e explica que cada
+  pais lembra do que voce fez. Tutorial passou de 5 para **6 passos**.
+
+### Bug corrigido neste lote (importante)
+**`broadcastDay` nao levava os campos novos.** O `dayTick` termina chamando
+`broadcastDay(room)`, que manda um payload **leve** (so dinheiro/eco/mil/aprov/pop).
+Como o estado completo so era reenviado em acoes, `deltas`, `estadoVisual`,
+`coalizao`, `pib`, `empregos`, `suprimento` e `feed` ficavam presos no servidor e a
+interface mostrava "Ainda sem historico" pra sempre.
+**Correcao:** o payload diario agora carrega esses campos; o `applyDay` do cliente
+guarda o `feed` e redesenha o painel do mapa. (O `Object.assign` do `applyDay` ja
+cuidava do resto.)
+
+### Testes
+- `test_384_391.js`: **26/26**
+- `test_funcoes.js` (362-372): **21/21** — estava flaky (3 assercoes dependiam de
+  sorteio); o 368 agora repete 40x ate sortear e o 366 tambem aceita variacao de aprovacao
+- `test_381_383.js`: **12/12** · `test_ui_nova.js`: **11/11** · `test_ui_384_395.js`: **14/14**
+- `dbg_cliques`: 7/7 em 1440x860, 414x860, 360x780
