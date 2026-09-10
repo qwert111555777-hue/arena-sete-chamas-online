@@ -13,8 +13,22 @@
 > "falta feature X", descreva a experiência quebrada.
 >
 > **Regra de ouro desta auditoria:** o jogo tem **todas** as funções listadas.
-> O que se quer saber é se elas **se percebem jogando**. Sistema que existe mas
-> ninguém nota = sistema morto. Note baixo nisso, com o motivo.
+> O que se quer saber é se elas **se percebem jogando**.
+>
+> ### ⚠️ A existência de uma função NÃO é evidência de qualidade.
+> O auditor deve **provocar** a função e verificar o resultado **na tela, no estado
+> do país ou no comportamento de outros países**. Encontrar a função no código — ou
+> ler a descrição dela — **não conta como verificação**.
+>
+> ### Estados: classifique cada sistema, não apenas "tem / não tem"
+>
+> | Estado | Significado |
+> |---|---|
+> | 🟢 **Perceptível** | Jogador provoca → percebe claramente o resultado |
+> | 🟡 **Perceptível com investigação** | Funciona, mas exige abrir menu / procurar |
+> | 🔴 **Morto** | Existe tecnicamente, mas o jogador não consegue perceber a consequência |
+>
+> Use 🟡 com sinceridade: sistema que só se vê garimpando menu **é** 🟡, não 🟢.
 
 ---
 
@@ -108,6 +122,82 @@ E fecha dizendo que **cada país lembra do que você fez** e que sem minério a 
 
 ---
 
+## 🧪 EVIDÊNCIA DE EXECUÇÃO (porque o auditor não consegue clicar)
+
+O auditor externo informou que **não consegue interagir** com a aplicação — só ler o
+HTML público. Para que a auditoria não dependa de "eu li no código", rodei um teste que
+**joga de verdade**: cria sala, acelera o tempo, provoca cada sistema e verifica se a
+consequência aparece **no que o jogador vê** (HUD, log, painéis).
+
+**Resultado: 8 🟢 · 5 🟡 · 0 🔴 · zero erros de página.**
+(O teste é `dev-tools/provocacao.js`, reprodutível.)
+
+| Sistema | Estado | Evidência capturada |
+|---|---|---|
+| 31 Deltas diários | 🟢 | `+6 +3` — mostra quanto cada coisa variou |
+| 27 Feed mundial | 🟢 | abriu e classificou por peso (`100` = nuclear no topo) |
+| 25 Explicação do PIB | 🟢 | painel **"DE ONDE VEM O SEU PIB"** com composição |
+| 26 Histórico diplomático | 🟢 | botão 📜 presente em cada país |
+| 23 Mercado dinâmico | 🟢 | painel de preços abriu |
+| 9 Guerra / painel militar | 🟢 | painel abriu |
+| 35 Painel do mapa | 🟢 | PIB, Tecnologias, Relação, Ideologia visíveis |
+| HUD viva | 🟢 | dia 11→14, caixa mudando |
+| 7 Economia interligada | 🟡 | regra dos 30% existe; o aviso só aparece **se** faltar insumo |
+| 32 Estados visuais | 🟡 | marcas existem; só aparecem com crise ativa |
+| 10/24 Eventos + cadeia | 🟡 | nenhum evento sorteado na janela do teste |
+| 37 Som contextual | 🟡 | módulo ativo; áudio não é verificável por script |
+| 38 Microinterações | 🟡 | nenhuma disparada na ação testada |
+
+**Conteúdo real do painel de PIB que o jogador vê ao clicar:**
+
+```
+📊 DE ONDE VEM O SEU PIB
+$780
+Suprimento industrial: 100%
+🏭 Indústrias e construções      0
+👥 População e economia        780
+🏛️ Setores sociais               0
+🤝 Comércio                      0
+🕊️ Alianças                      0
+📉 Perda por falta de insumo
+```
+
+> **Nota honesta:** os 🟡 marcados como "dependem de condição" (economia interligada,
+> estados visuais, eventos) **não são 🔴** — simplesmente o teste não conseguiu criar a
+> condição que os dispara na janela de tempo usada. O auditor deve tentar provocá-los
+> de propósito: vender todo o minério para ver a indústria cair a 30%, e deixar a
+> aprovação cair para ver protestos e estados de crise.
+
+---
+
+## ✅ VERIFICAÇÃO DOS ÍCONES — respondendo ao alerta de falso positivo
+
+O auditor observou emojis no DOM e alertou, corretamente, que isso poderia tornar o
+item 1 ("7 ícones SVG próprios") um **falso positivo**. Investiguei. O resultado:
+
+| Área | SVG | Emoji (antes) | Emoji (agora) |
+|---|---|---|---|
+| `bottomnav` — barra de baixo (a HUD principal) | **7** | 0 | 0 |
+| `rightrail` — trilho direito | **6** | 6 | **0** |
+| `leftdock` — trilho esquerdo | **4** | 4 | **0** |
+
+**O diagnóstico do auditor estava certo, mas o problema era outro:** a barra de baixo
+já era 100% SVG. O que ainda usava emoji eram os **dois trilhos laterais** — uma
+inconsistência real (HUD nova convivendo com ícones antigos).
+
+**Corrigido:** os 10 ícones dos trilhos foram convertidos para SVG no mesmo traço dos
+7 da barra de baixo, e o 📅 do letreiro "DIA n" foi removido. Verificado **renderizado
+na tela**, não só no DOM: **17/17 ícones SVG visíveis** (7 + 6 + 4), nenhum emoji
+restando na navegação, zero erros de página.
+
+**Os demais ~1000 emojis do arquivo foram preservados de propósito** — são conteúdo de
+menus, painéis e log, não ícones de navegação.
+
+> ⚠️ **Lição registrada para o auditor:** verifique **visualmente**, não pelo texto do
+> DOM. Este é exatamente o tipo de falso positivo que o método novo quer evitar.
+
+---
+
 ## 🚫 NÃO SÃO BUGS — não perca tempo nem desconte nota
 
 O auditor anterior marcou estes como defeito. **São decisões de projeto.**
@@ -156,6 +246,22 @@ Aqui não basta "estar completo". Avalie:
 ---
 
 ## 📝 FORMATO DA RESPOSTA ESPERADA
+
+### Critério da nota — NÃO some features, pese a experiência
+
+**Não faça:** "economia = 95 porque tem 37 indústrias."
+
+**Faça:** cada bloco vale 100 pontos distribuídos assim:
+
+| Critério | Peso | O que mede |
+|---|---|---|
+| **Causalidade** | 40 | Eu entendo *por que* o número mudou? |
+| **Feedback visual** | 25 | A consequência aparece onde eu estou olhando? |
+| **Profundidade** | 20 | O sistema reage de formas que valem explorar? |
+| **Facilidade de entendimento** | 15 | Descobri sem manual? |
+
+Assim, uma economia sofisticada mas incompreensível pode tirar 65,
+e uma economia simples mas cristalina pode tirar 85.
 
 Para cada bloco, dê nota **0–100** e **o motivo em uma frase de quem joga**, não de quem lê código:
 
