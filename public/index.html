@@ -454,6 +454,24 @@
   }
   #bottomnav button:hover .bn-ico{transform:scale(1.1);}
 .rl-ico{display:block;width:22px;height:22px;margin:0 auto;pointer-events:none;}
+
+/* ===== DIAGNOSTICO (?diag=1) ===== */
+#diagbtn{position:fixed;right:8px;bottom:8px;z-index:99999;background:#1b6ef3;color:#fff;
+  border:2px solid #cfe3ff;border-radius:10px;padding:8px 12px;font:700 12px 'Segoe UI';cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,0,0,.5);}
+#diagbtn:hover{background:#2b82ff;}
+#diagov{position:fixed;inset:0;z-index:100000;background:rgba(4,8,18,.94);display:flex;
+  align-items:center;justify-content:center;padding:16px;}
+#diagbox{background:#0e1628;border:2px solid #3a5a92;border-radius:14px;max-width:820px;width:100%;
+  max-height:92vh;display:flex;flex-direction:column;padding:14px;color:#e8f0ff;font:13px/1.5 'Segoe UI';}
+#diagbox h3{margin:0 0 8px;font-size:15px;color:#ffd76a;}
+#diagout{flex:1;overflow:auto;background:#060c18;border:1px solid #2a3f66;border-radius:8px;
+  padding:10px;font:11.5px/1.55 'Consolas',monospace;color:#bfe0ff;white-space:pre;min-height:260px;}
+#diagbar{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+#diagbar button{background:#1b6ef3;color:#fff;border:0;border-radius:8px;padding:9px 14px;
+  font:700 12px 'Segoe UI';cursor:pointer;}
+#diagbar button.sec{background:#2b3a5c;}
+
 .rl-ico svg{width:100%;height:100%;display:block;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
 
   #bottomnav button:hover .bn-lbl{opacity:1;}
@@ -972,7 +990,9 @@
     <button class="tool-btn" id="btn-help" title="Como jogar"><span class="rl-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.6a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .9-1 1.6v.3"/><path d="M12 17.1h.01"/></svg></span></button>
     <button class="tool-btn" id="btn-snd" title="Som liga/desliga"><span class="rl-ico"><svg viewBox="0 0 24 24"><path d="M4 9.5h3L12 5v14l-5-4.5H4z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg></span></button>
   </div>
-  <div id="menuov" class="hidden">
+  <button id="diagbtn" class="hidden">🔬 DIAGNÓSTICO</button>
+<div id="diagov" class="hidden"><div id="diagbox"><h3>🔬 Diagnóstico do jogo</h3><div id="diagout">Clique em "Rodar"…</div><div id="diagbar"><button id="diag-run">Rodar</button><button id="diag-copy" class="sec">📋 Copiar tudo</button><button id="diag-close" class="sec">Fechar</button></div></div></div>
+<div id="menuov" class="hidden">
     <h3>🏛️ Menu <button class="px" id="menu-x" style="float:right">✕</button></h3>
     <span class="date-badge" id="g-code" title="Código da sala">----</span>
     <button id="btn-tax" title="Impostos (4 sliders, estilo MA3)">🧾</button>
@@ -1939,20 +1959,44 @@ function renderGame(){
 }
 
 /* separa bandeiras sobrepostas (Europa etc.) — relaxamento simples, 10 iteracoes */
+/* BANDEIRAS FORA DO EIXO — reescrito.
+   O antigo empurrava as bandeiras 10 vezes sem limite: 191 de 196 saiam do
+   lugar, com deslocamento medio de 55px e maximo de 194px — a bandeira ia
+   parar muito longe do pais. Agora:
+     - o empurrao e menor e amortecido a cada passada
+     - existe um TETO de deslocamento (26px): a bandeira nunca abandona o pais
+     - devolve a posicao ORIGINAL junto, para o mapa desenhar a linha de guia
+       ligando a bandeira ao ponto verdadeiro */
+const DECLUTTER_TETO = 34;   /* com as linhas de guia, afastar um pouco mais nao atrapalha */
 function declutter(list){
-  const pts = list.map(p => { const c = cbid(p.country) || {lat:8,lon:-40}; const q = proj(c); return {id:p.id, x:q.x, y:q.y}; });
-  for (let k = 0; k < 10; k++){
+  const pts = list.map(p => {
+    const c = cbid(p.country) || {lat:8,lon:-40};
+    const q = proj(c);
+    return {id:p.id, x:q.x, y:q.y, ox:q.x, oy:q.y};
+  });
+  for (let k = 0; k < 9; k++){
+    const amort = 1 - k/12;                    // empurrao vai ficando mais fraco
     for (let i = 0; i < pts.length; i++) for (let j = i+1; j < pts.length; j++){
       const a = pts[i], b = pts[j]; let dx = b.x-a.x, dy = b.y-a.y;
-      if (Math.abs(dx) < 30 && Math.abs(dy) < 22){
+      if (Math.abs(dx) < 26 && Math.abs(dy) < 19){
         if (!dx && !dy){ dx = (i%2?1:-1)*2; dy = 1; }
-        const px = (30-Math.abs(dx))*Math.sign(dx||1)*0.5, py = (22-Math.abs(dy))*Math.sign(dy||1)*0.5;
+        const px = (26-Math.abs(dx))*Math.sign(dx||1)*0.42*amort;
+        const py = (19-Math.abs(dy))*Math.sign(dy||1)*0.42*amort;
         a.x -= px; a.y -= py; b.x += px; b.y += py;
       }
     }
+    // teto: nenhuma bandeira se afasta mais que DECLUTTER_TETO do seu pais
+    for (const p of pts){
+      const dx = p.x-p.ox, dy = p.y-p.oy, d = Math.hypot(dx,dy);
+      if (d > DECLUTTER_TETO){ const s = DECLUTTER_TETO/d; p.x = p.ox + dx*s; p.y = p.oy + dy*s; }
+    }
   }
   const m = new Map();
-  pts.forEach(p => m.set(p.id, {x:Math.min(982,Math.max(18,p.x)), y:Math.min(508,Math.max(12,p.y))}));
+  pts.forEach(p => m.set(p.id, {
+    x: Math.min(982, Math.max(18, p.x)), y: Math.min(508, Math.max(12, p.y)),
+    ox: p.ox, oy: p.oy,
+    deslocou: Math.hypot(p.x-p.ox, p.y-p.oy) > 5
+  }));
   return m;
 }
 function renderMap(){
@@ -2032,6 +2076,21 @@ function renderMap(){
     const ringColor = !p.alive ? '#5a6478' : rel==='me' ? '#ffd76a' : rel==='ally' ? '#39d98a' : '#ff6b6b';
     const r = 11 + Math.min(9, p.mil/4);
 
+    /* linha de guia: se a bandeira teve que sair do lugar, uma linha fina
+       mostra a qual pais ela pertence (evita a sensacao de "fora do eixo") */
+    if (pos.deslocou){
+      const gl = document.createElementNS('http://www.w3.org/2000/svg','line');
+      gl.setAttribute('x1', pos.ox); gl.setAttribute('y1', pos.oy);
+      gl.setAttribute('x2', pos.x);  gl.setAttribute('y2', pos.y);
+      gl.setAttribute('stroke', ringColor); gl.setAttribute('stroke-width','1');
+      gl.setAttribute('opacity','0.5'); gl.setAttribute('stroke-dasharray','2 2');
+      gLines.appendChild(gl);
+      const gp = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      gp.setAttribute('cx', pos.ox); gp.setAttribute('cy', pos.oy);
+      gp.setAttribute('r','1.8'); gp.setAttribute('fill', ringColor); gp.setAttribute('opacity','0.75');
+      gLines.appendChild(gp);
+    }
+
     const mk = document.createElementNS('http://www.w3.org/2000/svg','g');
     mk.setAttribute('class','mk');
     mk.setAttribute('transform',`translate(${pos.x},${pos.y})`);
@@ -2106,12 +2165,23 @@ function leafInit(){
     const _tl = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Esri, Maxar, Earthstar Geographics', maxZoom: 7 }).addTo(leafMap);
     try { L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 7, opacity: 0.85 }).addTo(leafMap); } catch(_){}
     window.leafKill = () => { if (window.__leafDead) return; window.__leafDead = true; try { leafMap.remove(); } catch(_){} leafMap = null; const _lm = document.getElementById('leafmap'); if (_lm) _lm.classList.add('hidden'); document.body.classList.remove('leaf-on'); renderMap(); };
-    setTimeout(() => { try { if (!window.__leafDead && leafMap && !document.querySelector('#leafmap img.leaflet-tile-loaded')) window.leafKill(); } catch(_){} }, 9000);
+    setTimeout(() => { try { if (!window.__leafDead && leafMap && !document.querySelector('#leafmap img.leaflet-tile-loaded')) { _fixSize(); } } catch(_){} }, 9000);
     let _terr = 0;
     _tl.on('tileerror', () => { if (++_terr > 4 && window.leafKill) window.leafKill(); });
     $('leafmap').classList.remove('hidden');
     document.body.classList.add('leaf-on');
     window.__leaf = true;
+    /* BUG DO MAPA INCOMPLETO: o #leafmap nasce com class="hidden", entao o
+       Leaflet e criado achando que o container tem 0x0 e quase nao carrega
+       tiles. Precisa avisar o tamanho real DEPOIS de mostrar. */
+    const _fixSize = () => { try { if (leafMap && !window.__leafDead) leafMap.invalidateSize(); } catch(_){} };
+    _fixSize();
+    setTimeout(_fixSize, 60);
+    setTimeout(_fixSize, 400);
+    setTimeout(_fixSize, 1200);
+    window.addEventListener('resize', _fixSize);
+    /* quando a aba volta ao foco o layout pode ter mudado */
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(_fixSize, 80); });
   } catch(e){ leafMap = null; }
 }
 function syncLeaflet(){
@@ -4804,6 +4874,145 @@ function verHistoricoDiplomatico(outro){
     if (w && !w.__ligado){ w.__ligado = true; w.onclick = abrirPibExplicacao; clearInterval(iv); }
     if (++tentou > 60) clearInterval(iv);
   }, 250);
+})();
+
+
+
+/* ===== DIAGNOSTICO: o jogador roda e manda o texto pra mim ===== */
+function diagColetar(){
+  const L=[]; const P=(s)=>L.push(s);
+  const agora = new Date().toLocaleString('pt-BR');
+  P('=== DIAGNOSTICO — Presidente Online ===');
+  P('quando: '+agora);
+  P('url: '+location.href);
+  P('tela: '+window.innerWidth+'x'+window.innerHeight+'  dpr:'+(window.devicePixelRatio||1));
+  P('navegador: '+navigator.userAgent.slice(0,110));
+  P('');
+
+  /* --- MAPA --- */
+  P('--- MAPA ---');
+  try{
+    const lm=document.getElementById('leafmap');
+    const lc=document.querySelector('.leaflet-container');
+    const tiles=[...document.querySelectorAll('.leaflet-tile')];
+    const okT=tiles.filter(t=>t.complete&&t.naturalWidth>0).length;
+    P('leaflet presente : '+(lc?'sim':'NAO'));
+    P('leafmap escondido: '+(lm?lm.classList.contains('hidden'):'?'));
+    P('leaf-on (svg off): '+document.body.classList.contains('leaf-on'));
+    P('tiles no DOM     : '+tiles.length);
+    P('tiles carregados : '+okT);
+    if(lc){ const r=lc.getBoundingClientRect();
+      P('tamanho do mapa  : '+Math.round(r.width)+'x'+Math.round(r.height)); }
+    const _lf = (typeof leafMap!=='undefined') ? leafMap : window.leafMap;
+    if(_lf && !window.__leafDead){
+      try{ const z=_lf.getZoom(); const c=_lf.getCenter(); const sz=_lf.getSize();
+        P('zoom             : '+z);
+        P('centro           : '+c.lat.toFixed(2)+', '+c.lng.toFixed(2));
+        P('tamanho interno  : '+sz.x+'x'+sz.y+'  '+(sz.x<50||sz.y<50?'<<< PROBLEMA: leaflet acha que tem tamanho 0':'ok'));
+      }catch(e){ P('erro lendo leaflet: '+e.message); }
+    } else P('leaflet morto    : sim (caiu no mapa SVG)');
+    const tilesErr = tiles.filter(t=>t.complete&&t.naturalWidth===0).length;
+    P('tiles com erro   : '+tilesErr);
+    if(tiles.length) P('exemplo de tile  : '+tiles[0].src.slice(0,110));
+  }catch(e){ P('ERRO no mapa: '+e.message); }
+  P('');
+
+  /* --- BANDEIRAS --- */
+  P('--- BANDEIRAS ---');
+  try{
+    const mks=[...document.querySelectorAll('#map-markers .mk')];
+    const imgs=[...document.querySelectorAll('#map-markers image')];
+    const lflags=[...document.querySelectorAll('.lflag img')];
+    P('marcadores SVG   : '+mks.length);
+    P('imagens de bande.: '+imgs.length);
+    P('bandeiras leaflet: '+lflags.length);
+    const quebradas=imgs.filter(i=>i.getAttribute('href')&&!i.getAttribute('href').startsWith('data:'));
+    P('(bandeiras por arquivo: '+quebradas.length+')');
+    // colisoes
+    const pos=[]; mks.forEach(mk=>{ const m=(mk.getAttribute('transform')||'').match(/translate\(([-\d.]+),\s*([-\d.]+)\)/); if(m) pos.push({x:+m[1],y:+m[2]}); });
+    let col=0; for(let i=0;i<pos.length;i++)for(let j=i+1;j<pos.length;j++){
+      const d=Math.hypot(pos[i].x-pos[j].x,pos[i].y-pos[j].y); if(d<18)col++; }
+    P('pares colidindo  : '+col+'  '+(col>20?'<<< MUITAS bandeiras em cima umas das outras':'ok'));
+    if(typeof declutter==='function' && typeof state!=='undefined'){
+      try{ const ps=state.players.filter(x=>x.country); const mp=declutter(ps);
+        let mv=0,soma=0,mx=0;
+        ps.forEach(x=>{ const q=mp.get(x.id); if(!q||q.ox==null)return;
+          const d=Math.hypot(q.x-q.ox,q.y-q.oy); soma+=d; if(d>mx)mx=d; if(d>5)mv++; });
+        P('deslocadas       : '+mv+' de '+ps.length);
+        P('desloc. medio    : '+(soma/Math.max(1,ps.length)).toFixed(1)+'px');
+        P('desloc. maximo   : '+mx.toFixed(1)+'px  '+(mx>60?'<<< bandeira longe do pais':'ok'));
+      }catch(e){ P('erro no declutter: '+e.message); }
+    }
+  }catch(e){ P('ERRO nas bandeiras: '+e.message); }
+  P('');
+
+  /* --- DESEMPENHO --- */
+  P('--- DESEMPENHO ---');
+  try{
+    const fps = (window.__diagFps||[]); 
+    if(fps.length) P('fps medio        : '+(fps.reduce((a,b)=>a+b,0)/fps.length).toFixed(1));
+    P('memoria (heap)   : '+(performance.memory?Math.round(performance.memory.usedJSHeapSize/1048576)+' MB':'n/a'));
+    P('nos no DOM       : '+document.getElementsByTagName('*').length);
+    const svg=document.getElementById('map'); const g=document.getElementById('map-root');
+    if(svg){ const r=svg.getBoundingClientRect(); P('svg#map          : '+Math.round(r.width)+'x'+Math.round(r.height)+' viewBox='+svg.getAttribute('viewBox')); }
+    if(g){ try{ const b=g.getBBox(); P('bbox map-root    : '+Math.round(b.width)+'x'+Math.round(b.height)); }catch(e){} }
+    if(typeof renderMap==='function'){
+      const t0=performance.now(); for(let i=0;i<3;i++) renderMap(); const t1=performance.now();
+      P('renderMap x3     : '+(t1-t0).toFixed(1)+'ms ('+((t1-t0)/3).toFixed(1)+'ms cada)  '+((t1-t0)/3>60?'<<< LENTO':'ok'));
+    }
+  }catch(e){ P('ERRO no desempenho: '+e.message); }
+  P('');
+
+  /* --- JOGO --- */
+  P('--- JOGO ---');
+  try{
+    if(typeof state!=='undefined'&&state){
+      P('fase             : '+state.phase);
+      P('dia              : '+state.day+'   pausado: '+state.paused);
+      P('jogadores        : '+(state.players||[]).length);
+      const eu=(state.players||[]).find(x=>x.id===myId);
+      if(eu) P('meu pais         : '+eu.country+'  vivo:'+eu.alive);
+      P('feed             : '+(state.feed||[]).length+' itens');
+    } else P('sem state (ainda no lobby?)');
+    P('erros capturados : '+(window.__diagErros||[]).length);
+    (window.__diagErros||[]).slice(0,8).forEach(e=>P('   ! '+e));
+  }catch(e){ P('ERRO no jogo: '+e.message); }
+  P('');
+  P('=== FIM ===');
+  return L.join('\n');
+}
+function diagRodar(){
+  const out=document.getElementById('diagout');
+  if(out) out.textContent='rodando…';
+  setTimeout(()=>{ try{ const t=diagColetar(); if(out) out.textContent=t;
+    window.__diagTexto=t; }catch(e){ if(out) out.textContent='ERRO: '+e.message+'\n'+e.stack; } },60);
+}
+(function(){
+  if(!/[?&]diag=1/.test(location.search)) return;
+  const b=document.getElementById('diagbtn');
+  if(b){ b.classList.remove('hidden'); b.onclick=()=>{ document.getElementById('diagov').classList.remove('hidden'); diagRodar(); }; }
+  const c=document.getElementById('diag-close'); if(c) c.onclick=()=>document.getElementById('diagov').classList.add('hidden');
+  const r=document.getElementById('diag-run');   if(r) r.onclick=diagRodar;
+  const cp=document.getElementById('diag-copy');
+  if(cp) cp.onclick=()=>{ const t=window.__diagTexto||document.getElementById('diagout').textContent;
+    navigator.clipboard.writeText(t).then(()=>{ cp.textContent='✅ Copiado!'; setTimeout(()=>cp.textContent='📋 Copiar tudo',1800); })
+    .catch(()=>{ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select();
+      try{document.execCommand('copy');cp.textContent='✅ Copiado!';}catch(_){cp.textContent='❌ selecione e copie';} ta.remove(); }); };
+  /* medidor de fps */
+  window.__diagFps=[];
+  (function medirFps(){
+    let quadros=0, t0=performance.now();
+    const loop=()=>{ quadros++; const t=performance.now()-t0;
+      if(t>=1000){ const f=quadros*1000/t;
+        if(f>0&&f<400){ window.__diagFps.push(f); if(window.__diagFps.length>30) window.__diagFps.shift(); }
+        quadros=0; t0=performance.now(); }
+      requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  })();
+  /* captura erros */
+  window.__diagErros=[];
+  window.addEventListener('error',e=>{ if(window.__diagErros.length<30) window.__diagErros.push((e.message||'erro')+' @ '+(e.filename||'').split('/').pop()+':'+(e.lineno||0)); });
+  window.addEventListener('unhandledrejection',e=>{ if(window.__diagErros.length<30) window.__diagErros.push('promise: '+(e.reason&&e.reason.message||e.reason)); });
 })();
 
 
