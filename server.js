@@ -587,6 +587,7 @@ function snapshot(room) {
       units: p.units, builds: p.builds, emergencyUntil: p.emergencyUntil, leis: p.leis, crise: p.crise || null,
       pop: Math.round(p.pop), rec: floorRec(p.rec), xp: p.xp, bot: p.bot, customName: p.customName, customFlag: p.customFlag,
       pib: p.pib || pibOf(p), empregos: p.empregos || empregosOf(p),
+      pibDetalhe: pibDetalhe(p), histRel: (p.histRel && typeof p.histRel === 'object') ? p.histRel : {},
       suprimento: p.suprimento != null ? p.suprimento : Math.round(taxaSuprimento(p) * 100),
       pressao: pressaoPolitica(p), grupos: gruposPoliticos(p),
       dailyIncome: Math.round(incomeOf(room, p) / DAY_DIV),
@@ -895,6 +896,7 @@ function openUN(room) {
 
 function dayTick(room) {
   if (room.phase !== 'game' || room.paused) return;
+  DIA_ATUAL = room.day;
   if (room.un && Date.now() >= room.un.deadline) resolveUN(room);
   if (room.phase !== 'game') return;
   room.day++;
@@ -979,6 +981,8 @@ function dayTick(room) {
     p.suprimento = Math.round(taxaSuprimento(p) * 100);
     p.empregos = empregosOf(p);
     p.pib = pibOf(p);
+    /* FASE 383: desdobramentos de eventos passados */
+    processarDesdobramentos(room, p);
     const dep = p.depositos || [];
     if (dep.includes('petroleo')) p.rec.energia += 2 / DAY_DIV;
     if (dep.includes('minerio')) p.rec.minerio += 2 / DAY_DIV;
@@ -1050,9 +1054,50 @@ function premiosSemanais(room) {
   for (const k of ['interpol', 'fmi', 'omc']) { const ld = room.players.find(x => x.id === room.orgLeader[k] && x.alive && (x.orgs || []).includes(k)); if (ld) { ld.money += 150; ld.stats.titulos = (ld.stats.titulos || 0) + 1; } }
 }
 
+/* FASE 382 — preço por oferta e demanda */
+function atualizarMercado(room) {
+  const vivos = room.players.filter(p => p.alive && !p.botEliminado);
+  for (const k of Object.keys(room.market)) {
+    let oferta = 0, demanda = 0;
+    for (const p of vivos) {
+      for (const b in (p.buildings || {})) {
+        const n = p.buildings[b] || 0; if (!n) continue;
+        const o = BUILD_OUT[b]; if (!o) continue;
+        if (o.res === k) oferta += n * o.qtd;
+        const ins = INSUMOS[b];
+        if (ins && ins.res === k) demanda += n * ins.qtd;
+      }
+      /* estoque parado também conta como oferta */
+      oferta += Math.floor(((p.rec && p.rec[k]) || 0) / 40);
+      /* população consome comida e energia */
+      if (k === 'comida') demanda += Math.floor((p.pop || 0) / 12);
+      if (k === 'energia') demanda += Math.floor((p.pop || 0) / 20);
+    }
+    const base = room.market[k];
+    const ratio = demanda > 0 ? (oferta / demanda) : 2;
+    let alvo = base;
+    if (ratio > 1.6)      alvo = base * 0.93;   /* sobra: preço cai */
+    else if (ratio > 1.1) alvo = base * 0.98;
+    else if (ratio < 0.5) alvo = base * 1.14;   /* falta: preço sobe */
+    else if (ratio < 0.8) alvo = base * 1.07;
+    /* guerra e sanções encarecem o mundo inteiro */
+    const guerras = vivos.reduce((n, p) => n + (p.wars || []).length, 0);
+    const sancoes = vivos.reduce((n, p) => n + (p.sanctionedBy || []).length, 0);
+    if (guerras > 0)  alvo *= 1 + Math.min(0.10, guerras * 0.012);
+    if (sancoes > 0)  alvo *= 1 + Math.min(0.08, sancoes * 0.010);
+    /* leve ruído para não ficar determinístico */
+    alvo += (Math.random() * 1.6 - 0.8);
+    room.market[k] = Math.max(3, Math.min(80, Math.round(alvo)));
+  }
+  room.marketAtualizadoEm = room.day || 0;
+}
+
 function resolveWeek(room) {
   room.turn++;
-  for (const k of Object.keys(room.market)) room.market[k] = Math.max(3, Math.min(40, Math.round(room.market[k] * (0.88 + Math.random() * 0.3))));
+  /* FASE 382 — MERCADO DINÂMICO
+     Preço deixa de ser passeio aleatório e passa a refletir oferta, demanda,
+     guerra e sanções. Excedente derruba o preço; escassez encarece. */
+  atualizarMercado(room);
 
   // relações: decaimento + embaixadas
   const alive = room.players.filter(p => p.alive);
@@ -1135,21 +1180,21 @@ const upM = (p, k) => 1 + 0.5 * ((p.upgrades && p.upgrades[k]) || 0);
    ============================================================ */
 const INSUMOS = {
   /* metal-mecânica */
-  siderurgica:{res:'minerio',qtd:4}, fabrica:{res:'minerio',qtd:2},
+  siderurgica:{res:'energia',qtd:4}, fabrica:{res:'minerio',qtd:2},
   montadora:{res:'minerio',qtd:3}, caminhoes:{res:'minerio',qtd:2},
-  motores:{res:'minerio',qtd:2}, maquinas:{res:'minerio',qtd:2},
+  motores:{res:'minerio',qtd:2}, maquinas:{res:'energia',qtd:2},
   estaleiro_naval:{res:'minerio',qtd:3}, estaleiro:{res:'minerio',qtd:2},
   vidro:{res:'minerio',qtd:2}, quimica:{res:'minerio',qtd:2},
   fertilizantes:{res:'minerio',qtd:2},
   /* energia-intensivas */
-  refinaria:{res:'energia',qtd:3}, petroquimica:{res:'energia',qtd:4},
+petroquimica:{res:'energia',qtd:4},
   plastico:{res:'energia',qtd:2}, aluminio:{res:'energia',qtd:3},
   /* alimentos */
-  padaria:{res:'comida',qtd:3}, processados:{res:'comida',qtd:4},
+  padaria:{res:'energia',qtd:2}, processados:{res:'energia',qtd:3},
   frigorifico:{res:'carne',qtd:3}, laticinios:{res:'carne',qtd:2},
   cervejaria:{res:'comida',qtd:2}, vinicola:{res:'comida',qtd:2},
   doces:{res:'comida',qtd:2}, cafe:{res:'comida',qtd:2},
-  cacau:{res:'comida',qtd:2}, oleo_vegetal:{res:'comida',qtd:3},
+  cacau:{res:'comida',qtd:2}, oleo_vegetal:{res:'energia',qtd:2},
   farmaceutica:{res:'comida',qtd:2},
   /* madeira */
   papel:{res:'madeira',qtd:3}, moveis:{res:'madeira',qtd:4},
@@ -1179,6 +1224,43 @@ function taxaSuprimento(p) {
   let soma = 0;
   for (const r of ks) soma += Math.min(1, ((p.rec && p.rec[r]) || 0) / Math.max(1, need[r]));
   return soma / ks.length;
+}
+
+/* FASE 380 — EXPLICAÇÃO ECONÔMICA
+   Devolve quanto cada fator contribui para o PIB. Sem isso o jogador olha
+   para "siderúrgica rendendo 30%" e acha que é bug. */
+function pibDetalhe(p) {
+  let predios = 0;
+  for (const k in (p.buildings || {})) {
+    const n = p.buildings[k] || 0; if (!n) continue;
+    const o = BUILD_OUT[k]; if (!o) continue;
+    predios += n * (((o.money || 0) * 42) + ((o.qtd || 0) * 9));
+  }
+  const populacao = Math.floor(p.pop || 0) * 3 + (p.eco || 0) * 260;
+  const setores = sectorSum(p) * 120;
+  const comercio = (p.trades || []).length * 60;
+  const aliados = (p.allies || []).length * 90;
+  const bruto = predios + populacao + setores + comercio + aliados;
+  const sup = taxaSuprimento(p);
+  const mult = 0.35 + 0.65 * sup;
+  const need = insumoNecessario(p);
+  const faltando = Object.keys(need).filter(r => ((p.rec && p.rec[r]) || 0) < need[r]);
+  return {
+    predios: Math.round(predios * mult),
+    populacao: Math.round(populacao * mult),
+    setores: Math.round(setores * mult),
+    comercio: Math.round(comercio * mult),
+    aliados: Math.round(aliados * mult),
+    suprimento: Math.round(bruto * (mult - 1)),
+    total: Math.round(bruto * mult),
+    taxaSuprimento: Math.round(sup * 100),
+    insumosFaltando: faltando,
+    /* alerta objetivo: o jogador precisa saber o que está travando a indústria */
+    aviso: faltando.length
+      ? ('Falta ' + faltando.slice(0, 3).join(', ').replace(/_/g, ' ') +
+         ' — indústrias que dependem disso rendem apenas 30%.')
+      : null
+  };
 }
 
 function empregosOf(p) {
@@ -1347,12 +1429,68 @@ const EVENTOS_SISTEMICOS = {
   }
 };
 
+/* FASE 383 — CADEIA DE EVENTOS
+   Um evento planta uma consequência. Não é sorte: depende de como o país
+   reagiu. Pandemia sem hospital vira revolta; revolta mal contida vira
+   crise financeira. */
+const EVENTOS_ENCADEADOS = {
+  pandemia: {
+    se: p => ((p.buildings && p.buildings.hospital) || 0) < 2 || (p.aprov || 100) < 40,
+    proximo: 'revolta', delay: 2,
+    texto: 'A pandemia mal administrada virou revolta popular.'
+  },
+  seca: {
+    se: p => !!(p.famine),
+    proximo: 'revolta', delay: 3,
+    texto: 'A fome gerada pela seca virou revolta popular.'
+  },
+  crise_financeira: {
+    se: p => (p.aprov || 100) < 45,
+    proximo: 'revolta', delay: 3,
+    texto: 'A crise econômica derrubou a confiança no governo.'
+  },
+  terremoto: {
+    se: p => true,
+    proximo: 'crise_financeira', delay: 4,
+    texto: 'Os custos da reconstrução pesaram nas contas públicas.'
+  },
+  revolta: {
+    se: p => (p.aprov || 100) < 28,
+    proximo: 'crise_financeira', delay: 2,
+    texto: 'A instabilidade afugentou investidores.'
+  }
+};
+
+function agendarDesdobramento(p, eventoKey) {
+  const cadeia = EVENTOS_ENCADEADOS[eventoKey];
+  if (!cadeia) return;
+  try { if (!cadeia.se(p)) return; } catch (e) { return; }
+  p.eventosPendentes = p.eventosPendentes || [];
+  if (p.eventosPendentes.some(x => x.evt === cadeia.proximo)) return;  // sem duplicar
+  p.eventosPendentes.push({ evt: cadeia.proximo, dia: DIA_ATUAL + (cadeia.delay || 2), texto: cadeia.texto });
+}
+
+function processarDesdobramentos(room, p) {
+  if (!p.eventosPendentes || !p.eventosPendentes.length) return;
+  const prontos = p.eventosPendentes.filter(x => room.day >= x.dia);
+  if (!prontos.length) return;
+  p.eventosPendentes = p.eventosPendentes.filter(x => room.day < x.dia);
+  for (const pd of prontos) {
+    const ev = EVENTOS_SISTEMICOS[pd.evt];
+    if (!ev) continue;
+    if (pd.texto) log(room, `⛓️ ${pd.texto}`);
+    ev.aplicar(room, p);
+    agendarDesdobramento(p, pd.evt);   /* a cadeia pode continuar */
+  }
+}
+
 function dispararEventoSistemico(room, p) {
   const ks = Object.keys(EVENTOS_SISTEMICOS);
   const k = ks[Math.floor(Math.random() * ks.length)];
   const ev = EVENTOS_SISTEMICOS[k];
   const txt = ev.aplicar(room, p);
   log(room, `${ev.nome} ${txt}`);
+  agendarDesdobramento(p, k);
   return k;
 }
 
@@ -5952,7 +6090,7 @@ function performAction(room, p, msg) {
       if (!spend(p, 1, dipCost(p, 100))) return;
       /* FASE 369: espionar também pode ser descoberto (risco menor) */
       if (Math.random() < riscoEspionagem(p, target) * 0.30) {
-        bumpRel(target, p, -14);
+        bumpRel(target, p, -14, 'espionagem detectada');
         log(room, `🕵️⚠️ ${cname(target)} detectou espionagem de ${cname(p)} (−14 relações).`);
       }
       info(p.conn, `🕵️ Relatório sobre ${cname(target)} — Caixa $${Math.round(target.money)} | Eco ${target.eco} | Mil ${target.mil} | ❤️ ${target.aprov}% | ☢️ ${target.nuclear} | ⚖️ ${target.influencia} | 🕌 ${target.fe} | Dívida $${target.debt}`);
@@ -5963,7 +6101,7 @@ function performAction(room, p, msg) {
       if (!spend(p, 1, dipCost(p, 150))) return;
       /* FASE 369: risco real de ser descoberto */
       if (Math.random() < riscoEspionagem(p, target) * 0.55) {
-        bumpRel(target, p, -22);
+        bumpRel(target, p, -22, 'sabotagem descoberta');
         p.aprov = Math.max(0, (p.aprov || 0) - 4);
         log(room, `🕵️❌ ${cname(target)} DESCOBRIU agentes de ${cname(p)}! Relações despencam (−22) e há escândalo interno.`);
         record(room, `🕵️ Operação de ${cname(p)} descoberta por ${cname(target)} (dia ${room.day}).`);
@@ -6145,6 +6283,7 @@ function performAction(room, p, msg) {
       if (((p.pacts && p.pacts[target.id]) || 0) > room.turn) { err(p.conn, '🤝 Um pacto de não-agressão com essa nação está vigente.'); return; }
       if (!spend(p, 1, 0)) return;
       p.wars.push(target.id); target.wars.push(p.id);
+      bumpRel(p, target, -30, 'declarou guerra');
       p.trades = p.trades.filter(id => id !== target.id); target.trades = target.trades.filter(id => id !== p.id);
       p.relations[target.id] = 0; target.relations[p.id] = 0;
       p.aprov = Math.max(0, p.aprov - 2);
@@ -6580,9 +6719,40 @@ function performAction(room, p, msg) {
   broadcast(room);
 }
 
-function bumpRel(a, b, d) {
+/* FASE 378 — MEMÓRIA DIPLOMÁTICA
+   O mundo não esquece. Cada mudança de relação guarda o motivo.
+   Isso alimenta tanto a IA (escalada) quanto a UI (histórico visual). */
+let DIA_ATUAL = 0;
+
+function bumpRel(a, b, d, motivo) {
   const v = Math.max(0, Math.min(100, relBetween(a, b) + d));
   a.relations[b.id] = v; b.relations[a.id] = v;
+  if (motivo && d) {
+    const reg = { m: motivo, v: Math.round(d), d: DIA_ATUAL };
+    for (const x of [a, b]) {
+      if (!x) continue;
+      if (!x.histRel) x.histRel = {};
+      const outro = (x === a) ? b.id : a.id;
+      if (!x.histRel[outro]) x.histRel[outro] = [];
+      x.histRel[outro].unshift(reg);
+      if (x.histRel[outro].length > 14) x.histRel[outro].length = 14;
+    }
+  }
+}
+
+/* lê a memória de um país sobre outro */
+function memoriaRel(p, outroId) {
+  const h = (p.histRel && p.histRel[outroId]) || [];
+  let guerras = 0, traicoes = 0, ajudas = 0, sancoes = 0;
+  for (const r of h) {
+    const m = (r.m || '').toLowerCase();
+    if (/guerra|ataque|invas|nuclear/.test(m)) guerras += 1;
+    if (/sabot|espion|traic|calote/.test(m)) traicoes += 1;
+    if (/ajuda|presente|com.rci|empr.stimo|acordo/.test(m)) ajudas += 1;
+    if (/san..o|bloqueio|embargo/.test(m)) sancoes += 1;
+  }
+  const rancor = guerras * 16 + traicoes * 13 + sancoes * 7 - ajudas * 11;
+  return { guerras, traicoes, ajudas, sancoes, rancor, total: h.length };
 }
 
 function respondProposal(room, p, fromId, accept, kind) {
@@ -6884,6 +7054,37 @@ const BT = {
   porta_avioes: { em:'🛳️', nome:'Porta-aviões',  hp:25, atk:3, def:5, alc:3 },
   milicia:      { em:'🔰', nome:'Milícia',       hp:8,  atk:2, def:1, alc:1 },
 };
+/* FASE 381 — COMPOSIÇÃO MILITAR
+   Não basta contar tropas: cada tipo é forte contra uns e fraco contra outros.
+   Isso faz a composição do exército importar tanto quanto o tamanho. */
+const BT_VANTAGEM = {
+  infantaria:   { contra:['artilharia','submarinos'],  mult:1.35, fraca:['blindados','aviacao'] },
+  blindados:    { contra:['infantaria','artilharia'],  mult:1.35, fraca:['aviacao'] },
+  artilharia:   { contra:['blindados','infantaria'],   mult:1.30, fraca:['aviacao','frota'] },
+  aviacao:      { contra:['blindados'],                mult:1.40, fraca:['frota','porta_avioes'] },
+  frota:        { contra:['artilharia','aviacao'],     mult:1.25, fraca:['submarinos'] },
+  submarinos:   { contra:['frota','porta_avioes'],     mult:1.45, fraca:['infantaria','aviacao'] },
+  porta_avioes: { contra:['aviacao','submarinos'],     mult:1.20, fraca:['frota'] },
+  milicia:      { contra:[],                           mult:1.00, fraca:[] }
+};
+function vantagemUnidade(atacante, defensor) {
+  const v = BT_VANTAGEM[atacante];
+  if (!v) return { mult: 1, tipo: '' };
+  if ((v.contra || []).includes(defensor)) return { mult: v.mult, tipo: 'forte' };
+  if ((v.fraca || []).includes(defensor))  return { mult: 1 / v.mult, tipo: 'fraco' };
+  return { mult: 1, tipo: '' };
+}
+/* resumo legível da composição do exército — para o log da batalha */
+function resumoComposicao(p) {
+  const u = p.units || {};
+  const partes = [];
+  for (const k of Object.keys(BT_VANTAGEM)) {
+    if (k === 'milicia') continue;
+    const n = u[k] || 0; if (!n) continue;
+    partes.push(BT[k].em + n);
+  }
+  return partes.length ? partes.join(' ') : 'só milícia';
+}
 const BT_COLS = 7, BT_LINHAS = 6;
 const dist = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 
@@ -6958,8 +7159,13 @@ function reacaoDiplomatica(room, atk, def) {
     const relAtk = relBetween(o, atk), relDef = relBetween(o, def);
     const r = Math.random();
 
+    /* FASE 378: a memória endurece a resposta — agressor reincidente é tratado pior */
+    const mem = memoriaRel(o, atk.id);
+    const escalada = Math.min(0.30, Math.max(0, mem.rancor) * 0.012);
+    const ajuste = escalada;
+
     /* aliado do agredido entra em guerra contra o agressor */
-    if (o.allies.includes(def.id) && !o.wars.includes(atk.id) && r < 0.75) {
+    if (o.allies.includes(def.id) && !o.wars.includes(atk.id) && r < 0.75 + ajuste) {
       o.wars.push(atk.id); atk.wars.push(o.id);
       bumpRel(o, atk, -30); bumpRel(o, def, +12);
       log(room, `🤝 ${cname(o)} honrou a aliança e DECLAROU GUERRA a ${cname(atk)}.`);
@@ -6967,7 +7173,7 @@ function reacaoDiplomatica(room, atk, def) {
       continue;
     }
     /* inimigo do agressor aproveita para sancionar */
-    if (relAtk < 30 && !o.sanctioning.includes(atk.id) && r < 0.55) {
+    if ((relAtk < 30 || mem.rancor > 24) && !o.sanctioning.includes(atk.id) && r < 0.55 + ajuste) {
       o.sanctioning.push(atk.id); atk.sanctionedBy.push(o.id);
       bumpRel(o, atk, -12);
       log(room, `🚫 ${cname(o)} aplicou SANÇÕES a ${cname(atk)} após a agressão.`);
@@ -6985,7 +7191,7 @@ function reacaoDiplomatica(room, atk, def) {
     }
     /* pacifista condena publicamente */
     if ((o.ministers && o.ministers.def === 'pac') || o.ideology === 'democracia') {
-      if (r < 0.45) {
+      if (r < 0.45 + ajuste) {
         bumpRel(o, atk, -6); bumpRel(o, def, +4);
         log(room, `🕊️ ${cname(o)} CONDENOU publicamente a agressão de ${cname(atk)}.`);
       }
@@ -7015,6 +7221,8 @@ function iniciarBatalha(room, atk, def) {
   const pct = v => (v >= 0 ? '+' : '') + Math.round(v * 100) + '%';
   btLog(b, `📊 ${cname(atk)}: tech ${pct(fa.tech)} · logística ${pct(fa.logistica)} · suprimento ${pct(fa.suprimento)}`);
   btLog(b, `📊 ${cname(def)}: tech ${pct(fd.tech)} · terreno ${pct(fd.terreno)} · logística ${pct(fd.logistica)}`);
+  btLog(b, `🎖️ ${cname(atk)}: ${resumoComposicao(atk)}`);
+  btLog(b, `🎖️ ${cname(def)}: ${resumoComposicao(def)}`);
   /* FASE 368: o mundo reage à agressão */
   reacaoDiplomatica(room, atk, def);
   btLog(b, `Turno de ${cname(atk)}. Escolha uma unidade e uma ação.`);
@@ -7044,11 +7252,14 @@ function btPassarVez(room) {
 
 function btAtacar(room, u, alvo) {
   const b = room.batalha; if (!b || b.fim) return;
-  const dano = Math.max(1, Math.round(u.atk * (0.85 + Math.random() * 0.4) - alvo.def * 0.4));
+  /* FASE 381: vantagem de composição entra no dano */
+  const vg = vantagemUnidade(u.tipo, alvo.tipo);
+  const dano = Math.max(1, Math.round(u.atk * vg.mult * (0.85 + Math.random() * 0.4) - alvo.def * 0.4));
   alvo.hp -= dano;
   const morto = alvo.hp <= 0;
   if (morto) alvo.hp = 0;
   btLog(b, `${BT[u.tipo].em} ${BT[u.tipo].nome} atinge ${BT[alvo.tipo].em} ${BT[alvo.tipo].nome}: -${dano} HP` +
+    (vg.tipo === 'forte' ? ` 💥 VANTAGEM (×${vg.mult.toFixed(2)})` : (vg.tipo === 'fraco' ? ` ⚠️ em desvantagem (×${vg.mult.toFixed(2)})` : '')) +
            (morto ? ' ☠️ DESTRUÍDO' : ` (${alvo.hp} restante)`));
   btPassarVez(room);
 }

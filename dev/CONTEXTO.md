@@ -607,3 +607,63 @@ Diagnostico de codigo confirmou 6/6 causas. Plano executado na ordem de impacto 
   node-check duplo OK.
 - DESCOBERTA: o jogo tem periodo de paz da ONU ate o turno 20 (noWarUntil=20). Nao e bug.
   Por isso guerra nao pode ser testada por smoke curto — testar via test_funcoes_362_372.js.
+
+## FASES 378-383 (2026-09-09) — resposta a 2a auditoria externa
+Avaliador subiu a nota geral de ~88 para ~91/100. Economia 70->89, Militar 75->89,
+Leis 90->95, Crises 80->91, Interface 65->82. Mas ele marcou 4 coisas que eu PIOREI.
+
+### Correcoes do que eu piorei (primeiro, antes de adicionar nada)
+- R1 EXCESSO DE ANIMACAO: a regra global de transition incluia `input, select, .ov`.
+  Removido. Numeros do HUD agora tem `transition:none` — informacao recorrente
+  muda instantaneo; so ACAO anima. Regra adotada: acao importante = animacao,
+  informacao recorrente = mudanca sutil/instantanea.
+- R2 RAJDHANI EM EXCESSO: `#tut-title`, `#tut`, `.desc`, `.explicacao` e paragrafos
+  voltaram para 'Segoe UI'. Rajdhani fica so em titulos, HUD e numeros.
+- R3 VIDRO EM EXCESSO: escala E0..E3 explicita. `.panel` E2 (solido com profundidade);
+  vidro (backdrop-filter) reservado para o que flutua sobre o mapa (bottomnav,
+  transport, leftdock, rightrail); E3 so em modal/alerta.
+- R4 COMPLEXIDADE ECONOMICA (risco): resolvido pelo item 25 abaixo.
+
+### Itens novos implementados
+- 381 (22) COMPOSICAO MILITAR: BT_VANTAGEM com vantagem situacional entre os 8 tipos
+  de unidade (ex: aviacao x1.40 contra blindados, x0.71 contra frota; submarino
+  x1.45 contra porta-avioes). vantagemUnidade() entra no dano de btAtacar e aparece
+  no log ("VANTAGEM x1.40" / "em desvantagem"). resumoComposicao() mostra o exercito
+  na abertura da batalha.
+- 382 (23) MERCADO DINAMICO: atualizarMercado() substitui o passeio aleatorio.
+  Preco reage a oferta (producao + estoque/40), demanda (INSUMOS + consumo
+  populacional de comida e energia), guerras e sancoes. Excesso derruba, escassez
+  encarece, guerra e sancao puxam para cima.
+- 383 (24) CADEIA DE EVENTOS: EVENTOS_ENCADEADOS planta desdobramentos condicionais.
+  Pandemia sem hospital -> revolta; seca com fome -> revolta; revolta com aprovacao
+  baixa -> crise financeira. agendarDesdobramento() + processarDesdobramentos() no tick.
+- 378 (21) MEMORIA DIPLOMATICA: bumpRel() agora recebe motivo e grava histRel.
+  memoriaRel() calcula rancor (guerras*16 + traicoes*13 + sancoes*7 - ajudas*11).
+  reacaoDiplomatica() ESCALA a resposta com o rancor — agressor reincidente recebe
+  reacao mais dura (alianca/condencao/sancao). Motivos registrados em guerra,
+  sabotagem descoberta e espionagem detectada.
+- 379 (26) HISTORICO DIPLOMATICO: botao 📜 em cada pais da diplomacia abre painel
+  com a relacao atual e a lista de motivos (dia + valor).
+- 380 (25) EXPLICACAO ECONOMICA: PIB adicionado ao HUD (clicavel). Painel
+  "De onde vem seu PIB" mostra cada fator (industrias, populacao, setores, comercio,
+  aliancas, perda por falta de insumo) e um AVISO objetivo quando falta insumo:
+  "Falta minerio — industrias que dependem disso rendem apenas 30%."
+
+### BUGS REAIS ENCONTRADOS E CORRIGIDOS NESTA LEVA
+- 6 industrias em INSUMOS consumiam o MESMO recurso que produzem em BUILD_OUT
+  (siderurgica, maquinas, refinaria, padaria, processados, oleo_vegetal):
+  eram produtoras liquidas, entao "industria sem insumo rende 30%" nunca reduzia
+  a oferta. Corrigido: transformacao agora consome ENERGIA; refinaria saiu da lista
+  de consumidores (e produtora de energia).
+- 4 unidades em BT_VANTAGEM tinham o mesmo tipo nas listas `contra` e `fraca`
+  (aviacao/frota, blindados/artilharia, frota/aviacao, porta_avioes/submarinos):
+  como `contra` era checado primeiro, a fraqueza nunca valia. Corrigido.
+- Verificacao final: 0 conflitos de recurso, 0 contradicoes forte/fraca.
+
+### VERIFICACAO
+- test_funcoes_362_372.js -> 21/21
+- test_381_383.js         -> 12/12
+- test_ui_nova.js         -> 11/11 (PIB no HUD, painel, historico, R1, R2)
+- smoke_fases362_372.js   -> 9/9
+- dbg_cliques -> 7/7 em 1440x860, 414x860, 360x780
+- node-check duplo OK · zero erros de console
