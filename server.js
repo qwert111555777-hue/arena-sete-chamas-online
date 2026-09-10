@@ -21,7 +21,12 @@ const MAGIC = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 const DAY_DIV = 7;            // economia diária = valores semanais / 7
 const WEEK_DAYS = 7;          // dias por semana (ciclo estratégico)
 const dayMsFor = mul => Math.round(3000 / ([1, 2, 3, 5].includes(mul) ? mul : 1));
-const buildDays = cost => Math.min(30, Math.max(4, 3 + Math.round(cost / 40)));  // dias p/ concluir obra (varia por construção)
+const buildDays = (cost, p) => {                       // dias p/ concluir obra (varia por construção)
+  let d = Math.min(30, Math.max(4, 3 + Math.round(cost / 40)));
+  const lp = p ? leiProd(p) : null;                    // FASE 396: leis de produção encurtam a obra
+  if (lp) d = Math.round(d * lp.obraPct) + lp.obraFixo;
+  return Math.max(1, Math.min(30, d));
+};
 function restartDayTimer(room){ if (room.timer){ try{ clearInterval(room.timer); }catch{} } room.timer = setInterval(() => dayTick(room), room.dayMs || 1000); }
 function ensureDayTimer(room){ if (room.phase === 'game' && !room.paused && !room.timer) restartDayTimer(room); }
 const AP_PER_TURN = 4;
@@ -657,7 +662,7 @@ function addPlayer(room, conn, name, isHost) {
     ministers: { eco: null, def: null, dip: null, soc: null },
     techs: [], techLv: {}, sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0, infraestrutura: 0, ciencia: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
-    units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 }, builds: [], emergencyUntil: 0, leis: [],
+    units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0, fuzileiros: 0, defesa_aerea: 0 }, builds: [], emergencyUntil: 0, leis: [],
     seguranca: { defesa: 0, secreto: 0, policia: 0, guarda: 0 },
     espioes: 1,
   };
@@ -681,7 +686,7 @@ function makeAIBot(c) {
     ministers: { eco: null, def: null, dip: null, soc: null },
     techs: [], techLv: {}, sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0, infraestrutura: 0, ciencia: 0 },
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
-    units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 },
+    units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0, fuzileiros: 0, defesa_aerea: 0 },
     builds: [], emergencyUntil: 0, leis: [],
     buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0, mandatos: 0, conversoes: 0, doutrinacoes: 0, titulos: 0 }, famine: false,
     ideology: Object.keys(IDEOLOGIES)[h % 6], religion: Object.keys(RELIGIONS)[h % 5],
@@ -709,7 +714,7 @@ function startGame(room) {
     p.ministers = { eco: null, def: null, dip: null };
     p.techs = []; p.techLv = {}; p.sectors = { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0, infraestrutura: 0, ciencia: 0 };
     p.space = 0; p.pollution = 10; p.relations = {}; p.embassies = []; p.trades = []; p.blockading = []; p.blockadedBy = [];
-    p.units = { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0 }; p.builds = []; p.emergencyUntil = 0; p.leis = [];
+    p.units = { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0, fuzileiros: 0, defesa_aerea: 0 }; p.builds = []; p.emergencyUntil = 0; p.leis = [];
     p.seguranca = { defesa: 0, secreto: 0, policia: 0, guarda: 0 }; p.espioes = 1;
   });
   for (let i = 0; i < room.players.length; i++) for (let j = i + 1; j < room.players.length; j++) {
@@ -791,7 +796,31 @@ const LEIS = {
   codigo_florestal: { name: 'Código Florestal',  cost: 150, desc: '+1 economia' },
   zona_franca: { name: 'Zona Franca', cost: 300, desc: '+$20/semana' },
   bolsa_familia: { name: 'Bolsa Família', cost: 250, desc: '+4 aprovação, +1 pop' },
+  /* FASE 396 — LEIS DE PRODUÇÃO (paridade com a tela de decretos do MA3:
+     preço de compra, preço de venda, volume de produção, velocidade e tempo de obra).
+     Toda lei tem contrapartida visível: nenhuma é vantagem pura. */
+  lei_compra:  { name: 'Compras Estatais Centralizadas', cost: 220, desc: 'compra no mercado −12%, mas a venda cai 6%', grupo: 'producao' },
+  lei_venda:   { name: 'Câmbio de Exportação',           cost: 220, desc: 'venda no mercado +12%, mas a compra sobe 6%', grupo: 'producao' },
+  lei_volume:  { name: 'Turnos Extras na Indústria',     cost: 260, desc: 'produção +25%, consumo de insumo +25%, −2 ❤️', grupo: 'producao' },
+  lei_ritmo:   { name: 'Ritmo de Produção Acelerado',    cost: 240, desc: 'produção +10% e obra 1 dia mais rápida, insumo +10%', grupo: 'producao' },
+  lei_mutirao: { name: 'Mutirão Nacional de Obras',      cost: 200, desc: 'tempo de obra −35%, custo da obra +15%', grupo: 'producao' },
 };
+
+/* FASE 396 — efeito agregado das leis de produção sobre a economia do jogador.
+   Fonte única: mercado, produção diária, consumo de insumo e obras leem daqui. */
+function leiProd(p) {
+  const L = (p && p.leis) || [];
+  const tem = k => L.includes(k);
+  return {
+    compra: 1 + (tem('lei_compra') ? -0.12 : 0) + (tem('lei_venda') ? 0.06 : 0),
+    venda: 1 + (tem('lei_venda') ? 0.12 : 0) + (tem('lei_compra') ? -0.06 : 0),
+    volume: 1 + (tem('lei_volume') ? 0.25 : 0) + (tem('lei_ritmo') ? 0.10 : 0),
+    insumo: 1 + (tem('lei_volume') ? 0.25 : 0) + (tem('lei_ritmo') ? 0.10 : 0),
+    obraCusto: 1 + (tem('lei_mutirao') ? 0.15 : 0),
+    obraPct: 1 - (tem('lei_mutirao') ? 0.35 : 0),
+    obraFixo: tem('lei_ritmo') ? -1 : 0,
+  };
+}
 
 function incomeOf(room, p) {
   const prov = ownProvinces(p).reduce((s, pr) => s + pr.infra, 0) * PROV_INCOME;
@@ -978,10 +1007,11 @@ function dayTick(room) {
     p.rec.minerio += ((2 + Math.round(p.eco * 0.8)) * mult) / DAY_DIV;
     p.rec.concreto += mult / DAY_DIV;
     // produção de cada prédio, direto do catálogo
+    const lp = leiProd(p);   // FASE 396: volume/velocidade de produção vêm das leis
     for (const k in p.buildings) {
       const n = p.buildings[k] || 0; if (!n) continue;
       const o = BUILD_OUT[k]; if (!o || !o.res) continue;
-      p.rec[o.res] = (p.rec[o.res] || 0) + (n * o.qtd * upM(p, k) * mult) / DAY_DIV;
+      p.rec[o.res] = (p.rec[o.res] || 0) + (n * o.qtd * upM(p, k) * mult * lp.volume) / DAY_DIV;
     }
     /* FASE 365: a indústria CONSOME os insumos que os produtores geraram */
     const _need = insumoNecessario(p);
@@ -1198,7 +1228,10 @@ const MISSIONS = [
   { id: 'tesouro_15k',  desc: 'Acumule $15.000 no tesouro (Capitalista)', reward: 800, check: p => p.money >= 15000 },
 ];
 
-const UNIT_COSTS = { blindados: 300, aviacao: 400, frota: 500, infantaria: 200, artilharia: 350, submarinos: 450, porta_avioes: 700 };
+/* FASE 398 — fonte única dos custos de unidade (antes existiam 3 tabelas diferentes
+   e as duas unidades novas não estavam aqui: bot pagava $200 por tudo). */
+const UNIT_COSTS = { blindados: 300, aviacao: 400, frota: 500, infantaria: 200, artilharia: 350, submarinos: 450, porta_avioes: 700, fuzileiros: 350, defesa_aerea: 450 };
+const UNIT_MAX = 3;
 const upM = (p, k) => 1 + 0.5 * ((p.upgrades && p.upgrades[k]) || 0);
 
 /* ============================================================
@@ -1487,6 +1520,9 @@ function insumoNecessario(p) {
     const ins = INSUMOS[k]; if (!ins || !ins.qtd) continue;
     need[ins.res] = (need[ins.res] || 0) + n * ins.qtd;
   }
+  /* FASE 396: produzir mais rápido/volume maior queima mais insumo */
+  const m = leiProd(p).insumo;
+  if (m !== 1) for (const r in need) need[r] = need[r] * m;
   return need;
 }
 
@@ -1782,8 +1818,10 @@ function botAttack(room, a, d) {
   let aM = 1, dM = 1;
   if (a.ideology === 'autoritarismo') aM += 0.15;
   aM += 0.15 * techLevel(a, 'escola_oficiais');
-  aM += 0.05 * a.units.blindados + 0.02 * a.units.aviacao + 0.04 * a.units.artilharia + 0.02 * a.units.submarinos + 0.02 * a.units.porta_avioes;
-  dM += 0.05 * d.units.aviacao + 0.03 * d.units.frota + 0.04 * d.units.infantaria + 0.02 * d.units.submarinos + 0.04 * d.units.porta_avioes;
+  aM += 0.05 * a.units.blindados + 0.02 * a.units.aviacao + 0.04 * a.units.artilharia + 0.02 * a.units.submarinos + 0.02 * a.units.porta_avioes
+      + 0.04 * (a.units.fuzileiros || 0);                                    // FASE 397
+  dM += 0.05 * d.units.aviacao + 0.03 * d.units.frota + 0.04 * d.units.infantaria + 0.02 * d.units.submarinos + 0.04 * d.units.porta_avioes
+      + 0.06 * (d.units.defesa_aerea || 0) + 0.03 * (d.units.fuzileiros || 0); // FASE 397
   dM += 0.05 * Math.min(5, d.buildings.base || 0);
   if (a.leis.includes('servico_militar')) aM += 0.05;
   if (d.leis.includes('guarda_nacional')) dM += 0.05;
@@ -1825,9 +1863,10 @@ function aiTurn(room) {
     }
     if (b.money > 1200 && b.mil < 18 && room.turn % 4 === 0) { b.money -= 150; b.mil += 1; }
     if (b.money > 900 && b.rec.terras_raras >= 4) {
-      const ks = ['infantaria', 'blindados', 'artilharia', 'aviacao', 'porta_avioes'];
+      /* FASE 398: a IA usava só 5 das 9 unidades e pagava um custo próprio */
+      const ks = Object.keys(UNIT_COSTS);
       const k = ks[room.turn % ks.length];
-      if (b.units[k] < 3) { b.money -= UNIT_COSTS[k]; b.rec.terras_raras -= 4; b.units[k]++; }
+      if ((b.units[k] || 0) < UNIT_MAX) { b.money -= UNIT_COSTS[k]; b.rec.terras_raras -= 4; b.units[k] = (b.units[k] || 0) + 1; }
     }
     // crescimento da IA (Fase 20): bots evoluem eco/tech/leis como gente
     if (b.money > 2000 && room.turn % 5 === 0 && b.eco < 40) { b.money -= 500; b.eco += 1; }
@@ -1870,7 +1909,7 @@ function aiTurn(room) {
     if (b.money > 2000 && Math.random() < 0.05) { const fo = room.players.filter(o => o.alive && o !== b).sort((x, y) => relBetween(b, y) - relBetween(b, x))[0]; if (fo && relBetween(b, fo) > 0) { b.money -= 100; bumpRel(b, fo, 8); } }
     if (b.money > 3000 && Math.random() < 0.05) { b.money -= 600; b.aprov = Math.min(100, b.aprov + 8); b.influencia = Math.min(100, (b.influencia || 0) + 3); }
     if (b.money > 1000 && Math.random() < 0.05 && b.leis) { const op = Object.keys(LEIS).filter(k => !b.leis.includes(k)); if (op.length && b.money >= LEIS[op[0]].cost + 500) { b.money -= LEIS[op[0]].cost; b.leis.push(op[0]); } }
-    if (b.rec && (b.rec.terras_raras || 0) >= 4 && b.money > 1000 && Math.random() < 0.08) { const us = ['infantaria','blindados','artilharia','aviacao','submarinos','frota','fuzileiros','defesa_aerea'].filter(k => (b.units[k] || 0) < 3); if (us.length) { const k = us[Math.floor(Math.random() * us.length)]; b.rec.terras_raras -= 4; b.money -= 200; b.units[k] = (b.units[k] || 0) + 1; } }
+    if (b.rec && (b.rec.terras_raras || 0) >= 4 && b.money > 1000 && Math.random() < 0.08) { const us = Object.keys(UNIT_COSTS).filter(k => (b.units[k] || 0) < UNIT_MAX); if (us.length) { const k = us[Math.floor(Math.random() * us.length)]; b.rec.terras_raras -= 4; b.money -= UNIT_COSTS[k]; b.units[k] = (b.units[k] || 0) + 1; } }
     if (b.money > 2500 && (b.trades || []).length >= 2 && Math.random() < 0.08) { b.money += 100 + 75 * b.trades.length - 200; }
     if (b.money > 2500 && ((b.sectors && b.sectors.turismo) || 0) < 5 && Math.random() < 0.06) { b.money -= 500; b.sectors.turismo = ((b.sectors && b.sectors.turismo) || 0) + 1; }
     if (b.crise && b.crise.tipo === 'pandemia' && b.money > 500 && Math.random() < 0.3) { b.money -= 250; b.crise = null; b.pop += 3; log(room, `💉 ${cname(b)} erradicou a pandemia com vacinação em massa!`); }
@@ -2156,7 +2195,7 @@ function aiTurn(room) {
     if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
     if ((b.nukeShieldUntil || 0) <= room.turn && b.money > 1500 && Math.random() < 0.05) { b.money -= 400; b.nukeShieldUntil = room.turn + 6; }
     if ((b.debt || 0) > 0 && b.money > 2000 && Math.random() < 0.08) { b.money -= 300; b.debt = Math.max(0, b.debt - 360); }
-    if (b.money > 3000 && Math.random() < 0.05) { b.money -= 400; b.units.infantaria = (b.units.infantaria || 0) + 2; }
+    if (b.money > 3000 && Math.random() < 0.05 && (b.units.infantaria || 0) < UNIT_MAX) { b.money -= 400; b.units.infantaria = Math.min(UNIT_MAX, (b.units.infantaria || 0) + 2); }
     if ((b.armsEmbargoUntil || 0) > room.turn && b.money > 1200 && Math.random() < 0.1) { b.money -= 300; b.armsEmbargoUntil = 0; }
     if (b.money > 2500 && Math.random() < 0.04) { b.money -= 500; b.aprov = Math.min(100, b.aprov + 3); }
     if (b.money > 1500 && Math.random() < 0.05) { b.money -= 200; b.aprov = Math.min(100, b.aprov + 2); }
@@ -6179,10 +6218,13 @@ function performAction(room, p, msg) {
       break;
     }
     case 'comprar_tropas': {
+      /* FASE 398: aqui a infantaria passava do teto de 3 (chegou a 5 em teste de
+         soak) — poder sem limite e barra de nível quebrada na tela. */
+      if ((p.units.infantaria || 0) >= UNIT_MAX) { err(p.conn, `🪖 Infantaria já está no nível máximo (${UNIT_MAX}). Fortaleça outra unidade ou treine tropas.`); return; }
       if (!spend(p, 1, 400)) return;
-      p.units.infantaria = (p.units.infantaria || 0) + 2;
+      p.units.infantaria = Math.min(UNIT_MAX, (p.units.infantaria || 0) + 2);
       p.mil = Math.min(25, p.mil + 1);
-      log(room, `🪖 ${cname(p)} COMPROU TROPAS mercenárias (+2 infantaria, +1 mil).`);
+      log(room, `🪖 ${cname(p)} COMPROU TROPAS mercenárias (infantaria nível ${p.units.infantaria}, +1 mil).`);
       break;
     }
     case 'doar_ouro': {
@@ -6505,13 +6547,18 @@ function performAction(room, p, msg) {
       if (msg.value === 'saude_universal') { p.aprov = Math.min(100, p.aprov + 3); p.pop += 2; }
       if (msg.value === 'codigo_florestal') p.eco += 1;
       if (msg.value === 'bolsa_familia') { p.aprov = Math.min(100, p.aprov + 4); p.pop += 1; }
+      if (msg.value === 'lei_volume') p.aprov = Math.max(0, p.aprov - 2);   // FASE 396: jornada exaustiva
       log(room, `📜 ${cname(p)} aprova a lei "${lei.name}" (${lei.desc}).`);
+      if (LEIS[msg.value].grupo === 'producao') {
+        const lp = leiProd(p);
+        info(p.conn, `🏭 ${lei.name} em vigor — compra ×${lp.compra.toFixed(2)}, venda ×${lp.venda.toFixed(2)}, produção ×${lp.volume.toFixed(2)}, insumo ×${lp.insumo.toFixed(2)}, obra ${Math.round(lp.obraPct * 100)}% do tempo.`);
+      }
       break;
     }
     case 'blindados': case 'aviacao': case 'frota': case 'infantaria': case 'artilharia': case 'submarinos': case 'porta_avioes': case 'fuzileiros': case 'defesa_aerea': {
-      const costs = { blindados: 300, aviacao: 400, frota: 500, infantaria: 200, artilharia: 350, submarinos: 450, porta_avioes: 700, fuzileiros: 350, defesa_aerea: 450 };
+      const costs = UNIT_COSTS;   /* FASE 398: fonte unica (antes havia 3 tabelas) */
       const UNAMES = { blindados: 'forças BLINDADAS', aviacao: 'sua AVIAÇÃO', frota: 'sua FROTA NAVAL', infantaria: 'sua INFANTARIA', artilharia: 'sua ARTILHARIA', submarinos: 'seus SUBMARINOS', porta_avioes: 'seu PORTA-AVIÕES', fuzileiros: 'seus FUZILEIROS NAVAIS', defesa_aerea: 'sua DEFESA AÉREA' };
-      if (p.units[msg.action] >= 3) { err(p.conn, 'Nível máximo de unidade.'); return; }
+      if ((p.units[msg.action] || 0) >= UNIT_MAX) { err(p.conn, 'Nível máximo de unidade.'); return; }
       if (room.armsEmbargo && room.armsEmbargo.target === p.id && room.turn < room.armsEmbargo.until) { err(p.conn, '🔫 Embargo de armas da ONU em vigor — nenhuma nova unidade.'); return; }
       if (p.rec.terras_raras < 4) { err(p.conn, '⚙️ Produzir unidades exige 4 TERRAS RARAS — construa uma Mina de terras raras.'); return; }
       if (!spend(p, 1, costs[msg.action])) return;
@@ -6655,7 +6702,7 @@ function performAction(room, p, msg) {
     case 'comprar': {
       const q = Math.max(1, Math.min(100, msg.qty | 0));
       if (room.market[msg.res] == null) return;
-      const cost = Math.round(room.market[msg.res] * q * Math.max(0.8, 1 - 0.03 * p.trades.length) * (1 + 0.1 * p.sanctionedBy.length));
+      const cost = Math.round(room.market[msg.res] * q * Math.max(0.8, 1 - 0.03 * p.trades.length) * (1 + 0.1 * p.sanctionedBy.length) * leiProd(p).compra);
       if (p.money < cost) { err(p.conn, 'Dinheiro insuficiente.'); return; }
       p.money -= cost; p.rec[msg.res] += q;
       if (!p.bot) { const sup = room.world[(room.turn * 7 + msg.res.length * 13) % room.world.length]; log(room, `🚢 Carregamento de ${msg.res} chegou de ${sup.name} (+${q}).`); }
@@ -6664,7 +6711,7 @@ function performAction(room, p, msg) {
     case 'vender': {
       const q = Math.max(1, Math.min(100, msg.qty | 0));
       if (room.market[msg.res] == null || p.rec[msg.res] < q) return;
-      p.rec[msg.res] -= q; p.money += Math.round(room.market[msg.res] * q * Math.min(1.2, 1 + 0.03 * p.trades.length) * (room.turn < (p.subsUntil || 0) ? 1.25 : 1) * ((p.orgs || []).includes('omc') ? 1.1 : 1)); p.stats.vendidas += q;
+      p.rec[msg.res] -= q; p.money += Math.round(room.market[msg.res] * q * Math.min(1.2, 1 + 0.03 * p.trades.length) * (room.turn < (p.subsUntil || 0) ? 1.25 : 1) * ((p.orgs || []).includes('omc') ? 1.1 : 1) * leiProd(p).venda); p.stats.vendidas += q;
       break;
     }
     case 'construir': {
@@ -6675,9 +6722,10 @@ function performAction(room, p, msg) {
       if (p.rec.concreto < need) { err(p.conn, `🧱 Precisa de ${need} de concreto — construa uma Fábrica de concreto primeiro.`); return; }
       let cCost = PROD_BUILDS[msg.kind];
       cCost = Math.ceil(cCost * (1 - 0.05 * techLevel(p, 'infra') - 0.03 * ((p.sectors && p.sectors.infraestrutura) || 0)));
+      cCost = Math.ceil(cCost * leiProd(p).obraCusto);   // FASE 396: mutirão encarece a obra
       if (!spend(p, 1, cCost)) return;
       p.rec.concreto -= need;
-      const diasObra = buildDays(cCost);
+      const diasObra = buildDays(cCost, p);
       p.builds.push({ kind: msg.kind, untilDay: room.day + diasObra });
       log(room, `🏗️ ${cname(p)} inicia ${PROD_NAMES[msg.kind]} (pronto em ${diasObra} dia(s)).`);
       break;
@@ -7325,19 +7373,28 @@ const BT = {
   frota:        { em:'⚓', nome:'Frota',          hp:20, atk:4, def:3, alc:2 },
   submarinos:   { em:'🌊', nome:'Submarinos',    hp:12, atk:6, def:2, alc:2 },
   porta_avioes: { em:'🛳️', nome:'Porta-aviões',  hp:25, atk:3, def:5, alc:3 },
+  /* FASE 397 — fuzileiros e defesa aérea existiam na loja mas NÃO existiam na
+     batalha (não estavam em BT): o jogador pagava por uma unidade que nunca lutava. */
+  fuzileiros:   { em:'🪂', nome:'Fuzileiros Navais', hp:14, atk:4, def:3, alc:2 },
+  defesa_aerea: { em:'🎯', nome:'Defesa Aérea',      hp:9,  atk:5, def:2, alc:3 },
   milicia:      { em:'🔰', nome:'Milícia',       hp:8,  atk:2, def:1, alc:1 },
 };
 /* FASE 381 — COMPOSIÇÃO MILITAR
    Não basta contar tropas: cada tipo é forte contra uns e fraco contra outros.
    Isso faz a composição do exército importar tanto quanto o tamanho. */
 const BT_VANTAGEM = {
-  infantaria:   { contra:['artilharia','submarinos'],  mult:1.35, fraca:['blindados','aviacao'] },
+  infantaria:   { contra:['artilharia','submarinos'],  mult:1.35, fraca:['blindados','aviacao','fuzileiros'] },
   blindados:    { contra:['infantaria','artilharia'],  mult:1.35, fraca:['aviacao'] },
-  artilharia:   { contra:['blindados','infantaria'],   mult:1.30, fraca:['aviacao','frota'] },
-  aviacao:      { contra:['blindados'],                mult:1.40, fraca:['frota','porta_avioes'] },
+  artilharia:   { contra:['blindados','infantaria'],   mult:1.30, fraca:['aviacao','frota','fuzileiros'] },
+  aviacao:      { contra:['blindados'],                mult:1.40, fraca:['frota','porta_avioes','defesa_aerea'] },
   frota:        { contra:['artilharia','aviacao'],     mult:1.25, fraca:['submarinos'] },
   submarinos:   { contra:['frota','porta_avioes'],     mult:1.45, fraca:['infantaria','aviacao'] },
-  porta_avioes: { contra:['aviacao','submarinos'],     mult:1.20, fraca:['frota'] },
+  porta_avioes: { contra:['aviacao','submarinos'],     mult:1.20, fraca:['frota','defesa_aerea'] },
+  /* FASE 397 — fuzileiros: infantaria de elite que desembarca e domina infantaria e
+     artilharia no corpo a corpo, mas é frágil contra blindados.
+     Defesa aérea: o predador de tudo que voa (x1,55), inútil contra o chão. */
+  fuzileiros:   { contra:['infantaria','artilharia'],  mult:1.30, fraca:['blindados'] },
+  defesa_aerea: { contra:['aviacao','porta_avioes'],   mult:1.55, fraca:['blindados','infantaria'] },
   milicia:      { contra:[],                           mult:1.00, fraca:[] }
 };
 function vantagemUnidade(atacante, defensor) {
