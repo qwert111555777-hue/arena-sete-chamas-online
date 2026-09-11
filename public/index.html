@@ -1878,14 +1878,19 @@ function renderGame(){
   $('g-meflag').textContent = cflag(m);
   $('g-mename').textContent = m.name + ' · 👑 Nv ' + (1 + Math.floor((m.xp||0)/60));
   $('g-code').textContent = state.code;
-  try{localStorage.setItem('po_room',state.code);
-    const ws0 = JSON.parse(localStorage.getItem('po_worlds')||'[]');
-    const nm0 = (m&&(m.customName||m.name))||'';
-    const rec0 = {code:state.code, name:nm0, day:state.day||1, at:Date.now()};
-    const ix0 = ws0.findIndex(w=>w.code===state.code);
-    if (ix0>=0) ws0[ix0]=rec0; else ws0.unshift(rec0);
-    localStorage.setItem('po_worlds', JSON.stringify(ws0.slice(0,8)));
-  }catch(e){}
+  const _svKey = state.code + '|' + (state.day||1) + '|' + ((m.customName||m.name)||'');
+  const _svNow = Date.now();
+  if (_svKey !== window.__lastSaveKey || _svNow - (window.__lastSaveAt||0) > 4000){
+    window.__lastSaveKey = _svKey; window.__lastSaveAt = _svNow;
+    try{localStorage.setItem('po_room',state.code);
+      const ws0 = JSON.parse(localStorage.getItem('po_worlds')||'[]');
+      const nm0 = (m&&(m.customName||m.name))||'';
+      const rec0 = {code:state.code, name:nm0, day:state.day||1, at:Date.now()};
+      const ix0 = ws0.findIndex(w=>w.code===state.code);
+      if (ix0>=0) ws0[ix0]=rec0; else ws0.unshift(rec0);
+      localStorage.setItem('po_worlds', JSON.stringify(ws0.slice(0,8)));
+    }catch(e){}
+  }
   $('btn-pause').classList.toggle('hidden', !m.isHost || state.phase!=='game');
   $('btn-speed2').classList.toggle('hidden', !m.isHost || state.phase!=='game');
   if (state.phase==='game') $('btn-speed2').textContent = '⏱️ ' + (state.speedMul || 1) + 'x';
@@ -2202,6 +2207,8 @@ function leafInit(){
 function syncLeaflet(){
   if (!leafMap){ leafInit(); if (!leafMap) return; }
   const seen = {};
+  const _lsig = window.__leafSig || (window.__leafSig = {});
+  const _me0 = state.players.find(x=>x.id===myId);   // fora do loop (era 1 find por pais = O(n^2))
   state.players.forEach(p => {
     if (!p.country) return;
     const c = cbid(p.country) || {};
@@ -2209,11 +2216,15 @@ function syncLeaflet(){
     seen[p.id] = 1;
     const iso = isoOf(p.country);
     const sel = (p.id === selectedId) ? ' sel' : '';
-    const _me0 = state.players.find(x=>x.id===myId);
     const _r0 = relTo(p);
     const _rc = !p.alive ? '#5a6478' : _r0==='me' ? '#ffd76a' : _r0==='ally' ? '#39d98a' : '#ff6b6b';
     const _bdg = ((p.nuclear>=1)?'<span class="lbdg" style="right:-9px;top:-11px">\u2622\uFE0F</span>':'') + ((_me0 && _me0.wars && _me0.wars.includes(p.id) && p.id!==myId)?'<span class="lbdg" style="left:-9px;top:-11px">\u2694\uFE0F</span>':'');
     const dim = p.alive ? '' : ';opacity:.45';
+    /* PERF: so recria o icone (divIcon + createIcon) se algo VISIVEL mudou.
+       Antes recriava os 196 icones a cada acao — era o maior custo do Leaflet. */
+    const _s = iso+'|'+sel+'|'+_rc+'|'+_bdg+'|'+dim+'|'+(p.color||0)+'|'+(c.flag||p.customFlag||'')+'|'+c.lat+','+c.lon;
+    if (leafMarks[p.id] && _lsig[p.id] === _s) return;
+    _lsig[p.id] = _s;
     const html = iso
       ? '<div class="lflag' + sel + '" style="border:2px solid '+_rc+';box-shadow:0 2px 6px rgba(0,0,0,.65)' + dim + '"><img src="flags/' + iso + '.svg" alt="">' + _bdg + '</div>'
       : '<div class="lflag lcus' + sel + '" style="background:' + PALETTE[(p.color||0)%60] + ';border:2px solid '+_rc+';box-shadow:0 2px 6px rgba(0,0,0,.65)' + dim + '">' + (c.flag||p.customFlag||'🏳️') + _bdg + '</div>';
@@ -2231,11 +2242,11 @@ function syncLeaflet(){
       const al = state.players.find(p=>p.id===aid);
       const b = (al && al.country) ? (cbid(al.country)||{}) : {};
       if (a.lat != null && b.lat != null) leafMap._al.push(L.polyline([[a.lat,a.lon],[b.lat,b.lon]],{color:'#e8b93c',weight:2,dashArray:'6 5',opacity:.8}).addTo(leafMap));
+    });
     (mm.wars||[]).forEach(wid => {
       const en = state.players.find(p=>p.id===wid);
       const e2 = (en && en.country) ? (cbid(en.country)||{}) : {};
       if (a.lat != null && e2.lat != null) leafMap._al.push(L.polyline([[a.lat,a.lon],[e2.lat,e2.lon]],{color:'#ff5252',weight:2,dashArray:'7 4',opacity:.85}).addTo(leafMap));
-    });
     });
   }
 }
@@ -2745,7 +2756,7 @@ $('btn-build').onclick = () => {
   selectedId = myId; renderPanel(); renderMap();
   window._npTab='bld'; try{npApply();}catch(_){}
   const secs = document.querySelectorAll('#np-extra .np-sub');
-  for (const s of secs){ if (s.textContent.includes('Construções')){ s.scrollIntoView({behavior:'smooth', block:'start'}); break; } }
+  for (const s of secs){ if (s.textContent.includes('Construções')){ s.scrollIntoView({block:'start'}); break; } }
 };
 $('btn-speed2').onclick = () => {
   const antigo = $('menu-vel'); if (antigo) antigo.remove();
