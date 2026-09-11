@@ -1678,6 +1678,7 @@ function parseFx(top){
 /* ================= mensagens ================= */
 function applyState(m){
   state = m; if (m.you) myId = m.you;
+  window.__lastMapSig = null; /* novo estado -> forca o proximo renderMap a reconstruir */
   if (m.phase === 'game') startKeepAlive();
   if (m.turn !== lastTurn){ if (lastTurn) sfx('turn'); lastTurn = m.turn; }
   const top = m.log[0] && m.log[0].msg;
@@ -2001,10 +2002,24 @@ function declutter(list){
 }
 function renderMap(){
   const m = me();
+  /* PERF: 1) se nada que afeta o mapa mudou, pula o redesenho (a maioria das
+     acoes muda so dinheiro/AP — nao precisa reconstruir o mapa).
+     2) se o mapa satelite (Leaflet) esta ativo, o SVG esta invisivel: nao
+     construimos 1162 nos SVG a toa, so sincronizamos o Leaflet. */
+  const _leafOn = document.body.classList.contains('leaf-on');
+  const _me0 = state.players.find(x => x.id === myId);
+  const _sig = _leafOn + '|' + myId + '|s' + selectedId
+    + '|w' + ((_me0 && _me0.wars) ? _me0.wars.join('/') : '')
+    + '|a' + ((_me0 && _me0.allies) ? _me0.allies.join('/') : '')
+    + '|b' + ((_me0 && _me0.blockading) ? _me0.blockading.join('/') : '')
+    + '|' + state.players.map(p => p.id + ':' + (p.country||'') + ':' + (p.alive?1:0) + ':' + relTo(p) + ':n' + (p.nuclear||0)).join(',');
+  if (_sig === window.__lastMapSig) return;
+  window.__lastMapSig = _sig;
   const gT = document.getElementById('map-terr');
   const gLines = document.getElementById('map-lines');
   const g = document.getElementById('map-markers');
   gT.innerHTML = ''; gLines.innerHTML = ''; g.innerHTML = '';
+  if (_leafOn){ syncLeaflet(); return; }
   const _mkPos = declutter(state.players.filter(p=>p.country));
 
   /* províncias removidas do mapa a pedido — só marcadores com bandeiras */
