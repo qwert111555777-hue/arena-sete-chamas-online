@@ -1008,3 +1008,24 @@ e colonização (colônia fundada) ✅. Sem segredos (`grep rnd_|ghp_` = 0 em c�
 **Commits:** `64152da` (refactor modularização + aiTurn + exports) e `2a7f325` (testes + docs).
 **Deploy:** `dep-dainot6q1p3s73crvr0g` → live (commit `2a7f325`). verify-prod: index 568.343 B
 idêntico ao local; `test_mp_prod.js` em produção → 197 jogadores, estado consistente ✅.
+
+## FASE 404 — auditoria de completude + 4 lacunas fechadas (2026-09-12)
+
+Auditoria recursiva contra o checklist da ESPECIFICAÇÃO DEFINITIVA. Verificação
+de wire (ações cliente × cases servidor): 692 ações no cliente, 697 no servidor,
+**0 botões mortos**, **0 stub/placeholder/TODO**. Nenhum caso `default` sem efeito.
+
+Lacunas funcionais encontradas e FECHADAS nesta fase:
+1. **Manutenção de construções** (era ausente; colônias já tinham): `buildingMaint(p)`
+   = 1,5×prédios + 1,5×upgrades por semana, descontada em `incomeOf`. Cria a tensão
+   de não construir demais sem renda.
+2. **Calendário civil (meses/anos)**: `dataDe(day)` — dia 1 = 01/07/2024, 1 mês = 30
+   dias, 1 ano = 360. Exposto em `snapshot.data` e `broadcastDay.data`; cliente usa a
+   data do servidor (autoritativa) no HUD `g-date` (substitui a data local 2025).
+3. **Recursos espaciais**: colônias agora rendem `0,4×infra` de terras raras por dia
+   (mineração de asteroides), além do dinheiro.
+4. **Peso dos votos na ONU**: cada voto pesa `1 + min(3, pop/150) + (influência≥40)`.
+
+Suite unitária: **50 testes verdes** (5 novos). Regressão completa verde (dias,
+integração, multiplayer 2 jogadores, colonização) + smoke FASE 404 (calendário,
+construção, ONU) sem crash.

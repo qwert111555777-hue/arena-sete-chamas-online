@@ -1699,6 +1699,7 @@ function applyState(m){
 function applyDay(m){
   if (!state || state.phase !== 'game' || !m.players) return;
   state.day = m.day; state.turn = m.turn;
+  if (m.data) state.data = m.data;   /* FASE 404: calendário civil do servidor */
   /* FASE 384: o feed mundial chega no payload diário */
   if (m.feed) state.feed = m.feed;
   /* Object.assign já traz deltas, estadoVisual, coalizao, pib, empregos e suprimento */
@@ -1766,7 +1767,9 @@ function me(){ return state ? state.players.find(p=>p.id===myId) : null; }
 function cflag(p){ const c = cbid(p.country); return c ? c.flag : (p.customFlag || '🏳️'); }
 function cname(p){ const c = cbid(p.country); return c ? c.flag+' '+c.name : (p.customFlag||'🏳️')+' '+(p.customName||p.name); }
 function gameDate(day){
-  const d = new Date(2025, 0, 1);
+  /* FASE 404: usa a data civil calculada pelo servidor (autoritativa) */
+  if (state && state.data && state.data.txt) return state.data.txt;
+  const d = new Date(2024, 6, 1);   /* início 01/07/2024 (fallback local) */
   d.setDate(d.getDate() + Math.max(0, (day||1)-1));
   const dd = String(d.getDate()).padStart(2,'0'), mm = String(d.getMonth()+1).padStart(2,'0');
   return `${dd}-${mm}-${d.getFullYear()}`;

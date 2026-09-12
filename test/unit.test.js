@@ -97,6 +97,27 @@ ok('incomeOf retorna número finito', Number.isFinite(s.incomeOf(room, mk())));
 ok('taxaSuprimento retorna número 0..1', (() => { const v = s.taxaSuprimento(mk()); return v >= 0 && v <= 1; })());
 ok('pibDetalhe retorna objeto', typeof s.pibDetalhe(mk()) === 'object');
 
+/* ---------- FASE 404: CALENDÁRIO CIVIL ---------- */
+section('CALENDÁRIO (dataDe)');
+ok('dataDe exportada', typeof s.dataDe === 'function');
+ok('dataDe(1) = 01 de Julho de 2024', s.dataDe(1).txt === '1 de Julho de 2024');
+ok('dataDe(31) = Julho→ 1 de Agosto de 2024', s.dataDe(31).txt === '1 de Agosto de 2024');
+ok('dataDe(361) vira 2025', s.dataDe(361).ano === 2025 && s.dataDe(361).mes === 'Julho');
+ok('dataDe(day 0) não quebra (≥2024)', s.dataDe(0).ano >= 2024);
+ok('MESES tem 12 nomes', s.MESES.length === 12);
+
+/* ---------- FASE 404: MANUTENÇÃO DE CONSTRUÇÕES ---------- */
+section('MANUTENÇÃO (buildingMaint)');
+ok('buildingMaint exportada', typeof s.buildingMaint === 'function');
+ok('0 prédios = 0 manutenção', s.buildingMaint({ buildings: {}, upgrades: {} }) === 0);
+ok('prédios somam', s.buildingMaint({ buildings: { fazenda: 2, mina: 1 }, upgrades: {} }) === 5);  // 3 prédios × 1.5 = 4.5 → 5
+ok('upgrades encarecem', s.buildingMaint({ buildings: {}, upgrades: { fazenda: 2 } }) === 3);  // 2 upgrades × 1.5 = 3
+ok('incomeOf desconta manutenção (base militar não rende, só custa)', (() => {
+  const a = mk(); const b = mk();
+  b.buildings['base'] = 20;   // base tem BUILD_OUT vazio: não rende, só gera manutenção
+  return s.incomeOf(room, b) < s.incomeOf(room, a);
+})());
+
 /* ---------- RESULTADO ---------- */
 console.log('\n══════════════════════════════');
 console.log('RESULTADO: ' + pass + ' passaram · ' + fail + ' falharam');

@@ -206,6 +206,7 @@ function floorRec(rec){ const o = {}; for (const k of ['comida','minerio','energ
 function snapshot(room) {
   return {
     t: 'state', phase: room.phase, code: room.code, turn: room.turn, day: room.day || 1,
+    data: dataDe(room.day || 1),
     winner: room.winner,
     suprema: room.suprema || null,
     log: room.log.slice(0, 60), proposals: room.proposals,
@@ -262,7 +263,7 @@ function broadcastDay(room) {
   /* FASE 388/389/384: o payload diário também carrega o que a UI nova precisa.
      Sem isso, deltas, estados de crise e feed ficavam presos no servidor. */
   const light = { t: 'day', day: room.day, turn: room.turn, phase: room.phase,
-    feed: room.feed || [],
+    data: dataDe(room.day), feed: room.feed || [],
     players: room.players.map(p => ({ id: p.id, money: Math.round(p.money), eco: p.eco, mil: p.mil,
       aprov: Math.round(p.aprov), ap: p.ap, alive: p.alive, pop: Math.round(p.pop),
       nuclear: p.nuclear, influencia: Math.round(p.influencia), fe: Math.round(p.fe),
@@ -439,6 +440,30 @@ function leiProd(p) {
   };
 }
 
+/* FASE 404 — MANUTENÇÃO DE CONSTRUÇÕES
+   Cada prédio tem custo de manutenção semanal em dinheiro (a energia já é
+   consumida no tick; aqui é o custo monetário). Melhorias (upgrades) encarecem.
+   Cria a tensão clássica de não construir demais sem renda para sustentar. */
+function buildingMaint(p) {
+  let n = 0, up = 0;
+  for (const k in (p.buildings || {})) n += (p.buildings[k] || 0);
+  for (const k in (p.upgrades || {})) up += (p.upgrades[k] || 0);
+  return Math.round(n * 1.5 + up * 1.5);
+}
+
+/* FASE 404 — CALENDÁRIO CIVIL (meses/anos)
+   O jogo só tinha "dia" e "era". Agora dia → data real: dia 1 = 01/07/2024.
+   1 mês = 30 dias, 1 ano = 360 dias (calendário fixo e determinístico). */
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+function dataDe(day) {
+  const total = Math.max(0, (day || 1) - 1);
+  const t = total + 180;   // offset: dia 1 = 01/07/2024 (julho, meio do ano)
+  const ano = 2024 + Math.floor(t / 360);
+  const mes = MESES[Math.floor((t % 360) / 30)];
+  const dia = (total % 30) + 1;
+  return { dia, mes, ano, txt: `${dia} de ${mes} de ${ano}` };
+}
+
 function incomeOf(room, p) {
   const prov = ownProvinces(p).reduce((s, pr) => s + pr.infra, 0) * PROV_INCOME;
   /* FASE 365: indústria só rende bem se tiver insumo — cadeia produtiva real */
@@ -494,7 +519,8 @@ function incomeOf(room, p) {
     + p.sanctionedBy.length * 50
     + p.sanctioning.length * 20
     + p.blockading.length * 15
-    + Math.round(p.debt * 0.05);
+    + Math.round(p.debt * 0.05)
+    + buildingMaint(p);
   return Math.round(base - costs);
 }
 
@@ -502,10 +528,16 @@ function resolveUN(room) {
   if (!room.un) return;
   const u = room.un;
   if (u.vetoedBy) { const vt = room.players.find(pp => pp.id === u.vetoedBy); log(room, `🛡️ ${cname(vt)} VETOU a resolução no Conselho de Segurança!`); room.un = null; checkEliminations(room); broadcast(room); return; }
-  const yes = Object.values(u.votes).filter(v => v).length;
+  /* FASE 404 — PESO DOS VOTOS: nações grandes e influentes têm mais voz na ONU.
+     Cada voto pesa 1 + até 3 por população + 1 por influência alta. */
+  let yes = 0, no = 0;
+  for (const id in u.votes) {
+    const v = room.players.find(pp => pp.id === id);
+    const w = v ? (1 + Math.min(3, Math.floor((v.pop || 0) / 150)) + ((v.influencia || 0) >= 40 ? 1 : 0)) : 1;
+    if (u.votes[id]) yes += w; else no += w;
+  }
   const prop = u.proposer ? room.players.find(pp => pp.id === u.proposer) : null;
   const bonusVoto = ((prop && prop.influencia >= 40) ? 1 : 0) + ((prop && (room.cs || []).includes(prop.id)) ? 1 : 0);
-  const no = Object.values(u.votes).filter(v => !v).length;
   const passed = (yes + bonusVoto) > no;
   const tgt = u.target ? room.players.find(p => p.id === u.target) : null;
   if (bonusVoto) log(room, `🕊️ Soft power de ${cname(prop)} pesou na votação (+1 voto).`);
@@ -576,6 +608,8 @@ function dayTick(room) {
         const custo = 1 * c.infra / DAY_DIV;         // manutenção
         p.money -= custo;
         if (p.money < 0) p.money = 0;
+        /* FASE 404 — RECURSOS ESPACIAIS: mineração de asteroides rende terras raras */
+        p.rec.terras_raras = (p.rec.terras_raras || 0) + (0.4 * c.infra) / DAY_DIV;
       }
     }
     p.money += incomeOf(room, p) / DAY_DIV;
@@ -7196,6 +7230,7 @@ module.exports = {
   dayMsFor, buildDays, sanitizeName, makeCode, techTree, techName, techDesc, techCost, techLevel,
   relBetween, relBonus, sectorSum, ownProvinces, leiProd, insumoNecessario, taxaSuprimento,
   pibDetalhe, empregosOf, pibOf, incomeOf, deltasDe, personaOf, riscoProtesto, pressaoPolitica,
+  buildingMaint, dataDe, MESES,
   TECHS, TECH_COSTS, TECH_MAX, TECH_TREES, SECTORS, MISSIONS, UNIT_COSTS, UNIT_MAX, LEIS, SEG,
   IDEOLOGIES, RELIGIONS, MINISTERS, PERSONAS, COUNTRIES, SPACE_COSTS, PROD_BUILDS, BUILD_OUT, BUILD_TAB,
 };
