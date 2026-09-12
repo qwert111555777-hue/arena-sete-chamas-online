@@ -877,3 +877,35 @@ do código (server.js 7.752 linhas / 704 cases, index.html 5.144 linhas / 71 fun
 lentes de auditoria e procedimento por bloco.
 
 **Próximo passo:** o próximo chat executa a auditoria código por código.
+
+## FASE 399 — bug crítico + inflação + segurança (2026-09-12)
+
+**Ordem do usuário:** especificação definitiva (PROMPT MESTRE) — "faça tudo sem parar,
+só dê o resultado final". Executada em modo autônomo (regra 46).
+
+**Entregue neste lote (commit `92ff33c`, deploy `dep-dain0gjm8hqs73dhg260` → live):**
+1. **Bug crítico — ação "FÉ" morta.** O botão FÉ (`data-act="fe"`, custo [1,200]) do
+   cliente não tinha `case 'fe'` no servidor: caía no `default` e não fazia nada.
+   Adicionado handler: envia missionários (+2 fé), alimentando dízimo/guerra santa.
+   (Achado na FASE 1 da auditoria — reconciliação de wire: 715 cases vs 684 ações,
+   única ação órfã era `fe`.)
+2. **Inflação (item 9 da spec).** Indicador determinístico por país, recalculado a
+   cada semana (`atualizarInflacao`) a partir de: dinheiro ocioso (superaquecimento),
+   escassez de insumo (`taxaSuprimento`), guerras, dívida e sanções. Encarece
+   construções e pesquisas (`cCost` e custo de `tech` × (1 + inflação/100)). Exposta
+   no snapshot e no painel da nação ("📈 Inflação").
+3. **Segurança (item 31/42).** Limite de payload (2 KB) e rate limit (30 msg/3s) por
+   conexão WebSocket; abusador tem a conexão fechada.
+4. **Fix ids duplicados** (`np-close`→`np-close2`, `tx-x`→`tx-x2`) — item 35.
+
+**Testes:** `test_fe_inflacao.js` (fe +2/-200/-1AP ✅, inflação no estado ✅) local e
+em PRODUÇÃO; `test_inflacao_prog.js` (inflação 0%→5% com $10k ocioso ✅); regressão
+`smoke_day` ✅ e `smoke_fundar` ✅. node-check duplo OK. verify-prod: 566.232 B
+idêntico ao local.
+
+**Próximo (fila da spec):** Fases 5-37 — modelo de estado, população, economia,
+recursos, governo/leis, setores, edifícios, tecnologia, militar, território, guerra,
+diplomacia, organizações, espionagem, nuclear, espaço, colonização, comércio, eventos,
+jornal, missões, IA (perfis), tempo, vitórias, rankings, persistência/autosave,
+testes de manipulação. A maioria dos sistemas JÁ existe no código — o trabalho é
+consertar/endurecer/completar e conectar (matriz em handover `AUDITORIA-FASE1`).
