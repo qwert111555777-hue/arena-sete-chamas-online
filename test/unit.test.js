@@ -118,6 +118,16 @@ ok('incomeOf desconta manutenção (base militar não rende, só custa)', (() =>
   return s.incomeOf(room, b) < s.incomeOf(room, a);
 })());
 
+/* ---------- FASE 405: MIGRAÇÃO ENTRE PROVÍNCIAS ---------- */
+section('MIGRAÇÃO (migracaoOf)');
+ok('migracaoOf exportada', typeof s.migracaoOf === 'function');
+ok('sem 2 províncias = migração zero', (() => { const r = s.migracaoOf({ id: 'a', provinces: [{ owner: 'a', infra: 3 }], sectors: {} }); return r.migracao === 0 && r.bonus === 0 && r.tensao === 0; })());
+ok('províncias iguais = migração zero', (() => { const r = s.migracaoOf({ id: 'a', provinces: [{ owner: 'a', infra: 3 }, { owner: 'a', infra: 3 }], sectors: {} }); return r.migracao === 0 && r.bonus === 0 && r.tensao === 0; })());
+ok('províncias desiguais = migração positiva (êxodo)', (() => { const r = s.migracaoOf({ id: 'a', provinces: [{ owner: 'a', infra: 5 }, { owner: 'a', infra: 0 }], sectors: {} }); return r.migracao > 0 && r.bonus > 0 && r.tensao > 0; })());
+ok('bônus limitado a +15%', (() => { const r = s.migracaoOf({ id: 'a', provinces: [{ owner: 'a', infra: 5 }, { owner: 'a', infra: 0 }], sectors: {} }); return r.bonus <= 0.15; })());
+ok('habitação/saúde amortizam a tensão do êxodo', (() => { const a = s.migracaoOf({ id: 'a', provinces: [{ owner: 'a', infra: 5 }, { owner: 'a', infra: 0 }], sectors: { habitacao: 5, saude: 5 } }); const b = s.migracaoOf({ id: 'a', provinces: [{ owner: 'a', infra: 5 }, { owner: 'a', infra: 0 }], sectors: {} }); return a.tensao < b.tensao; })());
+ok('migração alimenta a renda (incomeOf com bônus isolado)', (() => { const x = mk(); x.provinces = [{ name: 'A', infra: 5, owner: 'pX' }, { name: 'B', infra: 0, owner: 'pX' }]; const a = s.incomeOf(room, x); x.migracaoBonus = s.migracaoOf(x).bonus; return s.incomeOf(room, x) > a; })());
+
 /* ---------- RESULTADO ---------- */
 console.log('\n══════════════════════════════');
 console.log('RESULTADO: ' + pass + ' passaram · ' + fail + ' falharam');

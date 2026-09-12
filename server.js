@@ -233,6 +233,7 @@ function snapshot(room) {
       suprimento: p.suprimento != null ? p.suprimento : Math.round(taxaSuprimento(p) * 100),
       pressao: pressaoPolitica(p), grupos: gruposPoliticos(p),
       dailyIncome: Math.round(incomeOf(room, p) / DAY_DIV),
+      migracao: p.migracao || 0, migracaoBonus: p.migracaoBonus || 0,
       buildings: p.buildings, stats: p.stats, famine: p.famine, blackout: p.blackout,
       depositos: p.depositos || [], upgrades: p.upgrades || {}, pacts: p.pacts || {},
       seguranca: p.seguranca || { defesa: 0, secreto: 0, policia: 0, guarda: 0 }, espioes: p.espioes || 0, spyShieldUntil: p.spyShieldUntil || 0,
@@ -464,6 +465,25 @@ function dataDe(day) {
   return { dia, mes, ano, txt: `${dia} de ${mes} de ${ano}` };
 }
 
+/* FASE 405 — MIGRAÇÃO ENTRE PROVÍNCIAS (§3 da spec)
+   Êxodo rural→urbano quando o desenvolvimento provincial é desigual.
+   Desenvolvimento equilibrado = sem migração. O desequilíbrio concentra
+   mão-de-obra nas províncias mais desenvolvidas (bônus de renda), mas gera
+   tensão social pelo êxodo (custo de aprovação), amortecida por habitação
+   e saúde. Devolve um objeto puro (testável sem rede). */
+function migracaoOf(p) {
+  const prs = ownProvinces(p);
+  if (prs.length < 2) return { imbal: 0, migracao: 0, bonus: 0, tensao: 0 };
+  const infs = prs.map(pr => pr.infra || 0);
+  const avg = infs.reduce((a, b) => a + b, 0) / infs.length;
+  const imbal = Math.sqrt(infs.reduce((s, i) => s + (i - avg) * (i - avg), 0) / infs.length);
+  const migracao = Math.round(imbal * 100) / 100;
+  const bonus = Math.min(0.15, imbal * 0.05);
+  const amortece = 1 - Math.min(0.6, (((p.sectors && p.sectors.habitacao) || 0) + ((p.sectors && p.sectors.saude) || 0)) * 0.06);
+  const tensao = imbal * 0.25 * amortece;
+  return { imbal: Math.round(imbal * 100) / 100, migracao, bonus, tensao };
+}
+
 function incomeOf(room, p) {
   const prov = ownProvinces(p).reduce((s, pr) => s + pr.infra, 0) * PROV_INCOME;
   /* FASE 365: indústria só rende bem se tiver insumo — cadeia produtiva real */
@@ -501,6 +521,7 @@ function incomeOf(room, p) {
   if (p.leis.includes('zona_franca')) base += 20;
   if (p.budget){ base *= 1 + (p.budget.tra-1)*0.03 + (p.budget.edu-1)*0.02; }
   let mult = 1;
+  if (p.migracaoBonus) mult += p.migracaoBonus;   // FASE 405: êxodo concentra mão-de-obra
   if (p.ideology === 'democracia') mult += 0.05;
   if (p.ideology === 'comunismo') mult -= 0.10;
   if (p.ministers.eco === 'tec') mult += 0.10;
@@ -612,11 +633,15 @@ function dayTick(room) {
         p.rec.terras_raras = (p.rec.terras_raras || 0) + (0.4 * c.infra) / DAY_DIV;
       }
     }
+    /* FASE 405 — migração interna entre províncias (estado recalculado a cada dia) */
+    const mig = migracaoOf(p);
+    p.migracao = mig.migracao; p.migracaoBonus = mig.bonus;
     p.money += incomeOf(room, p) / DAY_DIV;
     if (p.dividas && p.dividas.length) { const due = p.dividas.filter(d => room.day >= d.dia); p.dividas = p.dividas.filter(d => room.day < d.dia); for (const d of due) { const cr = room.players.find(x => x.id === d.to); const pag = Math.min(Math.max(0, p.money), d.valor); p.money -= pag; if (cr && cr.alive) { cr.money += pag; if (pag >= d.valor) { bumpRel(p, cr, 3); log(room, `💸 ${cname(p)} quitou o empréstimo de ${cname(cr)} ($${pag}).`); } else { bumpRel(p, cr, -10); log(room, `⚠️ ${cname(p)} deu CALOTE em ${cname(cr)} (pagou $${pag} de $${d.valor}, −10 relações)!`); } } } }
     if (p.money < 0) { p.money = 0; p.mil = Math.max(1, Math.round(p.mil * 0.9)); }
     // aprovação
     let dAprov = -1;
+    dAprov -= mig.tensao;   // FASE 405: tensão social do êxodo rural→urbano
     if (techLevel(p, 'estado_direito') > 0) dAprov = Math.ceil(dAprov / (1 + techLevel(p, 'estado_direito')));
     dAprov += Math.min(1, Math.floor(sectorSum(p) / 3));
     if (p.ideology === 'autoritarismo') dAprov -= 1;
@@ -7230,7 +7255,7 @@ module.exports = {
   dayMsFor, buildDays, sanitizeName, makeCode, techTree, techName, techDesc, techCost, techLevel,
   relBetween, relBonus, sectorSum, ownProvinces, leiProd, insumoNecessario, taxaSuprimento,
   pibDetalhe, empregosOf, pibOf, incomeOf, deltasDe, personaOf, riscoProtesto, pressaoPolitica,
-  buildingMaint, dataDe, MESES,
+  buildingMaint, dataDe, MESES, migracaoOf,
   TECHS, TECH_COSTS, TECH_MAX, TECH_TREES, SECTORS, MISSIONS, UNIT_COSTS, UNIT_MAX, LEIS, SEG,
   IDEOLOGIES, RELIGIONS, MINISTERS, PERSONAS, COUNTRIES, SPACE_COSTS, PROD_BUILDS, BUILD_OUT, BUILD_TAB,
 };

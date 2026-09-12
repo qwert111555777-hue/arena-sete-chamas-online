@@ -4338,7 +4338,7 @@ $('btn-war').onclick = () => {
 $('btn-stats').onclick = () => {
   const m = me(); if (!m) return;
   const num = n => n.toLocaleString('pt-BR');
-  const mig = m.aprov>50 ? '+'+num(Math.floor((m.aprov-50)*3)) : '-'+num(Math.floor((50-m.aprov)*3));
+  const mig = (m.migracao>0 ? '+' : '') + (m.migracao || 0);   // FASE 405: migração real do servidor (êxodo rural→urbano)
   const rows = [
     ['H','🏛️ NAÇÃO'],
     ['💰 PIB nacional', num(m.money*4 + m.eco*1500 + m.pop*120)],

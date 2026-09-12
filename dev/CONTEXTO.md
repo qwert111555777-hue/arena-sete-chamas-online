@@ -1029,3 +1029,22 @@ Lacunas funcionais encontradas e FECHADAS nesta fase:
 Suite unitária: **50 testes verdes** (5 novos). Regressão completa verde (dias,
 integração, multiplayer 2 jogadores, colonização) + smoke FASE 404 (calendário,
 construção, ONU) sem crash.
+
+## FASE 405 — migração entre províncias (lacuna §3 fechada)
+
+Auditoria FINAL pela matriz de 19 colunas (spec §36) + critério de 12 pontos (§35).
+Única lacuna funcional real encontrada: **migração entre províncias** — existia só
+como número cosmético no jornal do cliente (`mig` derivado de aprovação), sem
+estado/regra/cálculo no servidor (viola a regra "nada só visual").
+
+Implementado `migracaoOf(p)` (puro, testável):
+- Estado: `provinces[].infra` (0–5).
+- Cálculo: desvio-padrão da infra das províncias próprias (≥2 províncias).
+- Consequências: bônus de renda (êxodo concentra mão-de-obra, até +15% em `incomeOf`)
+  e tensão social (drena aprovação no `dayTick`), amortecida por habitação+saúde.
+- Integração: `dayTick` recalcula `p.migracao`/`p.migracaoBonus` todo dia;
+  `snapshot` expõe `migracao`/`migracaoBonus`; cliente usa o valor REAL no jornal.
+- Testes: +7 unitários (57 no total). Smoke `test_migracao.js` (infra igual → 0).
+
+Suite: **57/57** · regressão completa verde (dias/integração/multiplayer/colonização/
+anti-cheat/reconexão). Wire: 686 ações cliente × 718 cases servidor, 0 botões mortos.
