@@ -70,6 +70,7 @@ outro sistema (decisão de design) · — não aplicável.
 | Multiplayer | salas/entrada/saída/reconexão/sincronização | server-authoritative, token, 12 players | `rooms` | — | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Persistência | manual+autosave+crítico | `saves/CODE.json`, reconnect | `salvarJogo` | — | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Segurança | validação/rate-limit/payload/anti-cheat/anti-spam | 2KB, 30msg/3s, sanitização | `handleClient` | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Chat | interface + input + entrega | textContent (anti-XSS), 200 chars, echo a todos | `case 'chat'` + `abrirChat`/`onChat` | — | ✅ | — (efêmero) | ✅ | ✅ | 🔧 |
 | UI | painéis/mapa/HUD/batalha | conectado ao backend, HUD leve | `index.html` | — | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ## Lacunas fechadas nesta fase (FASE 404)
@@ -78,6 +79,16 @@ outro sistema (decisão de design) · — não aplicável.
 2. **Calendário civil (meses/anos)** — `dataDe()` + `MESES`, servidor-autoritativo.
 3. **Recursos espaciais** — colônias rendem terras raras.
 4. **Peso dos votos na ONU** — voto ponderado por população/influência.
+
+## FASE 406 — Chat reativado
+
+`case 'chat'` já existia no servidor mas o cliente tinha o handler apagado
+(`/* chat removido a pedido */`). Reativado: botão `btn-chat` no HUD → `abrirChat()`
+(overlay com lista + input), `onChat()` guarda em `state.chatLog` e anexa no painel
+aberto; renderização com `textContent`/`createTextNode` (anti-XSS). Servidor com
+strip de caracteres de controle + normalização + truncamento 200 chars. Testado:
+2 jogadores, entrega, eco, truncamento, vazias rejeitadas, spammer desconectado
+(rate limit), reconexão, e em produção.
 
 ## Decisões de design (cobertas, não são lacunas)
 
