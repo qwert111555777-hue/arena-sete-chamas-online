@@ -937,3 +937,26 @@ node-check duplo OK. verify-prod 566.232 B idêntico ao local.
 
 **Próximo:** continuar a fila — auditoria de segurança caso a caso dos 715 handlers,
 testes de integração completos, e revisão dos sistemas restantes (rankings, vitórias).
+
+## FASE 401 — vitórias ciência/espaço + rankings + testes integração/multiplayer (2026-09-12)
+
+Commit `3f40ca6`, deploy `dep-dainaj6q1p3s73cqeet0` → live.
+
+1. **Vitórias (item 28):** marcos novos em `checkVictory` — "potência científica"
+   (50+ ciência ou 30+ tecnologias) e "conquistou o espaço" (programa espacial 5/5).
+   Campo `ciencia` exposto no snapshot.
+2. **Rankings (item 29):** painel "Sua posição no mundo" ampliado de 4 → 11 indicadores
+   (receita, militar, população, economia, PIB, tecnologia, influência, ciência,
+   espaço, comércio, território).
+3. **Auditoria de segurança (item 31):** 696 cases de `performAction` varridos — nenhum
+   explorável. Os 17 sem `spend()`/`err()` são ações gratuitas legítimas (config de
+   impostos/orçamento, pagar dívida, propor paz, pedir ajuda) ou falsos positivos de
+   parsing; 0 cases com `target` sem validação.
+4. **Teste de integração (item 40):** `test_integracao.js` — fundar → construir →
+   produzir → pesquisar → recrutar, verificando que cada etapa evolui o estado.
+   Resultado: economia evoluiu, construção iniciada, dia avançou, 197 bots vivos. ✅
+5. **Teste multiplayer 2 jogadores (item 41):** `test_multiplayer.js` — 2 clientes
+   independentes na mesma sala; estado consistente (mesmo dia, mesmos ids, veem-se).
+   ✅ local e em produção.
+
+verify-prod 566.620 B idêntico ao local. Regressão completa verde.
