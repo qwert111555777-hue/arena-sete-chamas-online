@@ -4042,6 +4042,18 @@ $('btn-space').onclick = () => {
   const nx = nv + prog.length;
   const pode = nx < 5 && m.ap >= 2 && m.money >= ETAPAS[nx][2];
   s += '<div style="margin:4px 0 6px"><button data-spago style="padding:8px 16px;cursor:pointer" '+(pode?'':'disabled')+'>'+(nx<5?('🚀 Iniciar: '+ETAPAS[nx][1]+' (2⚡ + $'+ETAPAS[nx][2]+', 12 dias)'):'🏆 Programa completo — Marte é nosso!')+'</button></div>';
+  /* FASE 402 — colonização: aparece quando o programa espacial está completo (nv>=5) */
+  if (nv >= 5) {
+    const DEST = { marte: '🔴 Marte', lua: '🌙 Lua', europa: '🧊 Europa' };
+    const cols = m.colonias || [];
+    s += '<div style="background:#e8f0ff;border:2px solid #3f6fb5;border-radius:8px;padding:8px 10px;margin-top:8px"><b style="font-size:14px">🪐 COLÔNIAS ESPACIAIS</b><div style="font-size:11px;color:#2b3d5e;margin:4px 0">Fundar: 2⚡ + $3.000 (uma por destino) · rende 20+15×infra+pop/10 por semana · ampliar: 1⚡ + $800.</div>';
+    s += cols.length ? cols.map(c => '<div style="background:#fff;border:1px solid #c9b98b;border-radius:6px;padding:5px 8px;margin-bottom:4px;font-size:12px">'+DEST[c.destino]+' · infra '+c.infra+'/5 · pop '+Math.round(c.pop)+' '+(c.infra<5&&m.ap>=1&&m.money>=800?'<button data-colup="'+c.destino+'" style="padding:2px 8px;cursor:pointer">🔧 Ampliar</button>':'')+'</div>').join('') : '<div style="font-size:11px;color:#6b5a33">Nenhuma colônia ainda.</div>';
+    s += '<div style="margin-top:6px">' + Object.keys(DEST).map(k => {
+      const tem = cols.some(c => c.destino === k);
+      const podeC = !tem && m.ap >= 2 && m.money >= 3000;
+      return '<button data-colon="'+k+'" style="padding:6px 12px;cursor:pointer;margin:2px" '+(podeC?'':'disabled')+'>'+DEST[k]+(tem?' ✓':' (2⚡+$3000)')+'</button>';
+    }).join('') + '</div></div>';
+  }
   s += '<div style="text-align:center;margin-top:6px"><button id="spc-x" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
   ov.innerHTML = s;
   document.body.appendChild(ov);
@@ -4049,6 +4061,8 @@ $('btn-space').onclick = () => {
   ov.onclick = e => { if (e.target===ov) ov.remove(); };
   const go = ov.querySelector('[data-spago]');
   if (go) go.onclick = () => { send({t:'action',action:'espacial'}); ov.remove(); };
+  ov.querySelectorAll('[data-colon]').forEach(b => b.onclick = () => { send({t:'action',action:'colonizar',destino:b.dataset.colon}); ov.remove(); });
+  ov.querySelectorAll('[data-colup]').forEach(b => b.onclick = () => { send({t:'action',action:'colonia_up',destino:b.dataset.colup}); ov.remove(); });
 };
 $('btn-eco').onclick = () => {
   const m = me(); if (!m || !state) return;
