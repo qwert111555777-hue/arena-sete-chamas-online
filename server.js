@@ -476,6 +476,18 @@ function buildingMaint(p) {
   return Math.round(n * 1.5 + up * 1.5);
 }
 
+/* FASE 408 — TETO DE TROPAS POR QUARTÉIS (paridade MA3)
+   A referência pública do MA3 diz que "quartéis = teto de tropas": o tamanho
+   máximo do exército é limitado pela infraestrutura militar, não por um número
+   fixo. Aqui o teto começa em 8 e cresce com quartéis (+5), bases (+2) e
+   academia militar (+3), limitado a 25. */
+function milCap(p) {
+  const q = (p.buildings && p.buildings.quartel) || 0;
+  const b = (p.buildings && p.buildings.base) || 0;
+  const a = (p.buildings && p.buildings.academia_militar) || 0;
+  return Math.min(25, 8 + 5 * q + 2 * b + 3 * a);
+}
+
 /* FASE 404 — CALENDÁRIO CIVIL (meses/anos)
    O jogo só tinha "dia" e "era". Agora dia → data real: dia 1 = 01/07/2024.
    1 mês = 30 dias, 1 ano = 360 dias (calendário fixo e determinístico). */
@@ -1563,7 +1575,7 @@ function aiTurn(room) {
        Todos os efeitos usam dinheiro real do bot (nada de recurso infinito). */
     if (b.money > 600) {
       if (per.eco >= 1.5 && b.money > 900) { b.money -= 400; b.eco += 1; }
-      if (per.mil >= 1.5 && b.money > 800) { b.money -= 300; b.mil += 1; }
+      if (per.mil >= 1.5 && b.money > 800) { b.money -= 300; b.mil = Math.min(milCap(b), b.mil + 1); }
       if (per.def >= 1.5 && b.money > 700 && (b.seguranca.defesa || 0) < 3) { b.money -= 350; b.seguranca.defesa = (b.seguranca.defesa || 0) + 1; }
       if (b.persona === 'cientifico' && b.money > 1000) { const tk = Object.keys(TECHS)[(room.turn + b.id.length) % Object.keys(TECHS).length]; b.techLv = b.techLv || {}; if ((b.techLv[tk] || 0) < 3) { b.techLv[tk]++; b.money -= 200; } }
       if (b.persona === 'diplomatico' && b.money > 800) { const al = room.players.find(o => o.alive && o !== b && relBetween(b, o) >= 55 && !b.allies.includes(o.id) && !b.wars.includes(o.id)); if (al && b.allies.length < 3) { b.money -= 150; b.allies.push(al.id); al.allies.push(b.id); b.relations[al.id] = 100; al.relations[b.id] = 100; log(room, `🤝 ${cname(b)} (${per.nome}) firmou aliança com ${cname(al)}.`); } }
@@ -1572,7 +1584,7 @@ function aiTurn(room) {
     if (b.rec.comida > need + 20) { const q = Math.floor((b.rec.comida - need) / 2); b.rec.comida -= q; b.money += q * room.market.comida; }
     if (b.rec.madeira > 30) { const q = Math.floor(b.rec.madeira / 3); b.rec.madeira -= q; b.money += q * room.market.madeira; }
     if (b.money > 500 && b.builds.length < 2) {
-      const kinds = ['infra', 'fabrica', 'fazenda', 'mina', 'serraria', 'usina', 'petroleo', 'mina_ouro', 'estrada', 'base', 'mina_rara', 'adubo'];
+      const kinds = ['infra', 'fabrica', 'fazenda', 'mina', 'serraria', 'usina', 'petroleo', 'mina_ouro', 'estrada', 'base', 'quartel', 'academia_militar', 'mina_rara', 'adubo'];
       const kind = kinds[(room.turn + b.id.length) % kinds.length];
       if (kind === 'infra') {
         const pr = ownProvinces(b).find(x => x.infra < 5);
@@ -1581,7 +1593,7 @@ function aiTurn(room) {
         b.money -= PROD_BUILDS[kind]; b.rec.concreto -= CONCRETE_NEED[kind] || 0; b.builds.push({ kind, untilDay: room.day + buildDays(PROD_BUILDS[kind] || 300) });
       }
     }
-    if (b.money > 1200 && b.mil < 18 && room.turn % 4 === 0) { b.money -= 150; b.mil += 1; }
+    if (b.money > 1200 && b.mil < milCap(b) && room.turn % 4 === 0) { b.money -= 150; b.mil += 1; }
     if (b.money > 900 && b.rec.terras_raras >= 4) {
       /* FASE 398: a IA usava só 5 das 9 unidades e pagava um custo próprio */
       const ks = Object.keys(UNIT_COSTS);
@@ -1595,7 +1607,7 @@ function aiTurn(room) {
     if (b.crise) resolverCrise(room, b, (b.money > 500) ? 0 : 2);
     if (b.religion && b.religion !== 'laico' && b.money > 500 && Math.random() < 0.25) { const tgts = room.players.filter(o => o.alive && o !== b && o.religion !== b.religion); if (tgts.length) { const t3 = tgts[Math.floor(Math.random() * tgts.length)]; if (Math.random() < 0.3 + relBetween(b, t3) / 200) { t3.religion = b.religion; bumpRel(b, t3, 10); b.stats.conversoes = (b.stats.conversoes || 0) + 1; log(room, `🛐 ${cname(b)} espalhou sua religião para ${cname(t3)}!`); } } }
     if ((b.fe || 0) >= 10 && b.money < 1000) { b.money += Math.round((b.fe || 0) * 8); b.aprov = Math.max(0, b.aprov - 3); }
-    if ((b.fe || 0) >= 20 && b.religion && b.religion !== 'laico' && b.money > 800 && Math.random() < 0.06) { const fs = room.players.find(o => o.alive && o !== b && o.religion !== b.religion); if (fs && Math.random() < 0.5) { b.money -= 200; b.mil += 12; bumpRel(b, fs, -15); log(room, `🕌 ${cname(b)} conclama GUERRA SANTA contra ${cname(fs)}!`); } }
+    if ((b.fe || 0) >= 20 && b.religion && b.religion !== 'laico' && b.money > 800 && Math.random() < 0.06) { const fs = room.players.find(o => o.alive && o !== b && o.religion !== b.religion); if (fs && Math.random() < 0.5) { b.money -= 200; b.mil = Math.min(milCap(b), b.mil + 12); bumpRel(b, fs, -15); log(room, `🕌 ${cname(b)} conclama GUERRA SANTA contra ${cname(fs)}!`); } }
     if (b.money > 2000 && Math.random() < 0.08) { b.money -= 300; b.influencia = Math.min(100, (b.influencia || 0) + 5); b.aprov = Math.min(100, b.aprov + 4); }
     if (b.money > 600 && Math.random() < 0.1) { const fo = room.players.find(o => o.alive && o !== b && relBetween(b, o) < 30); if (fo) { b.money -= 100; fo.aprov = Math.max(0, fo.aprov - 4); bumpRel(b, fo, -6); } }
     if ((b.crise && b.crise.tipo === 'pandemia') || b.aprov < 50) { if (b.money > 600) { b.money -= 250; b.pop += 3; b.aprov = Math.min(100, b.aprov + 6); if (b.crise && b.crise.tipo === 'pandemia') b.crise = null; } }
@@ -1623,7 +1635,7 @@ function aiTurn(room) {
     if (b.aprov < 55 && b.money > 500) { b.money -= 50; b.aprov = Math.min(100, b.aprov + 4); }
     if (b.money > 2000 && Math.random() < 0.03) { const va = room.players.find(o => o.alive && o.bot && o !== b && relBetween(b, o) >= 85 && !b.wars.includes(o.id)); if (va) { for (const pr of va.provinces) pr.owner = b.id; b.provinces = b.provinces.concat(va.provinces); va.provinces = []; va.alive = false; va.eliminatedReason = `Anexada por acordo por ${cname(b)}`; b.money -= 300; log(room, `🗺️ ${cname(b)} ANEXOU ${cname(va)} por acordo diplomático!`); } }
     if (b.money > 1000 && Math.random() < 0.1) { const prs = ownProvinces(b).filter(pr => pr.infra < 5); if (prs.length) { b.money -= 200; prs[0].infra = Math.min(5, prs[0].infra + 1); } }
-    if (b.mil < 10 && b.money > 1500 && Math.random() < 0.2) { b.money -= 150; b.mil = Math.min(25, b.mil + 1); }
+    if (b.mil < 10 && b.money > 1500 && Math.random() < 0.2) { b.money -= 150; b.mil = Math.min(milCap(b), b.mil + 1); }
     if (b.money < 300 && Math.random() < 0.15) { b.money += 1500; b.aprov = Math.max(0, b.aprov - 8); }
     if (b.religion && b.religion !== 'laico' && b.money > 1000 && Math.random() < 0.15) { b.money -= 200; b.fe = Math.min(100, (b.fe || 0) + 4); }
     if (b.money > 2000 && Math.random() < 0.05) { const fo = room.players.filter(o => o.alive && o !== b).sort((x, y) => relBetween(b, y) - relBetween(b, x))[0]; if (fo && relBetween(b, fo) > 0) { b.money -= 100; bumpRel(b, fo, 8); } }
@@ -1637,7 +1649,7 @@ function aiTurn(room) {
     if ((b.orgs || []).length && b.money > 4000 && Math.random() < 0.05) { b.money -= 800; room.orgLeader = room.orgLeader || { interpol: null, fmi: null, omc: null }; const k = b.orgs[Math.floor(Math.random() * b.orgs.length)]; const sc = o => k === 'interpol' ? o.mil : k === 'fmi' ? o.eco + Math.floor(o.money / 1000) : (o.trades || []).length * 2 + o.eco; const cur = room.players.find(x => x.id === room.orgLeader[k] && x.alive); if (!cur || sc(b) > sc(cur)) { room.orgLeader[k] = b.id; log(room, `🏛️ ${cname(b)} assumiu a liderança da ${k.toUpperCase()}!`); } }
     if (b.money > 5000 && Math.random() < 0.03) { const poor = room.players.find(o => o.alive && o !== b && (o.money || 0) < 800 && relBetween(b, o) >= 50); if (poor) { b.money -= 1000; poor.money += 1000; poor.dividas = poor.dividas || []; poor.dividas.push({ to: b.id, valor: 1200, dia: room.day + 28 }); log(room, `💸 ${cname(b)} emprestou $1000 a ${cname(poor)}.`); } }
     if (b.money > 3000 && Math.random() < 0.05) { const so = room.players.find(o => o.alive && o !== b && o.crise && relBetween(b, o) >= 50); if (so) { b.money -= 300; so.money += 300; bumpRel(b, so, 10); } }
-    if (((b.stats && b.stats.vitorias) || 0) > 0 && b.money > 1000 && Math.random() < 0.1) { b.money -= 200; b.mil = Math.min(25, b.mil + 1); b.aprov = Math.min(100, b.aprov + 3); }
+    if (((b.stats && b.stats.vitorias) || 0) > 0 && b.money > 1000 && Math.random() < 0.1) { b.money -= 200; b.mil = Math.min(milCap(b), b.mil + 1); b.aprov = Math.min(100, b.aprov + 3); }
     if (b.money > 2000 && Math.random() < 0.08) { b.money -= 400; b.ciencia = (b.ciencia || 0) + 2; }
     if (b.money > 2000 && Math.random() < 0.06) { b.comandantes = b.comandantes || {}; const cp = ['marinha','policia','esportes','cultura','defesa'].filter(k => !b.comandantes[k]); if (cp.length) { b.money -= 300; b.comandantes[cp[0]] = 1; } }
     if ((b.rec.comida || 0) < 30 && b.money > 1500 && Math.random() < 0.15) { b.money -= 200; b.rec.comida = (b.rec.comida || 0) + 25; }
@@ -1650,7 +1662,7 @@ function aiTurn(room) {
     if (b.money > 2500 && Math.random() < 0.06) { b.money -= 400; b.aprov = Math.min(100, b.aprov + 2); log(room, `🏨 ${cname(b)} investiu em hotelaria.`); }
     if (b.money > 3000 && Math.random() < 0.08) { b.money -= 500; b.eco += 2; }
     if (b.money > 2000 && Math.random() < 0.06) { b.money -= 350; b.ciencia = (b.ciencia || 0) + 1; b.aprov = Math.min(100, b.aprov + 3); }
-    if (b.money > 2500 && Math.random() < 0.06) { b.money -= 400; b.mil += 1; }
+    if (b.money > 2500 && Math.random() < 0.06) { b.money -= 400; b.mil = Math.min(milCap(b), b.mil + 1); }
     if (b.mil > 8 && b.money > 500 && Math.random() < 0.05) { b.money -= 100; b.aprov = Math.min(100, b.aprov + 3); }
     if (b.money > 800 && Math.random() < 0.10) { b.money -= 200; b.aprov = Math.min(100, b.aprov + 5); }
     if (b.money > 600 && Math.random() < 0.08) { b.money -= 150; b.aprov = Math.min(100, b.aprov + 2); }
@@ -1664,7 +1676,7 @@ function aiTurn(room) {
     if (b.money < 600 && Math.random() < 0.06) { b.money += 400; }
     if (b.money > 1000 && Math.random() < 0.05) { b.money -= 200; b.aprov = Math.min(100, b.aprov + 3); }
     if (b.money > 1500 && Math.random() < 0.05) { b.money -= 300; b.aprov = Math.min(100, b.aprov + 5); }
-    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 400; b.mil = (b.mil || 3) + 3; }
+    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 400; b.mil = Math.min(milCap(b), (b.mil || 3) + 3); }
     if (b.money > 1500 && Math.random() < 0.06) { b.money -= 250; b.aprov = Math.min(100, b.aprov + 4); }
     if (b.money > 5000 && Math.random() < 0.03) { b.money -= 1000; b.aprov = Math.min(100, b.aprov + 8); }
     if (b.money > 4000 && Math.random() < 0.03) { b.money -= 800; b.aprov = Math.min(100, b.aprov + 6); }
@@ -1672,26 +1684,26 @@ function aiTurn(room) {
     if (b.money > 1500 && Math.random() < 0.05) { b.money -= 250; b.aprov = Math.min(100, b.aprov + 4); }
     if (b.money > 1000 && Math.random() < 0.05) { b.money -= 200; b.aprov = Math.min(100, b.aprov + 4); }
     if (b.money > 800 && Math.random() < 0.06) { b.aprov = Math.min(100, b.aprov + 3); }
-    if (b.money > 1500 && Math.random() < 0.05) { b.money -= 200; b.mil = (b.mil || 3) + 1; }
-    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 500; b.mil = (b.mil || 3) + 3; }
+    if (b.money > 1500 && Math.random() < 0.05) { b.money -= 200; b.mil = Math.min(milCap(b), (b.mil || 3) + 1); }
+    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 500; b.mil = Math.min(milCap(b), (b.mil || 3) + 3); }
     if (b.money > 1500 && Math.random() < 0.05) { b.money -= 300; b.aprov = Math.min(100, b.aprov + 4); }
     if (b.money > 3000 && Math.random() < 0.04) { b.money -= 700; b.eco = (b.eco || 3) + 2; }
     if (b.money > 3000 && Math.random() < 0.04) { b.money -= 600; b.eco = (b.eco || 3) + 2; }
     if (b.money > 1500 && Math.random() < 0.05) { b.money -= 300; b.aprov = Math.min(100, b.aprov + 5); }
-    if (b.money > 3500 && Math.random() < 0.04) { b.money -= 800; b.mil = (b.mil || 3) + 3; }
+    if (b.money > 3500 && Math.random() < 0.04) { b.money -= 800; b.mil = Math.min(milCap(b), (b.mil || 3) + 3); }
     if (b.money > 2000 && Math.random() < 0.05) { b.money -= 300; b.aprov = Math.min(100, b.aprov + 1); }
     if (b.money > 1200 && Math.random() < 0.05) { b.money -= 200; b.aprov = Math.min(100, b.aprov + 1); }
     if (b.money > 2500 && Math.random() < 0.05) { b.money -= 500; b.aprov = Math.min(100, b.aprov + 3); }
-    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 500; b.mil = (b.mil || 3) + 3; }
+    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 500; b.mil = Math.min(milCap(b), (b.mil || 3) + 3); }
     if (b.money < 600 && Math.random() < 0.07) { b.money += 500; b.aprov = Math.max(0, b.aprov - 3); }
-    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 600; b.mil = (b.mil || 3) + 3; }
+    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 600; b.mil = Math.min(milCap(b), (b.mil || 3) + 3); }
     if (b.money > 2500 && Math.random() < 0.05) { b.money -= 500; b.aprov = Math.min(100, b.aprov + 6); }
     if (b.money > 1500 && Math.random() < 0.05) { b.money -= 200; b.aprov = Math.min(100, b.aprov + 4); }
     if (b.money > 2000 && Math.random() < 0.05) { b.money -= 400; b.aprov = Math.min(100, b.aprov + 4); }
     if (b.money > 3000 && Math.random() < 0.04) { b.money -= 700; b.aprov = Math.min(100, b.aprov + 6); }
     if (b.money > 3000 && Math.random() < 0.04) { b.money -= 700; b.aprov = Math.min(100, b.aprov + 4); }
     if (b.money > 3000 && Math.random() < 0.04) { b.money -= 600; b.eco = (b.eco || 3) + 2; }
-    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 600; b.mil = (b.mil || 3) + 3; }
+    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 600; b.mil = Math.min(milCap(b), (b.mil || 3) + 3); }
     if (b.money > 3000 && Math.random() < 0.04) { b.money -= 700; b.eco = (b.eco || 3) + 2; }
     if (b.money > 1200 && Math.random() < 0.06) { b.money -= 200; b.aprov = Math.min(100, b.aprov + 4); }
     if (b.money > 2000 && Math.random() < 0.05) { b.money -= 400; b.aprov = Math.min(100, b.aprov + 4); }
@@ -1701,7 +1713,7 @@ function aiTurn(room) {
     if (b.money > 2000 && Math.random() < 0.05) { b.money -= 400; b.aprov = Math.min(100, b.aprov + 5); }
     if (b.money > 2000 && Math.random() < 0.05) { b.money -= 400; b.aprov = Math.min(100, b.aprov + 3); }
     if (b.money > 1500 && Math.random() < 0.06) { b.money -= 300; b.aprov = Math.min(100, b.aprov + 3); }
-    if (b.money > 1500 && Math.random() < 0.05) { b.money -= 300; b.mil = (b.mil || 3) + 1; }
+    if (b.money > 1500 && Math.random() < 0.05) { b.money -= 300; b.mil = Math.min(milCap(b), (b.mil || 3) + 1); }
     if (b.money > 800 && Math.random() < 0.07) { b.money += 500; }
     if (b.money > 1500 && Math.random() < 0.06) { b.money -= 300; b.aprov = Math.min(100, b.aprov + 4); }
     if ((b.nukeShieldUntil || 0) <= room.turn && b.money > 1500 && Math.random() < 0.05) { b.money -= 400; b.nukeShieldUntil = room.turn + 6; }
@@ -1931,8 +1943,9 @@ function performAction(room, p, msg) {
     case 'investir': if (!spend(p, 1, 250)) return; p.eco += 2; log(room, `🏭 ${cname(p)} investiu na economia (+2).`); break;
     case 'militar': {
       if (room.turn < room.noArmsUntil) { err(p.conn, '🇺🇳 Recrutamento proibido por resolução da ONU.'); return; } if ((p.armsEmbargoUntil || 0) > room.turn) { err(p.conn, '🚫 Embargo de armas contra você — sem recrutar.'); return; }
+      if (p.mil >= milCap(p)) { err(p.conn, `🪖 Exército no teto (${milCap(p)}/25). Construa QUARTÉIS, BASES ou ACADEMIA MILITAR para ampliar o teto de tropas.`); return; }
       const cost = p.ideology === 'fascismo' ? 150 : 300;
-      if (!spend(p, 1, cost)) return; p.mil += 3; log(room, `🪖 ${cname(p)} recrutou tropas (+3 militar).`); break;
+      if (!spend(p, 1, cost)) return; p.mil = Math.min(milCap(p), p.mil + 3); log(room, `🪖 ${cname(p)} recrutou tropas (+3 militar).`); break;
     }
     case 'propaganda': if (!spend(p, 1, 150)) return; p.aprov = Math.min(100, p.aprov + 7); log(room, `📺 ${cname(p)} lançou campanha de propaganda (+7 aprovação).`); break;
     case 'ideologia':
@@ -2177,13 +2190,13 @@ function performAction(room, p, msg) {
     }
     case 'alistamento': {
       if (!spend(p, 1, 0)) return;
-      p.mil = Math.min(25, p.mil + 2); p.aprov = Math.max(0, p.aprov - 6);
+      p.mil = Math.min(milCap(p), p.mil + 2); p.aprov = Math.max(0, p.aprov - 6);
       log(room, `🪖 ${cname(p)} decretou ALISTAMENTO obrigatório (+2 militar, −6❤️).`);
       break;
     }
     case 'milicia': {
       if (!spend(p, 1, 200)) return;
-      p.mil = Math.min(25, p.mil + 2); p.aprov = Math.max(0, p.aprov - 2);
+      p.mil = Math.min(milCap(p), p.mil + 2); p.aprov = Math.max(0, p.aprov - 2);
       log(room, `🔫 ${cname(p)} armou MILÍCIAS paramilitares (+2 militar, −2❤️).`);
       break;
     }
@@ -2390,7 +2403,7 @@ function performAction(room, p, msg) {
     case 'condecorar': {
       if (!((p.stats && p.stats.vitorias) || 0)) { err(p.conn, '🎖️ Vença ao menos 1 batalha para condecorar veteranos.'); return; }
       if (!spend(p, 1, 200)) return;
-      p.mil = Math.min(25, p.mil + 1); p.aprov = Math.min(100, p.aprov + 3);
+      p.mil = Math.min(milCap(p), p.mil + 1); p.aprov = Math.min(100, p.aprov + 3);
       log(room, `🎖️ ${cname(p)} CONDECOROU os veteranos de guerra (+1 militar, +3❤️).`);
       break;
     }
@@ -2440,7 +2453,7 @@ function performAction(room, p, msg) {
       if (msg.post === 'policia') { p.spyShieldUntil = room.day + 7; }
       if (msg.post === 'esportes') { p.aprov = Math.min(100, p.aprov + 4); }
       if (msg.post === 'cultura') { p.influencia = Math.min(100, (p.influencia || 0) + 4); }
-      if (msg.post === 'defesa') { p.mil = Math.min(25, p.mil + 1); }
+      if (msg.post === 'defesa') { p.mil = Math.min(milCap(p), p.mil + 1); }
       log(room, `🎖️ ${cname(p)} nomeou o Comandante da ${CP[msg.post]}!`);
       break;
     }
@@ -5715,7 +5728,7 @@ function performAction(room, p, msg) {
           const v = Math.min(300, Math.round(target.money));
           target.money -= v; p.money += v;
           log(room, `💰 ${cname(target)} PAGOU TRIBUTO de $${v} a ${cname(p)}!`);
-        } else { bumpRel(p, target, -10); target.mil = Math.min(25, target.mil + 1); log(room, `💰❌ ${cname(target)} RECUSOU O TRIBUTO exigido por ${cname(p)} (-10 relações, +1 mil).`); }
+        } else { bumpRel(p, target, -10); target.mil = Math.min(milCap(target), target.mil + 1); log(room, `💰❌ ${cname(target)} RECUSOU O TRIBUTO exigido por ${cname(p)} (-10 relações, +1 mil).`); }
       } else { bumpRel(p, target, -5); log(room, `💰 ${cname(target)} ignorou o TRIBUTO de ${cname(p)} (fraco demais, -5 relações).`); }
       break;
     }
@@ -5743,7 +5756,7 @@ function performAction(room, p, msg) {
       if ((p.units.infantaria || 0) >= UNIT_MAX) { err(p.conn, `🪖 Infantaria já está no nível máximo (${UNIT_MAX}). Fortaleça outra unidade ou treine tropas.`); return; }
       if (!spend(p, 1, 400)) return;
       p.units.infantaria = Math.min(UNIT_MAX, (p.units.infantaria || 0) + 2);
-      p.mil = Math.min(25, p.mil + 1);
+      p.mil = Math.min(milCap(p), p.mil + 1);
       log(room, `🪖 ${cname(p)} COMPROU TROPAS mercenárias (infantaria nível ${p.units.infantaria}, +1 mil).`);
       break;
     }
@@ -6314,7 +6327,7 @@ function performAction(room, p, msg) {
       if (p.lastReserve && room.day - p.lastReserve < 14) { err(p.conn, 'Reservas em reorganização — tente em ' + (14 - (room.day - p.lastReserve)) + ' dias.'); return; }
       if (!spend(p, 1, 300)) return;
       p.lastReserve = room.day;
-      p.mil = Math.min(25, (p.mil || 0) + 3);
+      p.mil = Math.min(milCap(p), (p.mil || 0) + 3);
       p.aprov = Math.max(0, p.aprov - 2);
       log(room, `🛡️ ${cname(p)} CONVOCOU AS RESERVAS (+3 militar, −2 aprovação, 14 dias p/ reorganizar).`);
       break;
@@ -6324,7 +6337,7 @@ function performAction(room, p, msg) {
       if (!p.allies.includes(target.id)) return err(p.conn, 'Treino conjunto exige ALIANÇA.');
       if (p.wars.includes(target.id)) return err(p.conn, 'Impossível treinar com um inimigo.');
       if (!spend(p, 1, 200)) return;
-      p.mil = Math.min(25, p.mil + 1); target.mil = Math.min(25, target.mil + 1);
+      p.mil = Math.min(milCap(p), p.mil + 1); target.mil = Math.min(milCap(target), target.mil + 1);
       bumpRel(p, target, 5); p.xp += 3;
       log(room, `🏋️🤝 ${cname(p)} e ${cname(target)} fazem TREINO MILITAR CONJUNTO (+1 militar cada, +5 relações).`);
       break;
@@ -6451,8 +6464,9 @@ function performAction(room, p, msg) {
     }
     case 'treinar': {
       if ((p.armsEmbargoUntil || 0) > room.turn) { err(p.conn, '🚫 Embargo de armas contra você — sem treinar.'); return; }
+      if (p.mil >= milCap(p)) { err(p.conn, `🪖 Exército no teto (${milCap(p)}/25). Construa QUARTÉIS, BASES ou ACADEMIA MILITAR para ampliar o teto de tropas.`); return; }
       if (!spend(p, 1, 150)) return;
-      p.mil = Math.min(25, p.mil + 1); p.stats.treinos = (p.stats.treinos || 0) + 1;
+      p.mil = Math.min(milCap(p), p.mil + 1); p.stats.treinos = (p.stats.treinos || 0) + 1;
       log(room, `🏋️ ${cname(p)} treina suas forças armadas (poder militar +1).`);
       break;
     }
@@ -7295,7 +7309,7 @@ module.exports = {
   dayMsFor, buildDays, sanitizeName, makeCode, techTree, techName, techDesc, techCost, techLevel,
   relBetween, relBonus, sectorSum, ownProvinces, leiProd, insumoNecessario, taxaSuprimento,
   pibDetalhe, empregosOf, pibOf, incomeOf, deltasDe, personaOf, riscoProtesto, pressaoPolitica,
-  buildingMaint, dataDe, MESES, migracaoOf, techBonus, techResBonus, TECH_EFFECTS, TECH_RES, riscoEspionagem,
+  buildingMaint, milCap, dataDe, MESES, migracaoOf, techBonus, techResBonus, TECH_EFFECTS, TECH_RES, riscoEspionagem,
   TECHS, TECH_COSTS, TECH_MAX, TECH_TREES, SECTORS, MISSIONS, UNIT_COSTS, UNIT_MAX, LEIS, SEG,
   IDEOLOGIES, RELIGIONS, MINISTERS, PERSONAS, COUNTRIES, SPACE_COSTS, PROD_BUILDS, BUILD_OUT, BUILD_TAB,
 };

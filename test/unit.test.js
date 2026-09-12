@@ -153,6 +153,16 @@ ok('contraintelig REDUZ o risco de ser espionado', (() => {
   return s.riscoEspionagem(atk, comDef) < s.riscoEspionagem(atk, semDef);
 })());
 
+/* ---------- FASE 408: TETO DE TROPAS POR QUARTÉIS (paridade MA3) ---------- */
+section('MILITAR (milCap)');
+ok('milCap exportada', typeof s.milCap === 'function');
+ok('teto base = 8 (sem quartéis)', s.milCap({ buildings: {} }) === 8);
+ok('quartel +5 no teto', s.milCap({ buildings: { quartel: 2 } }) === 18);
+ok('base +2 no teto', s.milCap({ buildings: { base: 1 } }) === 10);
+ok('academia +3 no teto', s.milCap({ buildings: { academia_militar: 1 } }) === 11);
+ok('teto nunca passa de 25', s.milCap({ buildings: { quartel: 10, base: 10, academia_militar: 10 } }) === 25);
+ok('quartéis elevam o teto (diferença real)', s.milCap({ buildings: { quartel: 3 } }) > s.milCap({ buildings: {} }));
+
 /* ---------- RESULTADO ---------- */
 console.log('\n══════════════════════════════');
 console.log('RESULTADO: ' + pass + ' passaram · ' + fail + ' falharam');

@@ -1090,3 +1090,24 @@ compra/venda→estado→broadcast). Lacunas reais encontradas e CORRIGIDAS:
 Testes: 68 unitários; cadeias reais (`test_cadeia.js`: tech→renda 6→9, compra/venda mudam
 estado, fila de obras); 2 jogadores (`test_2p_consistencia.js`: B vê tech/renda de A);
 regressão completa verde.
+
+## FASE 408 — auditoria definitiva de equivalência × MA3 + teto de tropas por quartéis
+
+Comparação contra a referência pública do MA3 (estudo-ma3-vs-nosso-jogo +
+paridade-ma3-auto + auditoria v2 + 25 capturas OCR). Diferença comportamental
+REAL encontrada e CORRIGIDA:
+
+- **Quartéis = teto de tropas** (fato MA3: "quartéis = teto de tropas"). Antes o
+  `mil` tinha teto fixo 25; agora `milCap(p) = min(25, 8 + 5*quartel + 2*base +
+  3*academia_militar)`. Aplicado em TODOS os pontos (jogador + IA + militar que
+  não tinha teto + avisos claros). IA passou a construir quartel/academia.
+- Diferenças NUMÉRICAS reportadas (não corrigidas, sem referência dura): buildDays
+  4–30 vs "20–30" do MA3; sanção/embargo ×0.7 vs "~20%" do MA3; decaimento de
+  relações semanal vs "anual" do MA3.
+- Diferenças DELIBERADAS (vantagens documentadas, mantidas): sem pay-to-win (ICBM
+  do MA3 é paga), ABM (MA3 não tem), multiplayer real (MA3 single+chat), jogo
+  infinito vs campanha "180 nações", vitória SUPREMA, 140 prédios vs ~40, setores
+  extras (saúde/turismo).
+
+Testes: 75 unitários (0 falhas); regressão completa verde; anticheat atualizado
+para o teto dinâmico.
