@@ -1067,3 +1067,26 @@ servidor mas desativada no cliente. Reativado:
 Testes: `test_chat.js` (2 jogadores, entrega A→B, eco, truncamento 200, vazias
 rejeitadas, spammer desconectado pelo rate limit) ✅; `test_chat_reconnect.js`
 (chat após reconexão) ✅. Regressão completa verde.
+
+## FASE 407 — auditoria de SUBMECÂNICAS + efeitos funcionais das 125 tecnologias
+
+Auditoria por submecânica (não só módulo), com teste de cadeias reais
+(minério→produção→estoque→venda→dinheiro→PIB; tecnologia→desbloqueio→produção;
+compra/venda→estado→broadcast). Lacunas reais encontradas e CORRIGIDAS:
+
+1. **114/125 tecnologias sem efeito** — eram nomes com descrição ("+ataque", "+depósitos")
+   mas nenhum código lia a tech. Criado `TECH_EFFECTS` (domínio+magnitude por tech) e
+   `TECH_RES` (geração de recurso/dia) em `lib/data/techs.js`; `techBonus(p,domínio)` e
+   `techResBonus(p)` em `server.js`, consumidos em: renda (incomeOf), produção (dayTick),
+   ataque/defesa (fatoresGuerra), espionagem, custo de pesquisa, custo de obra/upgrade (infra),
+   custo espacial, influência/dia, aprovação/dia, decaimento de relações, AP extra (planejamento),
+   população (colônia orbital) e jazidas (geodesia/prospecção). TODAS as 125 agora têm efeito.
+2. **Bug `riscoEspionagem`**: lia `techLv.contraespionagem` (inexistente; a tech é `contraintelig`)
+   e `seguranca.espiao` (inexistente; é `secreto`) → contra-inteligência e Serviço Secreto
+   NÃO protegiam. Corrigido para `techBonus(alvo,'esp')` + `seguranca.secreto`.
+3. **fatoresGuerra lia techs "fantasma"** (`guerra_terrestre/aerea/naval/drones/cibernetica`),
+   que não existem no catálogo → sempre 0. Corrigido para `techBonus(ataque/defesa)` reais.
+
+Testes: 68 unitários; cadeias reais (`test_cadeia.js`: tech→renda 6→9, compra/venda mudam
+estado, fila de obras); 2 jogadores (`test_2p_consistencia.js`: B vê tech/renda de A);
+regressão completa verde.

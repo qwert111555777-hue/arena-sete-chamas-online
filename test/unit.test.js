@@ -128,6 +128,31 @@ ok('bônus limitado a +15%', (() => { const r = s.migracaoOf({ id: 'a', province
 ok('habitação/saúde amortizam a tensão do êxodo', (() => { const a = s.migracaoOf({ id: 'a', provinces: [{ owner: 'a', infra: 5 }, { owner: 'a', infra: 0 }], sectors: { habitacao: 5, saude: 5 } }); const b = s.migracaoOf({ id: 'a', provinces: [{ owner: 'a', infra: 5 }, { owner: 'a', infra: 0 }], sectors: {} }); return a.tensao < b.tensao; })());
 ok('migração alimenta a renda (incomeOf com bônus isolado)', (() => { const x = mk(); x.provinces = [{ name: 'A', infra: 5, owner: 'pX' }, { name: 'B', infra: 0, owner: 'pX' }]; const a = s.incomeOf(room, x); x.migracaoBonus = s.migracaoOf(x).bonus; return s.incomeOf(room, x) > a; })());
 
+/* ---------- FASE 407: EFEITOS FUNCIONAIS DAS TECNOLOGIAS ---------- */
+section('TECNOLOGIA — efeitos reais (techBonus/techResBonus)');
+ok('techBonus exportada', typeof s.techBonus === 'function');
+ok('techResBonus exportada', typeof s.techResBonus === 'function');
+ok('todas as 125 techs têm efeito mapeado', Object.keys(s.TECHS).every(k => s.TECH_EFFECTS[k] || s.TECH_RES[k] || (['infra','valor_agreg','condicoes','interceptadores','escola_oficiais','estado_direito','influencia_cult'].includes(k))));
+ok('TECH_EFFECTS cobre todas as 125 techs', Object.keys(s.TECHS).filter(k => !s.TECH_EFFECTS[k]).length === 0);
+ok('techBonus sem tech = 0', s.techBonus({}, 'renda') === 0);
+ok('techBonus soma nível×magnitude', s.techBonus({ techLv: { mina_ouro_t: 2 } }, 'renda') === 6);
+ok('techBonus ignora domínio errado', s.techBonus({ techLv: { mina_ouro_t: 2 } }, 'ataque') === 0);
+ok('techResBonus gera recurso por nível', (() => { const r = s.techResBonus({ techLv: { mina_ferro: 2 } }); return r.minerio === 2; })());
+ok('fatores de guerra usam ataque/defesa separados', (() => {
+  const p = { techLv: { canhao_122: 2 }, buildings: {}, provinces: [{ owner: 'p', infra: 1 }], sanctionedBy: [], blockadedBy: [], ministers: { def: null }, rec: {}, buildings2: null };
+  return s.techBonus(p, 'ataque') === 2 && s.techBonus(p, 'defesa') === 0;
+})());
+
+/* ---------- FASE 407: correção contra-inteligência ---------- */
+section('ESPIONAGEM (riscoEspionagem)');
+ok('riscoEspionagem exportada', typeof s.riscoEspionagem === 'function');
+ok('contraintelig REDUZ o risco de ser espionado', (() => {
+  const atk = { techLv: {}, seguranca: { secreto: 0 }, ideology: null, ministers: { def: null } };
+  const semDef = { techLv: {}, seguranca: { secreto: 0 }, ideology: null, ministers: { def: null } };
+  const comDef = { techLv: { contraintelig: 3 }, seguranca: { secreto: 2 }, ideology: null, ministers: { def: null } };
+  return s.riscoEspionagem(atk, comDef) < s.riscoEspionagem(atk, semDef);
+})());
+
 /* ---------- RESULTADO ---------- */
 console.log('\n══════════════════════════════');
 console.log('RESULTADO: ' + pass + ' passaram · ' + fail + ' falharam');

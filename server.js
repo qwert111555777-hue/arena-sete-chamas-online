@@ -15,7 +15,7 @@ const path = require('path');
 const zlib = require('zlib');
 // ---- dados extraídos para lib/data/* ----
 const { COUNTRIES, NEWLANDS, FLAGS_ALLOWED } = require('./lib/data/countries');
-const { IDEOLOGIES, RELIGIONS, MINISTERS, TECH_COSTS, TECH_MAX, TECH_TREES, TECHS, SPACE_COSTS } = require('./lib/data/techs');
+const { IDEOLOGIES, RELIGIONS, MINISTERS, TECH_COSTS, TECH_MAX, TECH_TREES, TECHS, SPACE_COSTS, TECH_EFFECTS, TECH_RES } = require('./lib/data/techs');
 const { SECTORS, DEPOSIT_POOL, DEP_NAMES } = require('./lib/data/map');
 const { UN_TYPES } = require('./lib/data/un');
 const { PERSONAS } = require('./lib/data/personas');
@@ -61,6 +61,30 @@ function techName(k){ const t = TECHS[k]; return t ? t[1] : k; }
 function techDesc(k){ const t = TECHS[k]; return t ? t[2] : ''; }
 function techCost(lvl){ return TECH_COSTS[Math.min(lvl, TECH_COSTS.length - 1)] || 999; }
 function techLevel(p, k){ return (p.techLv && p.techLv[k]) || 0; }
+
+/* FASE 407 — bônus agregado das tecnologias por domínio.
+   Soma (nível da tech × magnitude) para todas as techs que mapeiam para o
+   domínio pedido. Substitui os ~12 efeitos hardcoded espalhados por uma fonte
+   única; TODAS as 125 tecnologias agora têm efeito numérico real. */
+function techBonus(p, domain) {
+  let s = 0;
+  for (const k in (p.techLv || {})) {
+    const lvl = p.techLv[k] || 0; if (!lvl) continue;
+    const e = TECH_EFFECTS[k]; if (!e) continue;
+    if (e[0] === domain) s += lvl * e[1];
+  }
+  return s;
+}
+/* produção direta de recursos pelas tecnologias de extração/produção */
+function techResBonus(p) {
+  const out = {};
+  for (const k in (p.techLv || {})) {
+    const lvl = p.techLv[k] || 0; if (!lvl) continue;
+    const t = TECH_RES[k]; if (!t) continue;
+    out[t.res] = (out[t.res] || 0) + lvl * t.qtd;
+  }
+  return out;
+}
 function depositosOf(id) {
   let h = 0; for (const ch of String(id) + 'x') h = (h * 31 + ch.charCodeAt(0)) % 997;
   const out = [];
@@ -507,7 +531,7 @@ function incomeOf(room, p) {
     + ((p.colonias || []).reduce((s, c) => s + 20 + 15 * c.infra + Math.floor(c.pop / 10), 0))
     + sectorSum(p) * 2
     + relBonus(p);
-  base += 20 * techLevel(p, 'valor_agreg');
+  base += 8 * techBonus(p, 'renda');   /* FASE 407: bens militares/arrecadação/contratos das techs de economia */
   /* FASE 365: PIB e empregos alimentam a receita */
   base += Math.round(pibOf(p) / 90);
   /* FASE 368: ministros mexem em vários campos */
@@ -642,7 +666,7 @@ function dayTick(room) {
     // aprovação
     let dAprov = -1;
     dAprov -= mig.tensao;   // FASE 405: tensão social do êxodo rural→urbano
-    if (techLevel(p, 'estado_direito') > 0) dAprov = Math.ceil(dAprov / (1 + techLevel(p, 'estado_direito')));
+    dAprov += techBonus(p, 'aprova') / DAY_DIV;   // FASE 407: Estado de Direito, paz, medicamentos…
     dAprov += Math.min(1, Math.floor(sectorSum(p) / 3));
     if (p.ideology === 'autoritarismo') dAprov -= 1;
     if (p.ideology === 'monarquia') dAprov += 1;
@@ -674,8 +698,8 @@ function dayTick(room) {
     if (p.ministers.dip === 'inf') p.influencia += 1 / DAY_DIV;
     if (p.ministers.dip === 'cul') p.influencia += 1 / DAY_DIV;
     if (p.ministers.soc === 'mec') p.influencia += 1 / DAY_DIV;
-    p.influencia += techLevel(p, 'influencia_cult') / DAY_DIV;
-    p.ap = AP_PER_TURN;
+    p.influencia += techBonus(p, 'influencia') / DAY_DIV;   /* FASE 407: techs de influência/diplomacia */
+    p.ap = AP_PER_TURN + Math.min(2, techBonus(p, 'ap'));    /* FASE 407: Centro de Planejamento dá AP extra */
   }
   // população, produção de recursos e oscilação do mercado
   for (const p of room.players) if (p.alive) {
@@ -694,10 +718,11 @@ function dayTick(room) {
     p.rec.concreto += mult / DAY_DIV;
     // produção de cada prédio, direto do catálogo
     const lp = leiProd(p);   // FASE 396: volume/velocidade de produção vêm das leis
+    const tp = 1 + 0.05 * techBonus(p, 'producao');   // FASE 407: techs de produção geral
     for (const k in p.buildings) {
       const n = p.buildings[k] || 0; if (!n) continue;
       const o = BUILD_OUT[k]; if (!o || !o.res) continue;
-      p.rec[o.res] = (p.rec[o.res] || 0) + (n * o.qtd * upM(p, k) * mult * lp.volume) / DAY_DIV;
+      p.rec[o.res] = (p.rec[o.res] || 0) + (n * o.qtd * upM(p, k) * mult * lp.volume * tp) / DAY_DIV;
     }
     /* FASE 365: a indústria CONSOME os insumos que os produtores geraram */
     const _need = insumoNecessario(p);
@@ -735,10 +760,13 @@ function dayTick(room) {
     if (dep.includes('comida')) p.rec.comida += 3 / DAY_DIV;
     if (dep.includes('terras_raras')) p.rec.terras_raras += 1 / DAY_DIV;
     if (dep.includes('uranio')) p.rec.uranio += 1 / DAY_DIV;
+    /* FASE 407 — produção direta das tecnologias de extração/produção */
+    const trb = techResBonus(p);
+    for (const r in trb) p.rec[r] = (p.rec[r] || 0) + trb[r] / DAY_DIV;
     const need = Math.ceil(p.pop / 10) / DAY_DIV;
     let g = (4 + infra * 2 + (p.sectors.saude || 0)) / DAY_DIV * (p.taxRate === 2 ? 0.7 : p.taxRate === 0 ? 1.2 : 1);
     if (p.rec.comida >= need) p.rec.comida -= need; else { p.rec.comida = 0; g = g / 3; }
-    p.pop += g;
+    p.pop += g + techBonus(p, 'pop') / DAY_DIV;   /* FASE 407: colônia orbital sustenta mais gente */
     if (p.rec.comida === 0 && p.pop > 0) {
       p.pop = Math.max(0, p.pop - 2 / DAY_DIV); p.aprov = Math.max(0, p.aprov - 3 / DAY_DIV);
       if (!p.famine) { log(room, `🍽️ FOME em ${cname(p)}! A população está morrendo — compre comida no mercado.`); p.famine = true; }
@@ -872,6 +900,7 @@ function resolveWeek(room) {
     if (a.ideology === 'fascismo' || b.ideology === 'fascismo') dec = 3;
     if (a.ideology && b.ideology && a.ideology !== b.ideology) dec += 1;
     if ((a.religion || 'laico') !== (b.religion || 'laico')) dec += 1;
+    dec = Math.max(0, dec - Math.min(2, Math.floor(techBonus(a, 'relacoes') / 5)));   // FASE 407: techs diplomáticas freiam o decaimento
     let v = relBetween(a, b) - dec;
     if (a.embassies.includes(b.id)) v += 3;
     if (b.embassies.includes(a.id)) v += 3;
@@ -1338,9 +1367,12 @@ function ministroEfeito(p, pasta, campo) {
    FASE 369 — ESPIONAGEM COM RISCO
    ============================================================ */
 function riscoEspionagem(p, alvo) {
-  const defesa = (alvo.techLv && alvo.techLv.contraespionagem) || 0;
-  const seg = (alvo.seguranca && alvo.seguranca.espiao) || 0;
-  const base = 0.34 - defesa * 0.05 - seg * 0.04
+  /* FASE 407 — correção: lia techLv.contraespionagem (chave inexistente; a tech
+     é `contraintelig`) e seguranca.espiao (chave inexistente; é `secreto`).
+     Contra-inteligência e Serviço Secreto agora realmente protegem. */
+  const defesa = techBonus(alvo, 'esp');   // contraintelig + detecção (radar/sonar/satélite)
+  const seg = (alvo.seguranca && alvo.seguranca.secreto) || 0;
+  const base = 0.34 - defesa * 0.04 - seg * 0.05
              + ((alvo.ideology === 'autoritarismo') ? 0.08 : 0)
              + ministroEfeito(alvo, 'def', 'militar') * 0.2;
   return Math.max(0.05, Math.min(0.7, base));
@@ -5800,12 +5832,18 @@ function performAction(room, p, msg) {
       const k = msg.value; if (!TECHS[k]) return;
       const lvl = techLevel(p, k);
       if (lvl >= TECH_MAX) return err(p.conn, 'Essa tecnologia já está no nível máximo.');
-      const cost = Math.round(techCost(lvl) * (p.ideology === 'republica' ? 0.75 : 1) * (1 - 0.04 * ((p.sectors && p.sectors.educacao) || 0) - 0.03 * ((p.sectors && p.sectors.ciencia) || 0)) * (1 + ((p.inflacao || 0) / 100)));
+      const cost = Math.round(techCost(lvl) * (p.ideology === 'republica' ? 0.75 : 1) * (1 - 0.04 * ((p.sectors && p.sectors.educacao) || 0) - 0.03 * ((p.sectors && p.sectors.ciencia) || 0)) * (1 - 0.03 * techBonus(p, 'pesquisa')) * (1 + ((p.inflacao || 0) / 100)));
       if (!spend(p, 1, cost)) return;
       p.techLv = p.techLv || {};
       p.techLv[k] = lvl + 1;
       if (!p.techs.includes(k)) p.techs.push(k);
       if (k === 'condicoes') p.eco += 1;
+      /* FASE 407 — tecnologias de prospecção concedem jazida (efeito único) */
+      if (TECH_EFFECTS[k] && TECH_EFFECTS[k][0] === 'depositos') {
+        p.depositos = p.depositos || [];
+        const faltam = DEPOSIT_POOL.filter(d => !p.depositos.includes(d));
+        if (faltam.length) { const novo = faltam[Math.floor(Math.random() * faltam.length)]; p.depositos.push(novo); log(room, `⛏️ ${cname(p)} descobriu uma jazida de ${DEP_NAMES[novo]} com ${TECHS[k][1]}!`); }
+      }
       p.xp += 5;
       log(room, `🔬 ${cname(p)}: ${techName(k)} nível ${lvl + 1}/${TECH_MAX} ($${cost})`);
       break;
@@ -5821,7 +5859,9 @@ function performAction(room, p, msg) {
     }
     case 'espacial': {
       if (p.space + p.builds.filter(b=>b.kind==='espacial').length >= 5) return;
-      if (!spend(p, 2, SPACE_COSTS[p.space + p.builds.filter(b=>b.kind==='espacial').length])) return;
+      const etapa = p.space + p.builds.filter(b=>b.kind==='espacial').length;
+      const custoEsp = Math.round(SPACE_COSTS[etapa] * (1 - 0.04 * techBonus(p, 'espaco')));   // FASE 407: techs espaciais barateiam
+      if (!spend(p, 2, custoEsp)) return;
       p.builds.push({ kind: 'espacial', untilDay: room.day + 12 });
       log(room, `🚀 ${cname(p)} inicia etapa do programa espacial (conclui no próximo turno).`);
       break;
@@ -5938,7 +5978,7 @@ function performAction(room, p, msg) {
       const sAtk = (p.seguranca && p.seguranca.secreto) || 0;   // serviço secreto de quem ataca
       const sDef = (target.seguranca && target.seguranca.secreto) || 0; // de quem se defende
       const dDef = (target.seguranca && target.seguranca.defesa) || 0;
-      const chance = Math.min(0.9, 0.5 + 0.08 * sAtk + 0.05 * (p.espioes || 0) + (p.ministers.dip === 'esp' ? 0.1 : 0) - ((target.spyShieldUntil || 0) > room.day ? 0.25 : 0) - 0.05 * dDef - ((target.orgs || []).includes('interpol') ? 0.15 : 0));
+      const chance = Math.min(0.9, 0.5 + 0.08 * sAtk + 0.05 * (p.espioes || 0) + 0.04 * techBonus(p, 'esp') + (p.ministers.dip === 'esp' ? 0.1 : 0) - ((target.spyShieldUntil || 0) > room.day ? 0.25 : 0) - 0.05 * dDef - ((target.orgs || []).includes('interpol') ? 0.15 : 0));
       const r = Math.random();
       if (r < chance) {
         if (sDef >= 2 && Math.random() < 0.15 * sDef) {
@@ -5969,7 +6009,7 @@ function performAction(room, p, msg) {
       if (!target || target === p || !target.alive) return;
       if (!spend(p, 1, dipCost(p, 200))) return;
       const sA2 = (p.seguranca && p.seguranca.secreto) || 0;
-      const ch = Math.min(0.7, 0.3 + 0.07 * (p.espioes || 0) + 0.08 * sA2 + (p.ministers.dip === 'esp' ? 0.1 : 0) - ((target.spyShieldUntil || 0) > room.day ? 0.25 : 0));
+      const ch = Math.min(0.7, 0.3 + 0.07 * (p.espioes || 0) + 0.08 * sA2 + 0.04 * techBonus(p, 'esp') + (p.ministers.dip === 'esp' ? 0.1 : 0) - ((target.spyShieldUntil || 0) > room.day ? 0.25 : 0));
       const pool = Object.keys(target.techLv || {}).filter(k => (target.techLv[k] || 0) > (((p.techLv || {}))[k] || 0) && TECHS[k]);
       if (Math.random() < ch && pool.length) {
         const k = pool[Math.floor(Math.random() * pool.length)];
@@ -6234,7 +6274,7 @@ function performAction(room, p, msg) {
       const need = CONCRETE_NEED[msg.kind] || 0;
       if (p.rec.concreto < need) { err(p.conn, `🧱 Precisa de ${need} de concreto — construa uma Fábrica de concreto primeiro.`); return; }
       let cCost = PROD_BUILDS[msg.kind];
-      cCost = Math.ceil(cCost * (1 - 0.05 * techLevel(p, 'infra') - 0.03 * ((p.sectors && p.sectors.infraestrutura) || 0)));
+      cCost = Math.ceil(cCost * (1 - 0.05 * techBonus(p, 'infra') - 0.03 * ((p.sectors && p.sectors.infraestrutura) || 0)));
       cCost = Math.ceil(cCost * leiProd(p).obraCusto);   // FASE 396: mutirão encarece a obra
       cCost = Math.ceil(cCost * (1 + ((p.inflacao || 0) / 100)));   // FASE 399: inflação encarece obras
       if (!spend(p, 1, cCost)) return;
@@ -6403,7 +6443,7 @@ function performAction(room, p, msg) {
       const lvl = (p.upgrades && p.upgrades[k]) || 0;
       if (lvl >= BUILD_MAX - 1) { err(p.conn, `⬆️ Melhoria já está no nível máximo (${BUILD_MAX}).`); return; }
       let uCost = Math.round(PROD_BUILDS[k] * 0.6 * (lvl + 1));
-      uCost = Math.ceil(uCost * (1 - 0.05 * techLevel(p, 'infra')));
+      uCost = Math.ceil(uCost * (1 - 0.05 * techBonus(p, 'infra')));
       if (!spend(p, 1, uCost)) return;
       p.upgrades = p.upgrades || {}; p.upgrades[k] = lvl + 1;
       log(room, `⬆️ ${cname(p)} melhora ${PROD_NAMES[k]} para o nível ${lvl + 2}/${BUILD_MAX} (+50% de produção).`);
@@ -6923,12 +6963,9 @@ function btLog(b, msg) { b.log.unshift(msg); if (b.log.length > 40) b.log.length
    de tropas. O defensor luta em casa; o atacante precisa de linha de suprimento. */
 function fatoresGuerra(p, lado) {
   const b = p.buildings || {};
-  /* tecnologia militar */
-  const tech = techLevel(p, 'guerra_terrestre') * 0.045
-             + techLevel(p, 'guerra_aerea') * 0.035
-             + techLevel(p, 'guerra_naval') * 0.030
-             + techLevel(p, 'drones_militares') * 0.030
-             + techLevel(p, 'guerra_cibernetica') * 0.025;
+  /* FASE 407 — tecnologia militar (ataque vs defesa, por lado).
+     As techs de combate agora têm efeito real: +4% por nível somado. */
+  const tech = (lado === 'atk' ? techBonus(p, 'ataque') : techBonus(p, 'defesa')) * 0.04;
   /* terreno: quem defende conhece o próprio solo */
   const infra = ownProvinces(p).reduce((s, pr) => s + (pr.infra || 0), 0);
   const provs = Math.max(1, ownProvinces(p).length);
@@ -7258,7 +7295,7 @@ module.exports = {
   dayMsFor, buildDays, sanitizeName, makeCode, techTree, techName, techDesc, techCost, techLevel,
   relBetween, relBonus, sectorSum, ownProvinces, leiProd, insumoNecessario, taxaSuprimento,
   pibDetalhe, empregosOf, pibOf, incomeOf, deltasDe, personaOf, riscoProtesto, pressaoPolitica,
-  buildingMaint, dataDe, MESES, migracaoOf,
+  buildingMaint, dataDe, MESES, migracaoOf, techBonus, techResBonus, TECH_EFFECTS, TECH_RES, riscoEspionagem,
   TECHS, TECH_COSTS, TECH_MAX, TECH_TREES, SECTORS, MISSIONS, UNIT_COSTS, UNIT_MAX, LEIS, SEG,
   IDEOLOGIES, RELIGIONS, MINISTERS, PERSONAS, COUNTRIES, SPACE_COSTS, PROD_BUILDS, BUILD_OUT, BUILD_TAB,
 };
