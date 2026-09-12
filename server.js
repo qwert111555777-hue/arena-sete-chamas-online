@@ -584,6 +584,7 @@ function snapshot(room) {
       alive: p.alive, allies: p.allies, connected: p.connected,
       isHost: p.id === room.hostId, reason: p.eliminatedReason,
       nuclear: p.nuclear, influencia: Math.round(p.influencia), fe: Math.round(p.fe), wars: p.wars, abrigo: !!p.abrigo,
+      inflacao: Math.round(p.inflacao || 0),
       provinces: p.provinces, sanctioning: p.sanctioning, sanctionedBy: p.sanctionedBy,
       orgs: p.orgs || [], taxRate: p.taxRate, taxes: p.taxes || {corp:10, rend:10, prod:10, amb:5}, budget: p.budget || {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: p.debt, ideology: p.ideology, religion: p.religion,
       ministers: p.ministers, techs: p.techs, techLv: p.techLv || {}, sectors: p.sectors, space: p.space, pollution: Math.round(p.pollution != null ? p.pollution : 10),
@@ -653,7 +654,7 @@ function addPlayer(room, conn, name, isHost) {
     token: crypto.randomBytes(9).toString('base64url'), disconnectedAt: 0,
     money: 0, eco: 0, mil: 0, aprov: 50, ap: AP_PER_TURN, alive: true,
     allies: [], connected: true, eliminatedReason: null,
-    nuclear: 0, influencia: 0, fe: 0, provinces: [], wars: [], abrigo: false,
+    nuclear: 0, influencia: 0, fe: 0, provinces: [], wars: [], abrigo: false, inflacao: 0,
     sanctioning: [], sanctionedBy: [],
     taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, budget: {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: 0, ideology: null, religion: 'laico',
     customName: null, customFlag: '🏳️', bot: false, pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 25, madeira: 0, terras_raras: 12, uranio: 0, borracha: 0, carne: 0 },
@@ -680,7 +681,7 @@ function makeAIBot(c) {
     customName: null, customFlag: null, isHost: false,
     money: 10000, eco: 3 + (h % 4), mil: 3 + ((h >> 2) % 4), pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 25, madeira: 0, terras_raras: 12, uranio: 0, borracha: 0, carne: 0 }, xp: 0, blackout: false, depositos: depositosOf(c.id), upgrades: {}, pacts: {},
     aprov: 50, ap: AP_PER_TURN, alive: true, allies: [], eliminatedReason: null,
-    nuclear: 0, influencia: 0, fe: 0, wars: [], abrigo: false,
+    nuclear: 0, influencia: 0, fe: 0, wars: [], abrigo: false, inflacao: 0,
     provinces: [{ name: c.name, infra: 1, owner: c.id, origem: c.id }],
     sanctioning: [], sanctionedBy: [], taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, budget: {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: 0, ideology: null, religion: 'laico',
     ministers: { eco: null, def: null, dip: null, soc: null },
@@ -707,7 +708,7 @@ function startGame(room) {
     p.depositos = depositosOf(cid); p.upgrades = {}; p.pacts = {};
     p.buildings = { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }; p.stats = { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0, mandatos: 0, conversoes: 0, doutrinacoes: 0, titulos: 0 }; p.famine = false;
     p.aprov = 50; p.ap = AP_PER_TURN; p.alive = true;
-    p.allies = []; p.eliminatedReason = null; p.nuclear = 0; p.influencia = 0; p.fe = 0; p.wars = []; p.abrigo = false;
+    p.allies = []; p.eliminatedReason = null; p.nuclear = 0; p.influencia = 0; p.fe = 0; p.wars = []; p.abrigo = false; p.inflacao = 0;
     p.provinces = [{ name: 'Capital de ' + nat.name, infra: 1, owner: p.id, origem: p.id }];
     p.sanctioning = []; p.sanctionedBy = []; p.crise = null; p.lastCrisis = 0; p.lastTeste = 0;
     p.taxRate = 1; p.taxes = {corp:10, rend:10, prod:10, amb:5}; p.budget = {exe:1, int:1, tra:1, edu:1, ambm:1}; p.debt = 0; p.ideology = null; p.religion = 'laico';
@@ -1151,6 +1152,22 @@ function atualizarMercado(room) {
   room.marketAtualizadoEm = room.day || 0;
 }
 
+/* FASE 399 — INFLAÇÃO (indicador determinístico por país)
+   Recalculada a cada semana a partir de sinais econômicos reais: dinheiro ocioso
+   (superaquecimento), escassez de insumo, guerra, dívida e sanções. Encarece
+   construções e pesquisas. Converge gradualmente (não salta) e fica em [-5, 40]. */
+function atualizarInflacao(p) {
+  const prev = p.inflacao || 0;
+  let alvo = 0;
+  if (p.money > 8000) alvo += 8; else if (p.money > 4000) alvo += 4;
+  const sup = taxaSuprimento(p);
+  if (sup < 0.4) alvo += 10; else if (sup < 0.7) alvo += 4;
+  alvo += (p.wars || []).length * 6;
+  if (p.debt > 3000) alvo += 6; else if (p.debt > 1000) alvo += 3;
+  alvo += (p.sanctionedBy || []).length * 3;
+  p.inflacao = Math.max(-5, Math.min(40, prev + (alvo - prev) * 0.25));
+}
+
 function resolveWeek(room) {
   room.turn++;
   /* FASE 382 — MERCADO DINÂMICO
@@ -1179,6 +1196,7 @@ function resolveWeek(room) {
   premiosSemanais(room);
   checarEra(room);
   for (const p of room.players) if (p.alive && p.debt > 0) p.debt = Math.min(5000, Math.round(p.debt * 1.05));
+  for (const p of room.players) if (p.alive) atualizarInflacao(p);
   if ((room.day - 1) % 14 === 0) aiTurn(room);
   const mNow = MISSIONS[room.missionIdx % MISSIONS.length];
   if (mNow) {
@@ -2430,6 +2448,15 @@ function performAction(room, p, msg) {
       p.ideology = msg.value; p.aprov = Math.max(0, p.aprov - 5);
       log(room, `⚖️ ${cname(p)} adota a ideologia ${IDEOLOGIES[msg.value].name} (-5 aprovação na transição).`);
       break;
+    case 'fe': {
+      /* FASE 399 — o botão FÉ existia no cliente (data-act="fe", custo [1,200])
+         mas NÃO tinha handler no servidor: caía no default e não fazia nada.
+         Agora envia missionários (+2 fé), alimentando dízimo e guerra santa. */
+      if (!spend(p, 1, 200)) return;
+      p.fe = Math.min(100, (p.fe || 0) + 2);
+      log(room, `🕌 ${cname(p)} enviou missionários (+2 fé).`);
+      break;
+    }
     case 'religiao':
       if (!RELIGIONS[msg.value]) return;
       if (!spend(p, 1, 0)) return;
@@ -6312,7 +6339,7 @@ function performAction(room, p, msg) {
       const k = msg.value; if (!TECHS[k]) return;
       const lvl = techLevel(p, k);
       if (lvl >= TECH_MAX) return err(p.conn, 'Essa tecnologia já está no nível máximo.');
-      const cost = Math.round(techCost(lvl) * (p.ideology === 'republica' ? 0.75 : 1) * (1 - 0.04 * ((p.sectors && p.sectors.educacao) || 0) - 0.03 * ((p.sectors && p.sectors.ciencia) || 0)));
+      const cost = Math.round(techCost(lvl) * (p.ideology === 'republica' ? 0.75 : 1) * (1 - 0.04 * ((p.sectors && p.sectors.educacao) || 0) - 0.03 * ((p.sectors && p.sectors.ciencia) || 0)) * (1 + ((p.inflacao || 0) / 100)));
       if (!spend(p, 1, cost)) return;
       p.techLv = p.techLv || {};
       p.techLv[k] = lvl + 1;
@@ -6723,6 +6750,7 @@ function performAction(room, p, msg) {
       let cCost = PROD_BUILDS[msg.kind];
       cCost = Math.ceil(cCost * (1 - 0.05 * techLevel(p, 'infra') - 0.03 * ((p.sectors && p.sectors.infraestrutura) || 0)));
       cCost = Math.ceil(cCost * leiProd(p).obraCusto);   // FASE 396: mutirão encarece a obra
+      cCost = Math.ceil(cCost * (1 + ((p.inflacao || 0) / 100)));   // FASE 399: inflação encarece obras
       if (!spend(p, 1, cCost)) return;
       p.rec.concreto -= need;
       const diasObra = buildDays(cCost, p);
@@ -7351,7 +7379,15 @@ function route(conn, msg) {
   }
 }
 function handleClient(conn) {
+  /* FASE 399 — SEGURANÇA: limite de payload e rate limiting por conexão.
+     Rejeita mensagens gigantes (>2 KB) e mais de 30 mensagens por janela de 3s
+     (um cliente legítimo manda bem menos que isso). Fecha a conexão do abusador. */
+  conn._msgs = 0; conn._win = Date.now();
   conn.onMessage = text => {
+    if (text.length > 2048) { try { conn._close(); } catch (e) {} return; }
+    const now = Date.now();
+    if (now - conn._win > 3000) { conn._win = now; conn._msgs = 0; }
+    if (++conn._msgs > 30) { try { conn._close(); } catch (e) {} return; }
     let msg; try { msg = JSON.parse(text); } catch (e) { return; }
     if (!msg || typeof msg !== 'object') return;
     try { route(conn, msg); } catch (e) { console.error('route error:', e); }

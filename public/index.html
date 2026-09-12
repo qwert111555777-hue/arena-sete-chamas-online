@@ -2267,6 +2267,7 @@ function renderPanel(){
   $('np-stats').innerHTML =
     `<div class="ms"><span>💰 Caixa</span><b>${fmt(p.money)}</b></div>` +
     (p.dailyIncome!=null?`<div class="ms"><span>💵 Receita/dia</span><b style="color:var(--green)">+$${fmt(p.dailyIncome)}</b></div>`:'' ) +
+    (p.inflacao!=null?`<div class="ms"><span>📈 Inflação</span><b style="color:${(p.inflacao>15)?'var(--red)':'inherit'}">${(p.inflacao>0?'+':'')}${p.inflacao}%</b></div>`:'' ) +
     `<div class="ms"><span>🏭 Economia</span><b>${p.eco}</b></div>` +
     `<div class="ms"><span>🪖 Militar</span><b>${p.mil}</b></div>` +
     `<div class="ms"><span>❤️ Aprovação</span><b>${p.aprov}%</b></div>` +
@@ -2703,10 +2704,10 @@ $('btn-load').onclick = () => {
   const ov = document.createElement('div'); ov.id='newspaper';
   ov.innerHTML = '<div class="paper" style="width:min(480px,92vw)"><h1 style="font-size:20px">🌍 MEUS MUNDOS</h1><div style="font-size:11px;text-align:center;margin-bottom:10px">Escolha qual mundo carregar:</div>' +
     ws.map(w=>'<button data-w="'+w.code+'" style="display:block;width:100%;margin-bottom:8px;padding:10px;cursor:pointer;text-align:left;background:#fff8e6;border:2px solid #8a6a1f;border-radius:8px;color:#2b2416"><b>'+String(w.name||'Mundo sem nome').replace(/[<>&]/g,'')+'</b><br><span style="font-size:11px">sala '+w.code+(w.day?' · dia '+w.day:'')+(w.at?' · '+new Date(w.at).toLocaleDateString('pt-BR'):'')+'</span></button>').join('') +
-    '<div style="text-align:center"><button id="np-close" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
+    '<div style="text-align:center"><button id="np-close2" style="padding:6px 18px;cursor:pointer">Fechar</button></div></div>';
   document.body.appendChild(ov);
   ov.onclick = e => {
-    if (e.target.id==='np-close' || e.target===ov) return ov.remove();
+    if (e.target.id==='np-close2' || e.target===ov) return ov.remove();
     const b = e.target.closest('[data-w]'); if (!b) return;
     $('inp-code').value = b.dataset.w; ov.remove(); send({t:'tem_save', code: b.dataset.w});
   };
@@ -2960,10 +2961,10 @@ $('btn-tax').onclick = () => {
   ov.innerHTML = '<div class="paper" style="width:min(560px,92vw)"><h1 style="font-size:22px">🧾 IMPOSTOS</h1><div style="font-size:12px;margin:6px 0">Como no MA3: cada alíqueta muda sua receita e a aprovação do povo. Ambiental alta (+12%) melhora a aprovação.</div>'
     + row('corp','🏢 Empresas') + row('rend','💵 Renda pessoal') + row('prod','🏭 Produção') + row('amb','🌳 Ambiental')
     + '<div style="text-align:center;margin:8px 0"><button data-aud style="padding:6px 12px;cursor:pointer" '+((m.ap>=1&&m.money>=200)?'':'disabled')+'>Auditoria (1AP+$200)</button> <button data-inc style="padding:6px 12px;cursor:pointer" '+((m.ap>=1&&m.money>=400)?'':'disabled')+'>Incentivo (1AP+$400)</button></div>'
-    + '<div style="text-align:center;margin-top:10px"><button id="tx-ok" style="padding:6px 22px;cursor:pointer">Aplicar</button> <button id="tx-x" style="padding:6px 14px;cursor:pointer">Fechar</button></div></div>';
+    + '<div style="text-align:center;margin-top:10px"><button id="tx-ok" style="padding:6px 22px;cursor:pointer">Aplicar</button> <button id="tx-x2" style="padding:6px 14px;cursor:pointer">Fechar</button></div></div>';
   document.body.appendChild(ov);
   ov.querySelectorAll('input').forEach(i => i.oninput = () => { document.getElementById('tv-'+i.dataset.k).textContent = i.value+'%'; });
-  ov.onclick = e => { if (e.target===ov || e.target.id==='tx-x') ov.remove(); };
+  ov.onclick = e => { if (e.target===ov || e.target.id==='tx-x2') ov.remove(); };
   const ad = ov.querySelector('[data-aud]'); if (ad) ad.onclick=()=>{ send({t:'action',action:'auditoria_fiscal'}); ov.remove(); };
   const ic = ov.querySelector('[data-inc]'); if (ic) ic.onclick=()=>{ send({t:'action',action:'incentivo_fiscal'}); ov.remove(); };
   ov.querySelector('#tx-ok').onclick = () => {
