@@ -13,6 +13,16 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
+// ---- dados extraídos para lib/data/* ----
+const { COUNTRIES, NEWLANDS, FLAGS_ALLOWED } = require('./lib/data/countries');
+const { IDEOLOGIES, RELIGIONS, MINISTERS, TECH_COSTS, TECH_MAX, TECH_TREES, TECHS, SPACE_COSTS } = require('./lib/data/techs');
+const { SECTORS, DEPOSIT_POOL, DEP_NAMES } = require('./lib/data/map');
+const { UN_TYPES } = require('./lib/data/un');
+const { PERSONAS } = require('./lib/data/personas');
+const { SEG, LEIS, LEI_GRUPOS, MINISTRO_EFEITOS } = require('./lib/data/leis');
+const { BUILD_MAX, BUILD_TABS, PROD_BUILDS, CONCRETE_NEED, PROD_NAMES, BUILD_TAB, BUILD_OUT } = require('./lib/data/buildings');
+const { UNIT_COSTS, UNIT_MAX, BT, BT_VANTAGEM, BT_COLS, BT_LINHAS } = require('./lib/data/military');
+const { FEED_PESO } = require('./lib/data/feed');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -39,386 +49,18 @@ const NUKE_MIN_LEVEL = 3;
 const NUKE_MAX_LEVEL = 5;
 
 /* ---------------- Conteúdo (original) ---------------- */
-const COUNTRIES = [
-  { id:'br', name:'Brasil', flag:'🇧🇷', lat:-10, lon:-52 },
-  { id:'us', name:'Estados Unidos', flag:'🇺🇸', lat:39, lon:-98 },
-  { id:'ru', name:'Rússia', flag:'🇷🇺', lat:60, lon:90 },
-  { id:'cn', name:'China', flag:'🇨🇳', lat:35, lon:104 },
-  { id:'gb', name:'Reino Unido', flag:'🇬🇧', lat:53, lon:-2 },
-  { id:'fr', name:'França', flag:'🇫🇷', lat:46, lon:2 },
-  { id:'de', name:'Alemanha', flag:'🇩🇪', lat:51, lon:10 },
-  { id:'in', name:'Índia', flag:'🇮🇳', lat:22, lon:79 },
-  { id:'jp', name:'Japão', flag:'🇯🇵', lat:36, lon:138 },
-  { id:'mx', name:'México', flag:'🇲🇽', lat:23, lon:-102 },
-  { id:'ng', name:'Nigéria', flag:'🇳🇬', lat:9, lon:8 },
-  { id:'au', name:'Austrália', flag:'🇦🇺', lat:-25, lon:134 },
-  { id:'ar', name:'Argentina', flag:'🇦🇷', lat:-34, lon:-64 },
-  { id:'ca', name:'Canadá', flag:'🇨🇦', lat:56, lon:-106 },
-  { id:'es', name:'Espanha', flag:'🇪🇸', lat:40, lon:-4 },
-  { id:'it', name:'Itália', flag:'🇮🇹', lat:42, lon:12 },
-  { id:'tr', name:'Turquia', flag:'🇹🇷', lat:39, lon:35 },
-  { id:'sa', name:'Arábia Saudita', flag:'🇸🇦', lat:24, lon:45 },
-  { id:'ir', name:'Irã', flag:'🇮🇷', lat:32, lon:53 },
-  { id:'eg', name:'Egito', flag:'🇪🇬', lat:26, lon:30 },
-  { id:'za', name:'África do Sul', flag:'🇿🇦', lat:-29, lon:25 },
-  { id:'id', name:'Indonésia', flag:'🇮🇩', lat:-2, lon:118 },
-  { id:'kr', name:'Coreia do Sul', flag:'🇰🇷', lat:36, lon:128 },
-  { id:'pk', name:'Paquistão', flag:'🇵🇰', lat:30, lon:69 },
-  { id:'pl', name:'Polônia', flag:'🇵🇱', lat:52, lon:19 },
-  { id:'ua', name:'Ucrânia', flag:'🇺🇦', lat:49, lon:32 },
-  { id:'se', name:'Suécia', flag:'🇸🇪', lat:62, lon:15 },
-  { id:'co', name:'Colômbia', flag:'🇨🇴', lat:4, lon:-73 },
-  { id:'cl', name:'Chile', flag:'🇨🇱', lat:-35, lon:-71 },
-  { id:'pt', name:'Portugal', flag:'🇵🇹', lat:39, lon:-8 },
-  { id:'nl', name:'Países Baixos', flag:'🇳🇱', lat:52, lon:5 },
-  { id:'be', name:'Bélgica', flag:'🇧🇪', lat:51, lon:4 },
-  { id:'no', name:'Noruega', flag:'🇳🇴', lat:61, lon:9 },
-  { id:'fi', name:'Finlândia', flag:'🇫🇮', lat:64, lon:26 },
-  { id:'dk', name:'Dinamarca', flag:'🇩🇰', lat:56, lon:10 },
-  { id:'gr', name:'Grécia', flag:'🇬🇷', lat:39, lon:22 },
-  { id:'ie', name:'Irlanda', flag:'🇮🇪', lat:53, lon:-8 },
-  { id:'cz', name:'Tchéquia', flag:'🇨🇿', lat:50, lon:15 },
-  { id:'ro', name:'Romênia', flag:'🇷🇴', lat:46, lon:25 },
-  { id:'hu', name:'Hungria', flag:'🇭🇺', lat:47, lon:19 },
-  { id:'at', name:'Áustria', flag:'🇦🇹', lat:47, lon:14 },
-  { id:'ch', name:'Suíça', flag:'🇨🇭', lat:47, lon:8 },
-  { id:'il', name:'Israel', flag:'🇮🇱', lat:31, lon:35 },
-  { id:'iq', name:'Iraque', flag:'🇮🇶', lat:33, lon:44 },
-  { id:'ma', name:'Marrocos', flag:'🇲🇦', lat:32, lon:-6 },
-  { id:'dz', name:'Argélia', flag:'🇩🇿', lat:28, lon:3 },
-  { id:'tn', name:'Tunísia', flag:'🇹🇳', lat:34, lon:9 },
-  { id:'ly', name:'Líbia', flag:'🇱🇾', lat:27, lon:17 },
-  { id:'ke', name:'Quênia', flag:'🇰🇪', lat:0, lon:38 },
-  { id:'et', name:'Etiópia', flag:'🇪🇹', lat:9, lon:39 },
-  { id:'gh', name:'Gana', flag:'🇬🇭', lat:8, lon:-1 },
-  { id:'tz', name:'Tanzânia', flag:'🇹🇿', lat:-6, lon:35 },
-  { id:'th', name:'Tailândia', flag:'🇹🇭', lat:15, lon:101 },
-  { id:'vn', name:'Vietnã', flag:'🇻🇳', lat:16, lon:107 },
-  { id:'ph', name:'Filipinas', flag:'🇵🇭', lat:13, lon:122 },
-  { id:'my', name:'Malásia', flag:'🇲🇾', lat:4, lon:109 },
-  { id:'bd', name:'Bangladesh', flag:'🇧🇩', lat:24, lon:90 },
-  { id:'kz', name:'Cazaquistão', flag:'🇰🇿', lat:48, lon:67 },
-  { id:'nz', name:'Nova Zelândia', flag:'🇳🇿', lat:-41, lon:174 },
-  { id:'np', name:'Nepal', flag:'🇳🇵', lat:28, lon:84 },
-  { id:'al', name:'Albânia', flag:'🇦🇱', lat:41.3, lon:19.8 },
-  { id:'ad', name:'Andorra', flag:'🇦🇩', lat:42.5, lon:1.5 },
-  { id:'am', name:'Armênia', flag:'🇦🇲', lat:40.2, lon:44.5 },
-  { id:'az', name:'Azerbaijão', flag:'🇦🇿', lat:40.4, lon:49.9 },
-  { id:'by', name:'Belarus', flag:'🇧🇾', lat:53.9, lon:27.9 },
-  { id:'ba', name:'Bósnia e Herzegovina', flag:'🇧🇦', lat:43.9, lon:18.4 },
-  { id:'bg', name:'Bulgária', flag:'🇧🇬', lat:42.7, lon:25.5 },
-  { id:'hr', name:'Croácia', flag:'🇭🇷', lat:45.8, lon:16.0 },
-  { id:'cy', name:'Chipre', flag:'🇨🇾', lat:35.2, lon:33.4 },
-  { id:'ee', name:'Estônia', flag:'🇪🇪', lat:58.6, lon:25.0 },
-  { id:'ge', name:'Geórgia', flag:'🇬🇪', lat:41.7, lon:44.8 },
-  { id:'is', name:'Islândia', flag:'🇮🇸', lat:64.8, lon:-18.5 },
-  { id:'lv', name:'Letônia', flag:'🇱🇻', lat:56.9, lon:24.1 },
-  { id:'li', name:'Liechtenstein', flag:'🇱🇮', lat:47.1, lon:9.5 },
-  { id:'lt', name:'Lituânia', flag:'🇱🇹', lat:55.2, lon:24.0 },
-  { id:'lu', name:'Luxemburgo', flag:'🇱🇺', lat:49.8, lon:6.1 },
-  { id:'mt', name:'Malta', flag:'🇲🇹', lat:35.9, lon:14.4 },
-  { id:'md', name:'Moldávia', flag:'🇲🇩', lat:47.0, lon:28.9 },
-  { id:'mc', name:'Mônaco', flag:'🇲🇨', lat:43.7, lon:7.4 },
-  { id:'me', name:'Montenegro', flag:'🇲🇪', lat:42.7, lon:19.3 },
-  { id:'mk', name:'Macedônia do Norte', flag:'🇲🇰', lat:41.6, lon:21.7 },
-  { id:'sm', name:'San Marino', flag:'🇸🇲', lat:43.9, lon:12.5 },
-  { id:'rs', name:'Sérvia', flag:'🇷🇸', lat:44.0, lon:21.0 },
-  { id:'sk', name:'Eslováquia', flag:'🇸🇰', lat:48.7, lon:19.5 },
-  { id:'si', name:'Eslovênia', flag:'🇸🇮', lat:46.1, lon:14.8 },
-  { id:'va', name:'Vaticano', flag:'🇻🇦', lat:41.9, lon:12.45 },
-  { id:'xk', name:'Kosovo', flag:'🇽🇰', lat:42.6, lon:20.9 },
-  { id:'af', name:'Afeganistão', flag:'🇦🇫', lat:33.9, lon:66.0 },
-  { id:'bh', name:'Bahrein', flag:'🇧🇭', lat:26.0, lon:50.5 },
-  { id:'bt', name:'Butão', flag:'🇧🇹', lat:27.5, lon:90.4 },
-  { id:'bn', name:'Brunei', flag:'🇧🇳', lat:4.5, lon:114.7 },
-  { id:'kh', name:'Camboja', flag:'🇰🇭', lat:12.6, lon:105.0 },
-  { id:'tl', name:'Timor-Leste', flag:'🇹🇱', lat:-8.9, lon:125.7 },
-  { id:'jo', name:'Jordânia', flag:'🇯🇴', lat:31.3, lon:36.5 },
-  { id:'kw', name:'Kuwait', flag:'🇰🇼', lat:29.3, lon:47.6 },
-  { id:'kg', name:'Quirguistão', flag:'🇰🇬', lat:41.2, lon:74.8 },
-  { id:'la', name:'Laos', flag:'🇱🇦', lat:19.9, lon:102.5 },
-  { id:'lb', name:'Líbano', flag:'🇱🇧', lat:33.9, lon:35.9 },
-  { id:'mv', name:'Maldivas', flag:'🇲🇻', lat:3.2, lon:73.2 },
-  { id:'mn', name:'Mongólia', flag:'🇲🇳', lat:46.9, lon:103.8 },
-  { id:'mm', name:'Mianmar', flag:'🇲🇲', lat:21.9, lon:95.9 },
-  { id:'om', name:'Omã', flag:'🇴🇲', lat:21.5, lon:57.1 },
-  { id:'qa', name:'Catar', flag:'🇶🇦', lat:25.3, lon:51.2 },
-  { id:'sg', name:'Singapura', flag:'🇸🇬', lat:1.4, lon:103.8 },
-  { id:'lk', name:'Sri Lanka', flag:'🇱🇰', lat:7.9, lon:80.8 },
-  { id:'sy', name:'Síria', flag:'🇸🇾', lat:34.8, lon:38.9 },
-  { id:'tj', name:'Tajiquistão', flag:'🇹🇯', lat:38.9, lon:71.3 },
-  { id:'tm', name:'Turcomenistão', flag:'🇹🇲', lat:38.9, lon:59.6 },
-  { id:'ae', name:'Emirados Árabes Unidos', flag:'🇦🇪', lat:23.9, lon:54.5 },
-  { id:'uz', name:'Uzbequistão', flag:'🇺🇿', lat:41.4, lon:64.6 },
-  { id:'ye', name:'Iêmen', flag:'🇾🇪', lat:15.6, lon:48.5 },
-  { id:'ps', name:'Palestina', flag:'🇵🇸', lat:31.9, lon:35.3 },
-  { id:'ao', name:'Angola', flag:'🇦🇴', lat:-11.2, lon:17.9 },
-  { id:'bj', name:'Benim', flag:'🇧🇯', lat:9.3, lon:2.3 },
-  { id:'bw', name:'Botsuana', flag:'🇧🇼', lat:-22.3, lon:24.7 },
-  { id:'bf', name:'Burkina Faso', flag:'🇧🇫', lat:12.2, lon:-1.6 },
-  { id:'bi', name:'Burundi', flag:'🇧🇮', lat:-3.4, lon:29.9 },
-  { id:'cv', name:'Cabo Verde', flag:'🇨🇻', lat:16.0, lon:-24.0 },
-  { id:'cm', name:'Camarões', flag:'🇨🇲', lat:7.4, lon:12.4 },
-  { id:'cf', name:'República Centro-Africana', flag:'🇨🇫', lat:6.6, lon:20.9 },
-  { id:'td', name:'Chade', flag:'🇹🇩', lat:15.5, lon:18.7 },
-  { id:'km', name:'Comores', flag:'🇰🇲', lat:-11.9, lon:43.9 },
-  { id:'cg', name:'República do Congo', flag:'🇨🇬', lat:-0.2, lon:15.8 },
-  { id:'cd', name:'Rep. Dem. do Congo', flag:'🇨🇩', lat:-4.0, lon:21.8 },
-  { id:'ci', name:'Costa do Marfim', flag:'🇨🇮', lat:7.5, lon:-5.5 },
-  { id:'dj', name:'Djibuti', flag:'🇩🇯', lat:11.8, lon:42.6 },
-  { id:'gq', name:'Guiné Equatorial', flag:'🇬🇶', lat:1.7, lon:10.3 },
-  { id:'er', name:'Eritreia', flag:'🇪🇷', lat:15.2, lon:38.8 },
-  { id:'sz', name:'Essuatíni', flag:'🇸🇿', lat:-26.5, lon:31.5 },
-  { id:'ga', name:'Gabão', flag:'🇬🇦', lat:-0.8, lon:11.6 },
-  { id:'gm', name:'Gâmbia', flag:'🇬🇲', lat:13.4, lon:-15.3 },
-  { id:'gn', name:'Guiné', flag:'🇬🇳', lat:9.9, lon:-9.7 },
-  { id:'gw', name:'Guiné-Bissau', flag:'🇬🇼', lat:12.0, lon:-15.0 },
-  { id:'ls', name:'Lesoto', flag:'🇱🇸', lat:-29.6, lon:28.2 },
-  { id:'lr', name:'Libéria', flag:'🇱🇷', lat:6.4, lon:-9.4 },
-  { id:'mg', name:'Madagascar', flag:'🇲🇬', lat:-18.8, lon:46.9 },
-  { id:'mw', name:'Malawi', flag:'🇲🇼', lat:-13.3, lon:34.3 },
-  { id:'ml', name:'Mali', flag:'🇲🇱', lat:17.6, lon:-4.0 },
-  { id:'mr', name:'Mauritânia', flag:'🇲🇷', lat:20.3, lon:-10.3 },
-  { id:'mu', name:'Maurício', flag:'🇲🇺', lat:-20.3, lon:57.6 },
-  { id:'mz', name:'Moçambique', flag:'🇲🇿', lat:-18.7, lon:35.5 },
-  { id:'na', name:'Namíbia', flag:'🇳🇦', lat:-22.9, lon:17.1 },
-  { id:'ne', name:'Níger', flag:'🇳🇪', lat:17.6, lon:8.1 },
-  { id:'rw', name:'Ruanda', flag:'🇷🇼', lat:-2.0, lon:29.9 },
-  { id:'st', name:'São Tomé e Príncipe', flag:'🇸🇹', lat:0.2, lon:6.6 },
-  { id:'sn', name:'Senegal', flag:'🇸🇳', lat:14.5, lon:-14.5 },
-  { id:'sc', name:'Seicheles', flag:'🇸🇨', lat:-4.7, lon:55.5 },
-  { id:'sl', name:'Serra Leoa', flag:'🇸🇱', lat:8.6, lon:-11.8 },
-  { id:'so', name:'Somália', flag:'🇸🇴', lat:5.2, lon:46.2 },
-  { id:'ss', name:'Sudão do Sul', flag:'🇸🇸', lat:6.9, lon:31.3 },
-  { id:'sd', name:'Sudão', flag:'🇸🇩', lat:12.9, lon:30.2 },
-  { id:'tg', name:'Togo', flag:'🇹🇬', lat:8.6, lon:0.8 },
-  { id:'ug', name:'Uganda', flag:'🇺🇬', lat:1.4, lon:32.3 },
-  { id:'zm', name:'Zâmbia', flag:'🇿🇲', lat:-13.1, lon:27.8 },
-  { id:'zw', name:'Zimbábue', flag:'🇿🇼', lat:-19.0, lon:29.2 },
-  { id:'bs', name:'Bahamas', flag:'🇧🇸', lat:24.2, lon:-76.6 },
-  { id:'bb', name:'Barbados', flag:'🇧🇧', lat:13.2, lon:-59.5 },
-  { id:'bz', name:'Belize', flag:'🇧🇿', lat:17.2, lon:-88.5 },
-  { id:'cr', name:'Costa Rica', flag:'🇨🇷', lat:9.7, lon:-83.8 },
-  { id:'cu', name:'Cuba', flag:'🇨🇺', lat:21.5, lon:-79.0 },
-  { id:'dm', name:'Dominica', flag:'🇩🇲', lat:15.4, lon:-61.4 },
-  { id:'do', name:'República Dominicana', flag:'🇩🇴', lat:18.7, lon:-70.2 },
-  { id:'sv', name:'El Salvador', flag:'🇸🇻', lat:13.8, lon:-88.9 },
-  { id:'gd', name:'Granada', flag:'🇬🇩', lat:12.1, lon:-61.7 },
-  { id:'gt', name:'Guatemala', flag:'🇬🇹', lat:15.8, lon:-90.2 },
-  { id:'gy', name:'Guiana', flag:'🇬🇾', lat:4.9, lon:-59.0 },
-  { id:'ht', name:'Haiti', flag:'🇭🇹', lat:18.9, lon:-72.3 },
-  { id:'hn', name:'Honduras', flag:'🇭🇳', lat:15.2, lon:-86.5 },
-  { id:'jm', name:'Jamaica', flag:'🇯🇲', lat:18.1, lon:-77.3 },
-  { id:'ni', name:'Nicarágua', flag:'🇳🇮', lat:12.9, lon:-85.2 },
-  { id:'pa', name:'Panamá', flag:'🇵🇦', lat:8.5, lon:-80.8 },
-  { id:'kn', name:'São Cristóvão e Névis', flag:'🇰🇳', lat:17.3, lon:-62.7 },
-  { id:'lc', name:'Santa Lúcia', flag:'🇱🇨', lat:13.9, lon:-61.0 },
-  { id:'vc', name:'São Vicente e Granadinas', flag:'🇻🇨', lat:13.0, lon:-61.3 },
-  { id:'sr', name:'Suriname', flag:'🇸🇷', lat:3.9, lon:-56.0 },
-  { id:'tt', name:'Trinidad e Tobago', flag:'🇹🇹', lat:10.7, lon:-61.2 },
-  { id:'ag', name:'Antígua e Barbuda', flag:'🇦🇬', lat:17.1, lon:-61.8 },
-  { id:'ve', name:'Venezuela', flag:'🇻🇪', lat:6.4, lon:-66.6 },
-  { id:'bo', name:'Bolívia', flag:'🇧🇴', lat:-16.3, lon:-63.6 },
-  { id:'ec', name:'Equador', flag:'🇪🇨', lat:-1.8, lon:-78.2 },
-  { id:'pe', name:'Peru', flag:'🇵🇪', lat:-9.2, lon:-75.0 },
-  { id:'uy', name:'Uruguai', flag:'🇺🇾', lat:-32.5, lon:-55.8 },
-  { id:'py', name:'Paraguai', flag:'🇵🇾', lat:-23.4, lon:-58.4 },
-  { id:'fj', name:'Fiji', flag:'🇫🇯', lat:-17.9, lon:177.9 },
-  { id:'ki', name:'Kiribati', flag:'🇰🇮', lat:1.5, lon:173.0 },
-  { id:'mh', name:'Ilhas Marshall', flag:'🇲🇭', lat:7.1, lon:171.2 },
-  { id:'fm', name:'Micronésia', flag:'🇫🇲', lat:6.9, lon:158.2 },
-  { id:'nr', name:'Nauru', flag:'🇳🇷', lat:-0.5, lon:166.9 },
-  { id:'pw', name:'Palau', flag:'🇵🇼', lat:7.5, lon:134.6 },
-  { id:'pg', name:'Papua-Nova Guiné', flag:'🇵🇬', lat:-6.3, lon:144.0 },
-  { id:'ws', name:'Samoa', flag:'🇼🇸', lat:-13.8, lon:-172.1 },
-  { id:'sb', name:'Ilhas Salomão', flag:'🇸🇧', lat:-9.4, lon:160.2 },
-  { id:'to', name:'Tonga', flag:'🇹🇴', lat:-21.2, lon:-175.2 },
-  { id:'tv', name:'Tuvalu', flag:'🇹🇻', lat:-7.5, lon:177.6 },
-  { id:'vu', name:'Vanuatu', flag:'🇻🇺', lat:-16.3, lon:167.0 },
-];
-const NEWLANDS = [[12,-38],[28,-44],[-12,-25],[-33,-18],[2,-52],[33,-148],[8,-138],[-22,-112],[-42,-105],[42,-168],[-28,78],[6,66],[-36,92],[16,90],[-12,108],[8,28],[22,-28],[-48,-38],[52,-38],[65,-25],[28,-72],[-6,-92],[18,-158],[-30,-150],[0,95],[38,152],[-52,55],[70,60],[-60,-49],[35,-60]];
-const FLAGS_ALLOWED = ['🏳️','🦅','🐺','🦁','🐉','🐻','⭐','☀️','🌙','🔥','❄️','🌊','⚡','🛡️','⚔️','🌹','🌻','🍀','💎','🏴','🚩','👑','🕊️','🎌','🐯','🐆','🦈','🐍','🦉','🦚','🐢','🐙','🦀','🐊','🦒','🦩','🦜','🐼','🦘','🌵','🌴','🌍','🔱','⚓','🚀','🛸','♛','⚜️'];
 const COUNTRY_BY_ID = Object.fromEntries(COUNTRIES.map(c => [c.id, c]));
 const DYNC = {};
 const cname = p => { const c = COUNTRY_BY_ID[p.country] || DYNC[p.country]; return c ? c.flag + ' ' + c.name : (p.customName || p.name); };
 
-const IDEOLOGIES = {
-  democracia:    { name: 'Democracia',    desc: '+5% renda' },
-  autoritarismo: { name: 'Autoritarismo', desc: '+15% ataque, -1 aprovação/turno' },
-  comunismo:     { name: 'Comunismo',     desc: 'setores 50% mais baratos, -10% renda' },
-  fascismo:      { name: 'Fascismo',      desc: 'recrutar 50% mais barato, relações decaem mais' },
-  monarquia:     { name: 'Monarquia',     desc: 'diplomacia 50% mais barata, +1 aprovação/turno' },
-  republica:     { name: 'República',     desc: 'tecnologias 25% mais baratas' },
-};
-const RELIGIONS = {
-  laico:     { name: 'Estado Laico', desc: 'sem bônus de fé' },
-  cristao:   { name: 'Cristã',       desc: '+1 fé/turno' },
-  muculmano: { name: 'Islâmica',     desc: '+1 fé/turno' },
-  budista:   { name: 'Budista',      desc: '+1 fé/turno' },
-  hindu:     { name: 'Hindu',        desc: '+1 fé/turno' },
-};
-const MINISTERS = {
-  eco: { tec: { name: 'Tecocrata', desc: '+10% renda' }, pop: { name: 'Populista', desc: '+1 aprovação/turno, -5% renda' }, ind: { name: 'Industrialista', desc: '+20% renda de prédios' } },
-  def: { fal: { name: 'Falcão', desc: '+10% ataque' }, estr: { name: 'Estrategista', desc: '+10% defesa' }, pac: { name: 'Pacifista', desc: '+2 aprovação/semana, -10% renda' } },
-  dip: { neg: { name: 'Negociador', desc: 'diplomacia -50% custo' }, inf: { name: 'Influenciador', desc: '+1 influência/turno' }, esp: { name: 'Mestre-Espião', desc: '+10% sabotagem' }, cul: { name: 'Culturalista', desc: 'festival -50%, +1 doutrina/sem' } },
-  soc: { art: { name: 'Artista', desc: '+1 aprovação/turno' }, atl: { name: 'Atleta', desc: '+5% renda' }, mec: { name: 'Mecenas', desc: '+1 influência/dia' } },
-};
 // Cinco árvores de desenvolvimento, 25 tecnologias cada, 5 níveis.
 // Custos por nível medidos nas capturas do MA3: 50 / 99 / 198 / 396 / 797.
-const TECH_COSTS = [50, 99, 198, 396, 797];
-const TECH_MAX = 5;
-const TECH_TREES = [
-  ['economia',    '🏭 Economia'],
-  ['combate',     '⚔️ Combate'],
-  ['diplomacia',  '🤝 Diplomacia'],
-  ['exploracao',  '🧭 Exploração'],
-  ['espacial',    '🚀 Espacial'],
-];
 // [id, nome, efeito-resumo]
-const TECHS = {
-  /* ---------- ECONOMIA ---------- */
-  serraria:      ['ec','Serraria',                    '+madeira'],
-  mina_ouro_t:   ['ec','Mina de Ouro',                '+ouro'],
-  mina_ferro:    ['ec','Mina de Ferro',               '+minério'],
-  usina_concreto:['ec','Usina de Concreto',           '+concreto'],
-  torre_petroleo:['ec','Torre de Petróleo',           '+petróleo'],
-  mina_uranio_t: ['ec','Mina de Urânio',              '+urânio'],
-  metais_raros:  ['ec','Fábrica de Metais Raros',     '+terras raras'],
-  borracha:      ['ec','Fábrica de Borracha',         '+borracha'],
-  usina_termica: ['ec','Usina Térmica',               '+energia'],
-  usina_hidro:   ['ec','Usina Hidrelétrica',          '+energia limpa'],
-  usina_nuclear: ['ec','Usina Nuclear',               '+energia (alta)'],
-  energia_alt:   ['ec','Energia Alternativa',         '+energia limpa'],
-  padaria:       ['ec','Padaria',                     '+alimentos'],
-  estufa:        ['ec','Estufa',                      '+alimentos'],
-  fazenda_gado:  ['ec','Fazenda de Gado',             '+alimentos'],
-  mineral:       ['ec','Fábrica de Água Mineral',     '+alimentos'],
-  acucar:        ['ec','Fábrica de Açúcar',           '+alimentos'],
-  siderurgica:   ['ec','Siderúrgica',                 '+bens militares'],
-  estaleiro:     ['ec','Estaleiro Naval',             '+bens militares'],
-  motores:       ['ec','Fábrica de Motores',          '+bens militares'],
-  maquinas:      ['ec','Fábrica de Máquinas',         '+bens militares'],
-  infra:         ['ec','Melhorias de Infraestrutura', 'obras mais rápidas'],
-  tolerancia:    ['ec','Tolerância Fiscal',           '+arrecadação'],
-  valor_agreg:   ['ec','Valor Agregado',              '+receita de venda'],
-  condicoes:     ['ec','Condições Favoráveis',        '+produção geral'],
-  /* ---------- COMBATE ---------- */
-  escola_oficiais:['cb','Escola de Oficiais de Infantaria', '+ataque infantaria'],
-  orientacao:     ['cb','Sistema de Orientação a Laser',    '+precisão'],
-  exoesqueleto:   ['cb','Exoesqueleto',                     '+defesa infantaria'],
-  canhao_122:     ['cb','Uso de Canhões 122 mm',            '+ataque artilharia'],
-  canhao_152:     ['cb','Uso de Canhões 152 mm',            '+ataque artilharia'],
-  canhao_23:      ['cb','Uso de Canhões 23 mm',             '+defesa antiaérea'],
-  cruzeiro:       ['cb','Precisão de Mísseis de Cruzeiro',  '+ataque aviação'],
-  bombardeio:     ['cb','Programa de Bombardeio',           '+ataque aviação'],
-  hipersonicos:   ['cb','Mísseis Hipersônicos',             '+ataque (forte)'],
-  base_neutra:    ['cb','Ativação de Base em Zona Neutra',  '+projeção'],
-  escudos:        ['cb','Instalação de Escudos Antichoque', '+defesa'],
-  torpedos:       ['cb','Tubos de Torpedo',                 '+ataque frota'],
-  sinalizacao:    ['cb','Conjunto de Sinalização Náutica',  '+defesa frota'],
-  carboneto:      ['cb','Blindagem de Carboneto de Tungstênio','+defesa blindados'],
-  carga:          ['cb','Aumentar a Carga Levantada',       '+capacidade'],
-  balisticos:     ['cb','Mísseis Balísticos',               '+ataque nuclear'],
-  interceptadores:['cb','Instalação de Mísseis Interceptadores','defesa antiaérea'],
-  centro_pesq:    ['cb','Centro de Pesquisa Militar Estratégica','+pesquisa'],
-  recrutamento:   ['cb','Recrutamento de Oficiais de Alto Escalão','+treino'],
-  contraintelig:  ['cb','Divisão de Contrainteligência',    'contra-espionagem'],
-  sabotagem:      ['cb','Tecnologia Avançada de Sabotagem', '+sabotagem'],
-  saboteurs:      ['cb','Equipar Saboteurs',                '+sabotagem'],
-  logistica:      ['cb','Melhoria da Logística',            '+movimento'],
-  planejamento:   ['cb','Centro de Planejamento',           '+AP'],
-  treino:         ['cb','Campo de Treino Avançado',         '+treino'],
-  /* ---------- DIPLOMACIA ---------- */
-  beneficios_emb: ['dp','Benefícios para a Embaixada', '+relações'],
-  relacoes_int:   ['dp','Relações Internacionais',     '+relações'],
-  ao_que_interessa:['dp','Vamos ao que Interessa',     '+negociação'],
-  evite_problemas:['dp','Evite Problemas',             '-crise'],
-  forme_maioria:  ['dp','Forme Maioria',               '+voto na ONU'],
-  dominante:      ['dp','Politicamente Dominante',     '+influência'],
-  politica_ext:   ['dp','Política Externa',            '+relações'],
-  influencia_cult:['dp','Influência Cultural',         '+influência'],
-  negociador:     ['dp','Negociador',                  'acordos melhores'],
-  respeitado:     ['dp','Respeitado e Temido',         '+relações, +ameaça'],
-  mobilizacao:    ['dp','Mobilização Precoce',         '+reação a guerra'],
-  periodo_paz:    ['dp','Período de Paz',              '+aprovação'],
-  confianca:      ['dp','Relações de Confiança',       '+alianças'],
-  pegue_melhor:   ['dp','Pegue o Melhor',              '+contratos'],
-  boas_maneiras:  ['dp','Boas Maneiras',               '+relações'],
-  academia:       ['dp','Academia Nacional de Ciências','+pesquisa'],
-  medicamento:    ['dp','Medicamento Grátis',          '+aprovação'],
-  vencedores:     ['dp','Os Vencedores Escrevem a História','+prestígio'],
-  estado_direito: ['dp','Estado de Direito',           '+aprovação'],
-  recepcao:       ['dp','Uma Recepção Calorosa',       '+relações'],
-  tradicoes:      ['dp','Tradições Compartilhadas',    '+fe'],
-  devido_respeito:['dp','Devido Respeito',             '+relações'],
-  banquetes:      ['dp','Grandes Banquetes',           '+relações'],
-  centro_tur:     ['dp','Centro Turístico',            '+turismo'],
-  solucao:        ['dp','Solução Necessária',          'resolve crises'],
-  /* ---------- EXPLORAÇÃO ---------- */
-  cartografia:    ['ex','Cartografia Avançada',        '+visão de mapa'],
-  satelite:       ['ex','Satélite de Observação',      '+visão'],
-  radar:          ['ex','Rede de Radar',               '+detecção'],
-  sonar:          ['ex','Sonar de Profundidade',       '+detecção naval'],
-  geodesia:       ['ex','Geodesia',                    '+depósitos'],
-  prospeccao:     ['ex','Prospecção Geológica',        '+depósitos'],
-  perfuracao:     ['ex','Perfuração Profunda',         '+petróleo'],
-  antartica:      ['ex','Explore a Antártica',         '+território'],
-  florestal:      ['ex','Gestão Florestal',            '+madeira'],
-  pesqueira:      ['ex','Frota Pesqueira',             '+alimentos'],
-  dessalinizacao: ['ex','Dessalinização',              '+água'],
-  agricultura:    ['ex','Agricultura Intensiva',       '+alimentos'],
-  adubos:         ['ex','Fábrica de Aditivos Nutricionais','+alimentos'],
-  processados:    ['ex','Fábrica de Alimentos Processados','+alimentos'],
-  premium:        ['ex','Fábrica de Alimentos Premium','+alimentos'],
-  doces:          ['ex','Fábrica de Doces',            '+alimentos'],
-  mina_sal:       ['ex','Mina de Sal',                 '+alimentos'],
-  jardim:         ['ex','Jardim',                      '+alimentos'],
-  rodovia:        ['ex','Rodovia',                     '+infra'],
-  ferrovia:       ['ex','Linha Ferroviária',           '+infra'],
-  metro:          ['ex','Metrô',                       '+infra'],
-  aeroporto:      ['ex','Aeroporto',                   '+infra'],
-  porto:          ['ex','Porto',                       '+infra'],
-  heliporto:      ['ex','Heliporto',                   '+infra'],
-  terminal:       ['ex','Terminal Intercontinental',   '+infra'],
-  /* ---------- ESPACIAL ---------- */
-  foguete:        ['sp','Programa de Foguetes',        'base espacial'],
-  satelite_esp:   ['sp','Satélite Artificial',         '+visão'],
-  modulo:         ['sp','Módulo Orbital',              'missão tripulada'],
-  estacao:        ['sp','Estação Orbital',             '+pesquisa'],
-  sonda_lunar:    ['sp','Sonda Lunar',                 'explora a Lua'],
-  lua:            ['sp','Pouso na Lua',                '+prestígio'],
-  base_lunar:     ['sp','Base Lunar',                  'presença permanente'],
-  sonda_marte:    ['sp','Sonda Marciana',              'explora Marte'],
-  marte:          ['sp','Missão a Marte',              '+prestígio'],
-  colonia_marte:  ['sp','Colônia em Marte',            '+prestígio'],
-  sonda_jupiter:  ['sp','Sonda a Júpiter',             'explora Júpiter'],
-  jupiter:        ['sp','Missão a Júpiter',            '+prestígio'],
-  telescopio:     ['sp','Telescópio Espacial',         '+pesquisa'],
-  Plutao:         ['sp','Sonda a Plutão',              'explora Plutão'],
-  minerio_esp:    ['sp','Mineração de Asteroides',     '+recursos'],
-  energia_solar:  ['sp','Energia Solar Orbital',       '+energia'],
-  defesa_esp:     ['sp','Defesa Planetária',           'contra asteroides'],
-  propulsao:      ['sp','Propulsão Avançada',          'missões rápidas'],
-  criogenia:      ['sp','Criogenia',                   'missões longas'],
-  ia:             ['sp','Inteligência Artificial',     '+geral'],
-  colonia_orb:    ['sp','Colônia Orbital',             '+população'],
-  elevador:       ['sp','Elevador Espacial',           'lançamento barato'],
-  warp:           ['sp','Pesquisa de Dobra',           'naves interestelares'],
-  primeira_luz:   ['sp','Primeira Luz',                '+prestígio'],
-  federacao:      ['sp','Federação Planetária',        'vitória diplomática'],
-};
 function techTree(k){ const t = TECHS[k]; return t ? t[0] : null; }
 function techName(k){ const t = TECHS[k]; return t ? t[1] : k; }
 function techDesc(k){ const t = TECHS[k]; return t ? t[2] : ''; }
 function techCost(lvl){ return TECH_COSTS[Math.min(lvl, TECH_COSTS.length - 1)] || 999; }
 function techLevel(p, k){ return (p.techLv && p.techLv[k]) || 0; }
-const SECTORS = [
-  ['educacao', 'Educação'], ['saude', 'Saúde'], ['cultura', 'Cultura'],
-  ['esportes', 'Esportes'], ['habitacao', 'Habitação'], ['justica', 'Justiça'], ['turismo', 'Turismo'],
-  ['infraestrutura', 'Infraestrutura'], ['ciencia', 'Ciência'],
-];
-const DEPOSIT_POOL = ['petroleo', 'minerio', 'madeira', 'ouro', 'uranio', 'terras_raras', 'comida'];
-const DEP_NAMES = { petroleo: '🛢️ Petróleo', minerio: '⛏️ Minério', madeira: '🪵 Madeira', ouro: '🏦 Ouro', uranio: '☢️ Urânio', terras_raras: '⚙️ Terras raras', comida: '🌾 Terra fértil' };
 function depositosOf(id) {
   let h = 0; for (const ch of String(id) + 'x') h = (h * 31 + ch.charCodeAt(0)) % 997;
   const out = [];
@@ -426,17 +68,6 @@ function depositosOf(id) {
   let i = 0; while (out.length < 3 && i < 7) { const d = DEPOSIT_POOL[(h + 3 * ++i) % 7]; if (!out.includes(d)) out.push(d); }
   return out.slice(0, 3);
 }
-const SPACE_COSTS = [500, 800, 1200, 2000, 3500];
-const UN_TYPES = [
-  { id: 'proibir_guerra', desc: 'Proibição de novas declarações de guerra por 3 turnos' },
-  { id: 'proibir_armas',  desc: 'Proibição de recrutamento militar por 3 turnos' },
-  { id: 'embargo',        desc: 'Embargo econômico contra {T} por 3 turnos' },
-  { id: 'condenar',       desc: 'Condenação internacional de {T} (-6 aprovação)' },
-  { id: 'manter_paz',    desc: 'Missão de paz: encerrar todas as guerras de {T}' },
-  { id: 'bloqueio',       desc: 'Bloqueio total contra {T} por 3 turnos (renda -50%)' },
-  { id: 'embargo_armas', desc: 'Embargo de armas contra {T} por 3 turnos (sem novas unidades)' },
-  { id: 'ajuda_humanitaria', desc: 'Ajuda humanitária a {T} (+$500, +5 aprovação)' },
-];
 
 /* ---------------- WebSocket artesanal ---------------- */
 function acceptKey(key) { return crypto.createHash('sha1').update(key + MAGIC).digest('base64'); }
@@ -679,15 +310,6 @@ function addPlayer(room, conn, name, isHost) {
 /* FASE 400 — PERSONALIDADE DA IA: cada bot nasce com um perfil que muda suas
    prioridades (guerra, militar, economia, ciência, diplomacia, defesa).
    Os bots obedecem às mesmas regras do mundo — a persona só redireciona o gasto. */
-const PERSONAS = {
-  expansionista: { nome: 'Expansionista', guerra: 1.9, mil: 1.4, eco: 0.8,  def: 0.6 },
-  economico:     { nome: 'Econômico',     guerra: 0.4, mil: 0.7, eco: 1.8,  def: 0.8 },
-  militarista:   { nome: 'Militarista',   guerra: 1.5, mil: 1.9, eco: 0.7,  def: 1.0 },
-  diplomatico:   { nome: 'Diplomático',   guerra: 0.2, mil: 0.6, eco: 1.0,  def: 0.8 },
-  cientifico:    { nome: 'Científico',    guerra: 0.5, mil: 0.8, eco: 0.9,  def: 0.8 },
-  defensivo:     { nome: 'Defensivo',     guerra: 0.15, mil: 1.1, eco: 1.0, def: 2.0 },
-  oportunista:   { nome: 'Oportunista',   guerra: 1.7, mil: 1.1, eco: 1.0,  def: 0.7 },
-};
 const PERSONA_KEYS = Object.keys(PERSONAS);
 function personaOf(id) { let h = 0; for (const ch of String(id) + 'x') h = (h * 31 + ch.charCodeAt(0)) % 997; return PERSONA_KEYS[h % PERSONA_KEYS.length]; }
 function makeAIBot(c) {
@@ -800,33 +422,6 @@ function checkVictory(room) {
 }
 
 // Aparato de segurança interna (nível 0..3 cada). Custo cresce por nível.
-const SEG = {
-  defesa:  { name: 'Ministério da Defesa', icon: '🛡️', desc: '+8% defesa por nível',              custos: [400, 900, 1800] },
-  secreto: { name: 'Serviço Secreto',      icon: '🕵️', desc: 'espionagem mais forte, -12% dano de sabotagem por nível', custos: [350, 800, 1600] },
-  policia: { name: 'Polícia',              icon: '🚓', desc: '+1 aprovação por semana por nível',  custos: [300, 700, 1400] },
-  guarda:  { name: 'Guarda Nacional',      icon: '🪖', desc: '+6% defesa por nível e menos golpes', custos: [350, 800, 1600] },
-};
-const LEIS = {
-  servico_militar:   { name: 'Serviço Militar Obrigatório', cost: 150, desc: '+5% ataque em guerras' },
-  guarda_nacional:   { name: 'Guarda Nacional',             cost: 160, desc: '+5% defesa' },
-  reforma_agraria:   { name: 'Reforma Agrária',             cost: 200, desc: '+$10/semana' },
-  abertura_comercial:{ name: 'Abertura Comercial',          cost: 180, desc: '+$10/semana' },
-  liberdade_imprensa:{ name: 'Liberdade de Imprensa',       cost: 120, desc: '+3 aprovação' },
-  campanha_patriotica:{ name: 'Campanha Patriótica',        cost: 100, desc: '+4 aprovação' },
-  ensino_obrigatorio:{ name: 'Ensino Obrigatório', cost: 200, desc: '+2 aprovação, +1 ciência' },
-  saude_universal:  { name: 'Saúde Universal',   cost: 250, desc: '+3 aprovação, +2 pop' },
-  codigo_florestal: { name: 'Código Florestal',  cost: 150, desc: '+1 economia' },
-  zona_franca: { name: 'Zona Franca', cost: 300, desc: '+$20/semana' },
-  bolsa_familia: { name: 'Bolsa Família', cost: 250, desc: '+4 aprovação, +1 pop' },
-  /* FASE 396 — LEIS DE PRODUÇÃO (paridade com a tela de decretos do MA3:
-     preço de compra, preço de venda, volume de produção, velocidade e tempo de obra).
-     Toda lei tem contrapartida visível: nenhuma é vantagem pura. */
-  lei_compra:  { name: 'Compras Estatais Centralizadas', cost: 220, desc: 'compra no mercado −12%, mas a venda cai 6%', grupo: 'producao' },
-  lei_venda:   { name: 'Câmbio de Exportação',           cost: 220, desc: 'venda no mercado +12%, mas a compra sobe 6%', grupo: 'producao' },
-  lei_volume:  { name: 'Turnos Extras na Indústria',     cost: 260, desc: 'produção +25%, consumo de insumo +25%, −2 ❤️', grupo: 'producao' },
-  lei_ritmo:   { name: 'Ritmo de Produção Acelerado',    cost: 240, desc: 'produção +10% e obra 1 dia mais rápida, insumo +10%', grupo: 'producao' },
-  lei_mutirao: { name: 'Mutirão Nacional de Obras',      cost: 200, desc: 'tempo de obra −35%, custo da obra +15%', grupo: 'producao' },
-};
 
 /* FASE 396 — efeito agregado das leis de produção sobre a economia do jogador.
    Fonte única: mercado, produção diária, consumo de insumo e obras leem daqui. */
@@ -1249,13 +844,6 @@ function resolveWeek(room) {
 
 /* ===== construções: 6 abas x 5 níveis (paridade com o MA3) =====
    BUILD_OUT diz o que cada prédio rende por nível: {res,qtd} ou {money} */
-const BUILD_MAX = 5;
-const BUILD_TABS = [['rec','⛏️ Recursos'], ['ene','⚡ Energia'], ['ali','🌾 Alimentos'], ['ind','🏭 Indústria'], ['mil','🎖️ Militar'], ['inf','🛣️ Infraestrutura']];
-const PROD_BUILDS = {serraria:280, mina_ouro:500, fabrica:300, borracha:340, mina_rara:450, mina_uranio:500, petroleo:400, mina:300, usina:350, hidreletrica:520, usina_nuclear:900, solar:320, eolica:480, alternativa:600, agua:180, mina_sal:200, acucar:240, padaria:260, gado:300, fazenda:250, jardim:150, estufa:420, doces:280, adubo:260, processados:380, premium:560, estaleiro_naval:700, motores:620, maquinas:580, siderurgica:660, base:400, quartel:380, arsenal:420, hangar:520, aerodromo:560, estaleiro:620, centro_ind:700, campo_treino:340, armazem:260, estrada:150, ferrovia:380, metro:520, ciclovia:120, aeroporto:680, porto:600, heliporto:300, terminal:900,mina_carvao:320,mina_cobre:340,mina_bauxita:330,mina_prata:480,mina_litio:520,mina_niquel:350,mina_zinco:300,mina_diamante:750,mina_estanho:280,mina_manganes:360,plataforma_gas:620,pedreira:260,usina_carvao:420,usina_geotermica:600,usina_maremotriz:580,usina_biomassa:380,usina_ondas:450,reator_torio:850,dessalinizacao:500,hidrogenio:640,frota_pesqueira:420,aquicultura:350,trigo:220,arroz:220,milho:220,soja:260,cafe:380,cacau:360,citricos:240,vinicola:460,cervejaria:440,laticinios:400,frigorifico:480,oleo_vegetal:340,refinaria:600,petroquimica:680,plastico:380,vidro:360,papel:300,cimento:420,tecelagem:320,couro:330,moveis:390,eletronicos:620,semicondutores:880,montadora:760,caminhoes:640,aeronaves:820,fertilizantes:400,farmaceutica:700,quimica:560,baterias:480,paineis_solares:520,base_aerea:600,base_naval:650,academia_militar:450,inteligencia:550,drones:620,silo_misseis:800,antimisseis:750,radar:480,hospital_militar:420,centro_logistico:380,escola:250,universidade:520,instituto_tecnico:350,hospital:480,clinica:300,habitacao:420,saneamento:330,rede_agua:280,reciclagem:360,aterro:200,incineradora:420,barragem:600,canal:380,ponte:450,tunel:520,data_center:660,telecom:400,banco:700,bolsa_valores:850,estadio:550,teatro:320,museu:300,biblioteca:220,parque:180,hotel:500,shopping:620,zona_franca:580,porto_seco:420,observatorio:350,porto_espacial:950};
-const CONCRETE_NEED = {serraria:8, mina_ouro:10, fabrica:0, borracha:8, mina_rara:10, mina_uranio:10, petroleo:8, mina:8, usina:8, hidreletrica:12, usina_nuclear:20, solar:6, eolica:12, alternativa:10, agua:5, mina_sal:5, acucar:6, padaria:6, gado:8, fazenda:8, jardim:3, estufa:10, doces:6, adubo:8, processados:8, premium:12, estaleiro_naval:15, motores:12, maquinas:12, siderurgica:15, base:10, quartel:10, arsenal:10, hangar:12, aerodromo:12, estaleiro:15, centro_ind:18, campo_treino:8, armazem:6, estrada:5, ferrovia:12, metro:15, ciclovia:3, aeroporto:18, porto:16, heliporto:8, terminal:22,mina_carvao:8,mina_cobre:8,mina_bauxita:8,mina_prata:10,mina_litio:10,mina_niquel:8,mina_zinco:8,mina_diamante:14,mina_estanho:7,mina_manganes:9,plataforma_gas:14,pedreira:6,usina_carvao:10,usina_geotermica:12,usina_maremotriz:14,usina_biomassa:8,usina_ondas:10,reator_torio:20,dessalinizacao:12,hidrogenio:12,frota_pesqueira:6,aquicultura:6,trigo:4,arroz:4,milho:4,soja:5,cafe:6,cacau:6,citricos:4,vinicola:8,cervejaria:8,laticinios:8,frigorifico:10,oleo_vegetal:7,refinaria:14,petroquimica:14,plastico:8,vidro:8,papel:6,cimento:10,tecelagem:6,couro:7,moveis:8,eletronicos:12,semicondutores:18,montadora:16,caminhoes:14,aeronaves:16,fertilizantes:8,farmaceutica:14,quimica:12,baterias:10,paineis_solares:10,base_aerea:12,base_naval:14,academia_militar:10,inteligencia:10,drones:12,silo_misseis:18,antimisseis:16,radar:10,hospital_militar:10,centro_logistico:8,escola:6,universidade:10,instituto_tecnico:8,hospital:10,clinica:7,habitacao:9,saneamento:8,rede_agua:6,reciclagem:8,aterro:5,incineradora:10,barragem:14,canal:8,ponte:10,tunel:12,data_center:12,telecom:8,banco:12,bolsa_valores:14,estadio:12,teatro:7,museu:7,biblioteca:5,parque:4,hotel:10,shopping:12,zona_franca:12,porto_seco:9,observatorio:8,porto_espacial:22};
-const PROD_NAMES = {serraria:'🪵 Serraria', mina_ouro:'🏦 Mina de Ouro', fabrica:'🧱 Fábrica de Concreto', borracha:'🌳 Fábrica de Borracha', mina_rara:'⚙️ Mina de Terras Raras', mina_uranio:'☢️ Mina de Urânio', petroleo:'🛢️ Torre de Petróleo', mina:'⛏️ Mina de Ferro', usina:'⚡ Usina Termelétrica', hidreletrica:'💧 Usina Hidrelétrica', usina_nuclear:'☢️ Usina Nuclear', solar:'🌞 Usina Solar', eolica:'🌬️ Parque Eólico', alternativa:'♻️ Central de Energia Alternativa', agua:'💧 Fábrica de Água Mineral', mina_sal:'🧂 Mina de Sal', acucar:'🍬 Fábrica de Açúcar', padaria:'🍞 Padaria', gado:'🐄 Fazenda de Gado', fazenda:'🌾 Fazenda', jardim:'🌻 Jardim', estufa:'🏡 Estufa', doces:'🍭 Fábrica de Doces', adubo:'🌱 Fábrica de Aditivos Nutricionais', processados:'🥫 Fábrica de Alimentos Processados', premium:'🍾 Fábrica de Alimentos Premium', estaleiro_naval:'🚢 Estaleiro Naval', motores:'🔧 Fábrica de Motores', maquinas:'🏭 Fábrica de Máquinas', siderurgica:'🔩 Siderúrgica', base:'🎖️ Base Militar', quartel:'🏠 Quartel', arsenal:'🗃️ Arsenal', hangar:'🛡️ Hangar de Tanques', aerodromo:'✈️ Aeródromo', estaleiro:'⚓ Estaleiro Militar', centro_ind:'🏗️ Centro Industrial', campo_treino:'🏋️ Campo de Treino', armazem:'📦 Armazém', estrada:'🛣️ Rodovia', ferrovia:'🚂 Linha Ferroviária', metro:'🚇 Metrô', ciclovia:'🚲 Ciclovia', aeroporto:'🛫 Aeroporto', porto:'🚢 Porto', heliporto:'🚁 Heliporto', terminal:'🌐 Terminal Intercontinental',mina_carvao:'⬛ Mina de Carvão',mina_cobre:'🟧 Mina de Cobre',mina_bauxita:'🟫 Mina de Bauxita',mina_prata:'⬜ Mina de Prata',mina_litio:'🔋 Mina de Lítio',mina_niquel:'🪙 Mina de Níquel',mina_zinco:'⚙️ Mina de Zinco',mina_diamante:'💎 Mina de Diamantes',mina_estanho:'🥫 Mina de Estanho',mina_manganes:'⛏️ Mina de Manganês',plataforma_gas:'🌊 Plataforma de Gás',pedreira:'🪨 Pedreira',usina_carvao:'🏭 Usina a Carvão',usina_geotermica:'🌋 Usina Geotérmica',usina_maremotriz:'🌊 Usina Maremotriz',usina_biomassa:'🌿 Usina de Biomassa',usina_ondas:'🏄 Usina de Ondas',reator_torio:'⚛️ Reator de Tório',dessalinizacao:'💧 Usina de Dessalinização',hidrogenio:'💨 Central de Hidrogênio Verde',frota_pesqueira:'🎣 Frota Pesqueira',aquicultura:'🦐 Aquicultura',trigo:'🌾 Plantação de Trigo',arroz:'🍚 Rizicultura',milho:'🌽 Milharal',soja:'🫘 Plantação de Soja',cafe:'☕ Fazenda de Café',cacau:'🍫 Fazenda de Cacau',citricos:'🍊 Pomar de Cítricos',vinicola:'🍷 Vinícola',cervejaria:'🍺 Cervejaria',laticinios:'🧀 Laticínios',frigorifico:'🥩 Frigorífico',oleo_vegetal:'🫗 Fábrica de Óleo Vegetal',refinaria:'🛢️ Refinaria',petroquimica:'⚗️ Petroquímica',plastico:'🧴 Fábrica de Plástico',vidro:'🪟 Fábrica de Vidro',papel:'📄 Fábrica de Papel',cimento:'🏗️ Fábrica de Cimento',tecelagem:'🧵 Tecelagem',couro:'👜 Curtume de Couro',moveis:'🪑 Fábrica de Móveis',eletronicos:'📺 Fábrica de Eletrônicos',semicondutores:'💾 Fábrica de Semicondutores',montadora:'🚗 Montadora',caminhoes:'🚚 Fábrica de Caminhões',aeronaves:'🛩️ Fábrica de Aeronaves',fertilizantes:'🧪 Fábrica de Fertilizantes',farmaceutica:'💊 Indústria Farmacêutica',quimica:'🧫 Indústria Química',baterias:'🔋 Fábrica de Baterias',paineis_solares:'🔆 Fábrica de Painéis Solares',base_aerea:'🛫 Base Aérea',base_naval:'⚓ Base Naval',academia_militar:'🎓 Academia Militar',inteligencia:'🕵️ Agência de Inteligência',drones:'🛸 Fábrica de Drones',silo_misseis:'🚀 Silo de Mísseis',antimisseis:'🛡️ Defesa Antimísseis',radar:'📡 Estação de Radar',hospital_militar:'🏥 Hospital Militar',centro_logistico:'🚛 Centro Logístico',escola:'🏫 Escola',universidade:'🎓 Universidade',instituto_tecnico:'🔧 Instituto Técnico',hospital:'🏥 Hospital',clinica:'🩺 Clínica',habitacao:'🏘️ Conjunto Habitacional',saneamento:'🚰 Saneamento Básico',rede_agua:'💧 Rede de Água',reciclagem:'♻️ Usina de Reciclagem',aterro:'🗑️ Aterro Sanitário',incineradora:'🔥 Incineradora',barragem:'🌊 Barragem',canal:'🚣 Canal',ponte:'🌉 Ponte',tunel:'🚇 Túnel',data_center:'🖥️ Data Center',telecom:'📶 Torre de Telecom',banco:'🏦 Banco',bolsa_valores:'📈 Bolsa de Valores',estadio:'🏟️ Estádio',teatro:'🎭 Teatro',museu:'🖼️ Museu',biblioteca:'📚 Biblioteca',parque:'🌳 Parque',hotel:'🏨 Hotel',shopping:'🛍️ Shopping',zona_franca:'🏷️ Zona Franca',porto_seco:'🚂 Porto Seco',observatorio:'🔭 Observatório',porto_espacial:'🚀 Porto Espacial'};
-const BUILD_TAB = {serraria:'rec', mina_ouro:'rec', fabrica:'rec', borracha:'rec', mina_rara:'rec', mina_uranio:'rec', petroleo:'rec', mina:'rec', usina:'ene', hidreletrica:'ene', usina_nuclear:'ene', solar:'ene', eolica:'ene', alternativa:'ene', agua:'ali', mina_sal:'ali', acucar:'ali', padaria:'ali', gado:'ali', fazenda:'ali', jardim:'ali', estufa:'ali', doces:'ind', adubo:'ind', processados:'ind', premium:'ind', estaleiro_naval:'ind', motores:'ind', maquinas:'ind', siderurgica:'ind', base:'mil', quartel:'mil', arsenal:'mil', hangar:'mil', aerodromo:'mil', estaleiro:'mil', centro_ind:'mil', campo_treino:'mil', armazem:'mil', estrada:'inf', ferrovia:'inf', metro:'inf', ciclovia:'inf', aeroporto:'inf', porto:'inf', heliporto:'inf', terminal:'inf',mina_carvao:'rec',mina_cobre:'rec',mina_bauxita:'rec',mina_prata:'rec',mina_litio:'rec',mina_niquel:'rec',mina_zinco:'rec',mina_diamante:'rec',mina_estanho:'rec',mina_manganes:'rec',plataforma_gas:'rec',pedreira:'rec',usina_carvao:'ene',usina_geotermica:'ene',usina_maremotriz:'ene',usina_biomassa:'ene',usina_ondas:'ene',reator_torio:'ene',dessalinizacao:'ene',hidrogenio:'ene',frota_pesqueira:'ali',aquicultura:'ali',trigo:'ali',arroz:'ali',milho:'ali',soja:'ali',cafe:'ali',cacau:'ali',citricos:'ali',vinicola:'ali',cervejaria:'ali',laticinios:'ali',frigorifico:'ali',oleo_vegetal:'ali',refinaria:'ind',petroquimica:'ind',plastico:'ind',vidro:'ind',papel:'ind',cimento:'ind',tecelagem:'ind',couro:'ind',moveis:'ind',eletronicos:'ind',semicondutores:'ind',montadora:'ind',caminhoes:'ind',aeronaves:'ind',fertilizantes:'ind',farmaceutica:'ind',quimica:'ind',baterias:'ind',paineis_solares:'ind',base_aerea:'mil',base_naval:'mil',academia_militar:'mil',inteligencia:'mil',drones:'mil',silo_misseis:'mil',antimisseis:'mil',radar:'mil',hospital_militar:'mil',centro_logistico:'mil',escola:'inf',universidade:'inf',instituto_tecnico:'inf',hospital:'inf',clinica:'inf',habitacao:'inf',saneamento:'inf',rede_agua:'inf',reciclagem:'inf',aterro:'inf',incineradora:'inf',barragem:'inf',canal:'inf',ponte:'inf',tunel:'inf',data_center:'inf',telecom:'inf',banco:'inf',bolsa_valores:'inf',estadio:'inf',teatro:'inf',museu:'inf',biblioteca:'inf',parque:'inf',hotel:'inf',shopping:'inf',zona_franca:'inf',porto_seco:'inf',observatorio:'inf',porto_espacial:'inf'};
-const BUILD_OUT = {serraria:{res:'madeira',qtd:5}, mina_ouro:{money:25}, fabrica:{res:'concreto',qtd:6}, borracha:{res:'borracha',qtd:3}, mina_rara:{res:'terras_raras',qtd:3}, mina_uranio:{res:'uranio',qtd:2}, petroleo:{res:'energia',qtd:3}, mina:{res:'minerio',qtd:4}, usina:{res:'energia',qtd:4}, hidreletrica:{res:'energia',qtd:6}, usina_nuclear:{res:'energia',qtd:12}, solar:{res:'energia',qtd:3}, eolica:{res:'energia',qtd:5}, alternativa:{res:'energia',qtd:4}, agua:{res:'comida',qtd:2}, mina_sal:{res:'comida',qtd:2}, acucar:{res:'comida',qtd:3}, padaria:{res:'comida',qtd:4}, gado:{res:'carne',qtd:5}, fazenda:{res:'comida',qtd:5}, jardim:{res:'comida',qtd:2}, estufa:{res:'comida',qtd:7}, doces:{money:8}, adubo:{res:'comida',qtd:4}, processados:{res:'comida',qtd:6}, premium:{money:18}, estaleiro_naval:{money:12}, motores:{money:14}, maquinas:{res:'minerio',qtd:3}, siderurgica:{res:'minerio',qtd:6}, base:{}, quartel:{}, arsenal:{}, hangar:{}, aerodromo:{}, estaleiro:{}, centro_ind:{}, campo_treino:{}, armazem:{}, estrada:{money:5}, ferrovia:{money:8}, metro:{money:10}, ciclovia:{money:2}, aeroporto:{money:14}, porto:{money:12}, heliporto:{money:6}, terminal:{money:20},mina_carvao:{res:'energia',qtd:3},mina_cobre:{res:'minerio',qtd:4},mina_bauxita:{res:'minerio',qtd:4},mina_prata:{money:14},mina_litio:{res:'terras_raras',qtd:2},mina_niquel:{res:'minerio',qtd:4},mina_zinco:{res:'minerio',qtd:3},mina_diamante:{money:22},mina_estanho:{res:'minerio',qtd:3},mina_manganes:{res:'minerio',qtd:4},plataforma_gas:{res:'energia',qtd:5},pedreira:{res:'concreto',qtd:4},usina_carvao:{res:'energia',qtd:5},usina_geotermica:{res:'energia',qtd:6},usina_maremotriz:{res:'energia',qtd:5},usina_biomassa:{res:'energia',qtd:4},usina_ondas:{res:'energia',qtd:4},reator_torio:{res:'energia',qtd:10},dessalinizacao:{money:7},hidrogenio:{res:'energia',qtd:6},frota_pesqueira:{res:'comida',qtd:5},aquicultura:{res:'comida',qtd:4},trigo:{res:'comida',qtd:4},arroz:{res:'comida',qtd:4},milho:{res:'comida',qtd:4},soja:{res:'comida',qtd:5},cafe:{money:12},cacau:{money:10},citricos:{res:'comida',qtd:3},vinicola:{money:14},cervejaria:{money:13},laticinios:{res:'comida',qtd:5},frigorifico:{res:'comida',qtd:6},oleo_vegetal:{res:'comida',qtd:4},refinaria:{res:'energia',qtd:4},petroquimica:{money:16},plastico:{money:10},vidro:{money:9},papel:{money:8},cimento:{res:'concreto',qtd:5},tecelagem:{money:9},couro:{money:9},moveis:{money:11},eletronicos:{money:15},semicondutores:{money:20},montadora:{money:18},caminhoes:{money:15},aeronaves:{money:19},fertilizantes:{res:'comida',qtd:3},farmaceutica:{money:17},quimica:{money:13},baterias:{money:12},paineis_solares:{res:'energia',qtd:2},base_aerea:{},base_naval:{},academia_militar:{},inteligencia:{},drones:{},silo_misseis:{},antimisseis:{},radar:{},hospital_militar:{},centro_logistico:{},escola:{money:4},universidade:{money:9},instituto_tecnico:{money:6},hospital:{money:5},clinica:{money:5},habitacao:{money:7},saneamento:{money:4},rede_agua:{money:4},reciclagem:{res:'minerio',qtd:2},aterro:{money:3},incineradora:{res:'energia',qtd:2},barragem:{res:'energia',qtd:4},canal:{money:4},ponte:{money:6},tunel:{money:6},data_center:{money:13},telecom:{money:8},banco:{money:16},bolsa_valores:{money:22},estadio:{money:10},teatro:{money:6},museu:{money:5},biblioteca:{money:3},parque:{money:3},hotel:{money:11},shopping:{money:14},zona_franca:{money:15},porto_seco:{money:9},observatorio:{money:4},porto_espacial:{money:25}};
 const MISSIONS = [
   { id: 'construir_3', desc: 'Conclua 3 construções',            reward: 500, check: p => p.stats.construidas >= 3 },
   { id: 'vender_30',   desc: 'Venda 30 unidades no mercado',      reward: 400, check: p => p.stats.vendidas >= 30 },
@@ -1300,8 +888,6 @@ const MISSIONS = [
 
 /* FASE 398 — fonte única dos custos de unidade (antes existiam 3 tabelas diferentes
    e as duas unidades novas não estavam aqui: bot pagava $200 por tudo). */
-const UNIT_COSTS = { blindados: 300, aviacao: 400, frota: 500, infantaria: 200, artilharia: 350, submarinos: 450, porta_avioes: 700, fuzileiros: 350, defesa_aerea: 450 };
-const UNIT_MAX = 3;
 const upM = (p, k) => 1 + 0.5 * ((p.upgrades && p.upgrades[k]) || 0);
 
 /* ============================================================
@@ -1309,18 +895,6 @@ const upM = (p, k) => 1 + 0.5 * ((p.upgrades && p.upgrades[k]) || 0);
    O log é uma fila cronológica. O feed é o que IMPORTA,
    classificado por relevância, para o jogador não se afogar.
    ============================================================ */
-const FEED_PESO = [
-  [/[☢️]|[💥]|nuclear|míssil/i,                        'nuclear',  100],
-  [/declarou GUERRA|OFENSIVA|invas/i,                   'guerra',    90],
-  [/SANÇÕES|EMBARGO|BLOQUEIO/i,                         'sancao',    75],
-  [/aliança|ALIANÇA|pacto|PACTO/i,                      'alianca',   70],
-  [/ONU|resolução|votação/i,                            'onu',       65],
-  [/Terremoto|Seca|Pandemia|Revolta|Crise financeira|Boom|furac/i, 'crise', 80],
-  [/VENCEU|vitória|hegemonia/i,                         'vitoria',   95],
-  [/eleição|reelei|impeachment/i,                       'politica',  60],
-  [/DESCOBRIU|espionagem|sabot/i,                       'espionagem',55],
-  [/conclu/i,                                           'obra',      20]
-];
 function classificarFeed(msg) {
   for (const [re, tipo, peso] of FEED_PESO) if (re.test(msg)) return { tipo, peso };
   return { tipo: 'outro', peso: 10 };
@@ -1666,19 +1240,6 @@ function pibOf(p) {
    FASE 367 — LEIS COM CONSEQUÊNCIA POLÍTICA
    Cada lei agrada e desagrada grupos. A soma vira pressão.
    ============================================================ */
-const LEI_GRUPOS = {
-  servico_militar:   { militares:+20, pacifistas:-25, empresarios:0,  religiosos:0,  intelectuais:-5 },
-  guarda_nacional:   { militares:+12, pacifistas:-10, empresarios:+5, religiosos:0,  intelectuais:0 },
-  reforma_agraria:   { militares:-5,  pacifistas:+10, empresarios:-15,religiosos:+5, intelectuais:+8 },
-  abertura_comercial:{ militares:0,   pacifistas:+5,  empresarios:+22,religiosos:0,  intelectuais:+10 },
-  liberdade_imprensa:{ militares:-8,  pacifistas:+12, empresarios:+5, religiosos:-5, intelectuais:+20 },
-  campanha_patriotica:{militares:+15, pacifistas:-8,  empresarios:+3, religiosos:+8, intelectuais:-12 },
-  ensino_obrigatorio:{ militares:0,   pacifistas:+8,  empresarios:-4, religiosos:-3, intelectuais:+18 },
-  estado_direito:    { militares:-6,  pacifistas:+14, empresarios:+12,religiosos:0,  intelectuais:+16 },
-  teto_gastos:       { militares:+3,   pacifistas:-6,  empresarios:+18,religiosos:0,  intelectuais:-8 },
-  reforma_trabalhista:{militares:0,   pacifistas:-10, empresarios:+20,religiosos:0,  intelectuais:-6 },
-  lei_marcal:        { militares:+18,  pacifistas:-20, empresarios:-8, religiosos:+4, intelectuais:-10 }
-};
 
 function gruposPoliticos(p) {
   const g = { militares: 0, pacifistas: 0, empresarios: 0, religiosos: 0, intelectuais: 0 };
@@ -1706,22 +1267,6 @@ function pressaoPolitica(p) {
    FASE 368 — MINISTROS REAIS
    Cada ministro altera VÁRIOS sistemas, não só um número.
    ============================================================ */
-const MINISTRO_EFEITOS = {
-  eco: {
-    tec: { renda:+0.10, pesquisa:+0.06, aprovacao:-1, desemprego:-0.02 },
-    pop: { renda:-0.05, pesquisa:0,     aprovacao:+1, desemprego:-0.04 },
-    ind: { renda:+0.20, pesquisa:-0.03, aprovacao:0,  desemprego:-0.06 }
-  },
-  def: {
-    pac: { renda:-0.10, defesa:-0.05, aprovacao:+2, militar:-0.08 },
-    agu: { renda:-0.02, defesa:+0.12, aprovacao:-2, militar:+0.15 },
-    eq:  { renda:0,     defesa:+0.05, aprovacao:+1, militar:+0.05 }
-  },
-  soc: {
-    art: { aprovacao:+1, cultura:+0.15, doutrina:+0.08, renda:-0.02 },
-    atl: { aprovacao:0,  cultura:-0.05, doutrina:0,     renda:+0.05 }
-  }
-};
 
 function ministroEfeito(p, pasta, campo) {
   const escolha = p.ministers && p.ministers[pasta];
@@ -1919,6 +1464,10 @@ function aiTurn(room) {
   for (const b of room.players) {
     if (!b.alive || !b.bot) continue;
     const per = PERSONAS[b.persona] || PERSONAS.economico;
+    /* FASE 403 — economia determinística: substitui ~209 linhas de churn aleatório
+       por uma atividade econômica única, limitada e ligada ao eco/comércio/território
+       do bot. Sem recurso infinito. */
+    b.money += Math.round(Math.min(150, (b.eco || 3) * 3 + (b.trades || []).length * 20 + ownProvinces(b).length * 5) * (per.eco || 1));
     /* FASE 400 — a persona redireciona o caixa do bot para a sua prioridade.
        Todos os efeitos usam dinheiro real do bot (nada de recurso infinito). */
     if (b.money > 600) {
@@ -2030,249 +1579,40 @@ function aiTurn(room) {
     if (b.money > 4000 && Math.random() < 0.03) { b.money -= 800; b.aprov = Math.min(100, b.aprov + 6); }
     if (b.money > 1500 && Math.random() < 0.05) { b.money -= 200; b.aprov = Math.min(100, b.aprov + 3); }
     if (b.money > 1500 && Math.random() < 0.05) { b.money -= 250; b.aprov = Math.min(100, b.aprov + 4); }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 150; b.money += 300; }
     if (b.money > 1000 && Math.random() < 0.05) { b.money -= 200; b.aprov = Math.min(100, b.aprov + 4); }
-    if (b.money > 1500 && Math.random() < 0.05) { b.money -= 200; b.money += 400; }
     if (b.money > 800 && Math.random() < 0.06) { b.aprov = Math.min(100, b.aprov + 3); }
     if (b.money > 1500 && Math.random() < 0.05) { b.money -= 200; b.mil = (b.mil || 3) + 1; }
     if (b.money > 2500 && Math.random() < 0.05) { b.money -= 500; b.mil = (b.mil || 3) + 3; }
     if (b.money > 1500 && Math.random() < 0.05) { b.money -= 300; b.aprov = Math.min(100, b.aprov + 4); }
     if (b.money > 3000 && Math.random() < 0.04) { b.money -= 700; b.eco = (b.eco || 3) + 2; }
-    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 600; b.money += 700; }
     if (b.money > 3000 && Math.random() < 0.04) { b.money -= 600; b.eco = (b.eco || 3) + 2; }
     if (b.money > 1500 && Math.random() < 0.05) { b.money -= 300; b.aprov = Math.min(100, b.aprov + 5); }
     if (b.money > 3500 && Math.random() < 0.04) { b.money -= 800; b.mil = (b.mil || 3) + 3; }
     if (b.money > 2000 && Math.random() < 0.05) { b.money -= 300; b.aprov = Math.min(100, b.aprov + 1); }
     if (b.money > 1200 && Math.random() < 0.05) { b.money -= 200; b.aprov = Math.min(100, b.aprov + 1); }
-    if (b.money > 3000 && Math.random() < 0.04) { b.money -= 700; b.money += 800; }
     if (b.money > 2500 && Math.random() < 0.05) { b.money -= 500; b.aprov = Math.min(100, b.aprov + 3); }
     if (b.money > 2500 && Math.random() < 0.05) { b.money -= 500; b.mil = (b.mil || 3) + 3; }
     if (b.money < 600 && Math.random() < 0.07) { b.money += 500; b.aprov = Math.max(0, b.aprov - 3); }
     if (b.money > 2500 && Math.random() < 0.05) { b.money -= 600; b.mil = (b.mil || 3) + 3; }
     if (b.money > 2500 && Math.random() < 0.05) { b.money -= 500; b.aprov = Math.min(100, b.aprov + 6); }
-    if (b.money > 3000 && Math.random() < 0.04) { b.money -= 700; b.money += 500; }
     if (b.money > 1500 && Math.random() < 0.05) { b.money -= 200; b.aprov = Math.min(100, b.aprov + 4); }
     if (b.money > 2000 && Math.random() < 0.05) { b.money -= 400; b.aprov = Math.min(100, b.aprov + 4); }
     if (b.money > 3000 && Math.random() < 0.04) { b.money -= 700; b.aprov = Math.min(100, b.aprov + 6); }
-    if (b.money > 2000 && Math.random() < 0.05) { b.money -= 400; b.money += 450; }
     if (b.money > 3000 && Math.random() < 0.04) { b.money -= 700; b.aprov = Math.min(100, b.aprov + 4); }
     if (b.money > 3000 && Math.random() < 0.04) { b.money -= 600; b.eco = (b.eco || 3) + 2; }
-    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 600; b.money += 500; }
     if (b.money > 2500 && Math.random() < 0.05) { b.money -= 600; b.mil = (b.mil || 3) + 3; }
-    if (b.money > 1500 && Math.random() < 0.06) { b.money -= 300; b.money += 400; }
-    if (b.money > 1000 && Math.random() < 0.07) { b.money -= 200; b.money += 500; }
     if (b.money > 3000 && Math.random() < 0.04) { b.money -= 700; b.eco = (b.eco || 3) + 2; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 300; b.money += 300; }
     if (b.money > 1200 && Math.random() < 0.06) { b.money -= 200; b.aprov = Math.min(100, b.aprov + 4); }
     if (b.money > 2000 && Math.random() < 0.05) { b.money -= 400; b.aprov = Math.min(100, b.aprov + 4); }
     if (b.money > 1500 && Math.random() < 0.06) { b.money -= 300; b.aprov = Math.min(100, b.aprov + 6); }
-    if (b.money > 4000 && Math.random() < 0.04) { b.money -= 900; b.money += 1000; }
     if (b.money > 3000 && Math.random() < 0.04) { b.money -= 600; b.eco = (b.eco || 3) + 2; }
     if (b.money > 2500 && Math.random() < 0.05) { b.money -= 500; b.aprov = Math.min(100, b.aprov + 3); }
     if (b.money > 2000 && Math.random() < 0.05) { b.money -= 400; b.aprov = Math.min(100, b.aprov + 5); }
     if (b.money > 2000 && Math.random() < 0.05) { b.money -= 400; b.aprov = Math.min(100, b.aprov + 3); }
     if (b.money > 1500 && Math.random() < 0.06) { b.money -= 300; b.aprov = Math.min(100, b.aprov + 3); }
-    if (b.money > 2000 && Math.random() < 0.05) { b.money -= 400; b.money += 500; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
     if (b.money > 1500 && Math.random() < 0.05) { b.money -= 300; b.mil = (b.mil || 3) + 1; }
     if (b.money > 800 && Math.random() < 0.07) { b.money += 500; }
-    if (b.money > 3000 && Math.random() < 0.04) { b.money -= 700; b.money += 700; }
-    if (b.money > 2000 && Math.random() < 0.05) { b.money -= 400; b.money += 500; }
-    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 500; b.money += 500; }
-    if (b.money > 2000 && Math.random() < 0.05) { b.money -= 500; b.money += 450; }
-    if (b.money > 1500 && Math.random() < 0.06) { b.money -= 300; b.money += 350; }
-    if (b.money > 2000 && Math.random() < 0.05) { b.money -= 400; b.money += 450; }
-    if (b.money > 2000 && Math.random() < 0.05) { b.money -= 400; b.money += 400; }
-    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 500; b.money += 500; }
-    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 500; b.money += 700; }
-    if (b.money > 2000 && Math.random() < 0.05) { b.money -= 400; b.money += 300; }
-    if (b.money > 1500 && Math.random() < 0.06) { b.money -= 200; b.money += 400; }
-    if (b.money > 4000 && Math.random() < 0.04) { b.money -= 800; b.money += 900; }
     if (b.money > 1500 && Math.random() < 0.06) { b.money -= 300; b.aprov = Math.min(100, b.aprov + 4); }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 200; b.money += 300; }
-    if (b.money > 1500 && Math.random() < 0.06) { b.money -= 300; b.money += 400; }
-    if (b.money > 2000 && Math.random() < 0.06) { b.money -= 400; b.money += 300; }
-    if (b.money > 3000 && Math.random() < 0.04) { b.money -= 600; b.money += 500; }
-    if (b.money > 3000 && Math.random() < 0.04) { b.money -= 600; b.money += 600; }
-    if (b.money > 2000 && Math.random() < 0.06) { b.money -= 400; b.money += 350; }
-    if (b.money > 1500 && Math.random() < 0.06) { b.money -= 300; b.money += 250; }
-    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 500; b.money += 400; }
-    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 500; b.money += 400; }
-    if (b.money > 3500 && Math.random() < 0.04) { b.money -= 700; b.money += 650; }
-    if (b.money > 1500 && Math.random() < 0.06) { b.money -= 300; b.money += 250; }
-    if (b.money > 1500 && Math.random() < 0.06) { b.money -= 300; b.money += 300; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 200; b.money += 250; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 2000 && Math.random() < 0.05) { b.money -= 400; b.money += 350; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 200; b.money += 250; }
-    if (b.money > 3500 && Math.random() < 0.04) { b.money -= 700; b.money += 500; }
-    if (b.money > 3000 && Math.random() < 0.04) { b.money -= 600; b.money += 550; }
-    if (b.money > 3000 && Math.random() < 0.04) { b.money -= 600; b.money += 550; }
-    if (b.money > 5000 && Math.random() < 0.03) { b.money -= 1000; b.money += 800; }
-    if (b.money > 4500 && Math.random() < 0.03) { b.money -= 900; b.money += 700; }
-    if (b.money > 2000 && Math.random() < 0.05) { b.money -= 400; b.money += 350; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 200; }
-    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 500; b.money += 300; }
-    if (b.money > 2000 && Math.random() < 0.05) { b.money -= 400; b.money += 250; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 200; }
-    if (b.money > 1500 && Math.random() < 0.06) { b.money -= 300; b.money += 250; }
-    if (b.money > 2000 && Math.random() < 0.05) { b.money -= 400; b.money += 350; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 200; b.money += 200; }
-    if (b.money > 5000 && Math.random() < 0.03) { b.money -= 1000; b.money += 900; }
-    if (b.money > 6000 && Math.random() < 0.03) { b.money -= 1200; b.money += 900; }
-    if (b.money > 4500 && Math.random() < 0.03) { b.money -= 900; b.money += 700; }
-    if (b.money > 2500 && Math.random() < 0.05) { b.money -= 500; b.money += 400; }
-    if (b.money > 4000 && Math.random() < 0.03) { b.money -= 800; b.money += 700; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 250; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 200; }
-    if (b.money > 1500 && Math.random() < 0.06) { b.money -= 300; b.money += 300; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 200; }
-    if (b.money > 2000 && Math.random() < 0.05) { b.money -= 400; b.money += 350; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 250; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 250; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 200; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 200; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 200; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 250; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 200; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 200; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 250; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 250; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 200; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 250; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 250; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 350; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 350; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 350; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 350; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 250; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 250; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 350; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 250; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 250; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 250; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 250; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 350; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 250; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 250; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 250; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 350; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 250; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 350; }
-    if (b.money > 1000 && Math.random() < 0.06) { b.money -= 200; b.money += 150; }
-    if (b.money > 800 && Math.random() < 0.06) { b.money -= 150; b.money += 200; }
-    if (b.money > 1200 && Math.random() < 0.06) { b.money -= 250; b.money += 300; }
     if ((b.nukeShieldUntil || 0) <= room.turn && b.money > 1500 && Math.random() < 0.05) { b.money -= 400; b.nukeShieldUntil = room.turn + 6; }
     if ((b.debt || 0) > 0 && b.money > 2000 && Math.random() < 0.08) { b.money -= 300; b.debt = Math.max(0, b.debt - 360); }
     if (b.money > 3000 && Math.random() < 0.05 && (b.units.infantaria || 0) < UNIT_MAX) { b.money -= 400; b.units.infantaria = Math.min(UNIT_MAX, (b.units.infantaria || 0) + 2); }
@@ -7491,38 +6831,9 @@ function handleClient(conn) {
    cada lado posiciona suas unidades e, alternando turnos, escolhe
    atacar, mover ou recuar. Quem fica sem unidades perde.
    ============================================================ */
-const BT = {
-  infantaria:   { em:'🪖', nome:'Infantaria',    hp:10, atk:3, def:2, alc:1 },
-  blindados:    { em:'🛡️', nome:'Blindados',     hp:16, atk:5, def:4, alc:1 },
-  artilharia:   { em:'💥', nome:'Artilharia',    hp:8,  atk:6, def:1, alc:3 },
-  aviacao:      { em:'✈️', nome:'Aviação',       hp:10, atk:5, def:2, alc:4 },
-  frota:        { em:'⚓', nome:'Frota',          hp:20, atk:4, def:3, alc:2 },
-  submarinos:   { em:'🌊', nome:'Submarinos',    hp:12, atk:6, def:2, alc:2 },
-  porta_avioes: { em:'🛳️', nome:'Porta-aviões',  hp:25, atk:3, def:5, alc:3 },
-  /* FASE 397 — fuzileiros e defesa aérea existiam na loja mas NÃO existiam na
-     batalha (não estavam em BT): o jogador pagava por uma unidade que nunca lutava. */
-  fuzileiros:   { em:'🪂', nome:'Fuzileiros Navais', hp:14, atk:4, def:3, alc:2 },
-  defesa_aerea: { em:'🎯', nome:'Defesa Aérea',      hp:9,  atk:5, def:2, alc:3 },
-  milicia:      { em:'🔰', nome:'Milícia',       hp:8,  atk:2, def:1, alc:1 },
-};
 /* FASE 381 — COMPOSIÇÃO MILITAR
    Não basta contar tropas: cada tipo é forte contra uns e fraco contra outros.
    Isso faz a composição do exército importar tanto quanto o tamanho. */
-const BT_VANTAGEM = {
-  infantaria:   { contra:['artilharia','submarinos'],  mult:1.35, fraca:['blindados','aviacao','fuzileiros'] },
-  blindados:    { contra:['infantaria','artilharia'],  mult:1.35, fraca:['aviacao'] },
-  artilharia:   { contra:['blindados','infantaria'],   mult:1.30, fraca:['aviacao','frota','fuzileiros'] },
-  aviacao:      { contra:['blindados'],                mult:1.40, fraca:['frota','porta_avioes','defesa_aerea'] },
-  frota:        { contra:['artilharia','aviacao'],     mult:1.25, fraca:['submarinos'] },
-  submarinos:   { contra:['frota','porta_avioes'],     mult:1.45, fraca:['infantaria','aviacao'] },
-  porta_avioes: { contra:['aviacao','submarinos'],     mult:1.20, fraca:['frota','defesa_aerea'] },
-  /* FASE 397 — fuzileiros: infantaria de elite que desembarca e domina infantaria e
-     artilharia no corpo a corpo, mas é frágil contra blindados.
-     Defesa aérea: o predador de tudo que voa (x1,55), inútil contra o chão. */
-  fuzileiros:   { contra:['infantaria','artilharia'],  mult:1.30, fraca:['blindados'] },
-  defesa_aerea: { contra:['aviacao','porta_avioes'],   mult:1.55, fraca:['blindados','infantaria'] },
-  milicia:      { contra:[],                           mult:1.00, fraca:[] }
-};
 function vantagemUnidade(atacante, defensor) {
   const v = BT_VANTAGEM[atacante];
   if (!v) return { mult: 1, tipo: '' };
@@ -7541,7 +6852,6 @@ function resumoComposicao(p) {
   }
   return partes.length ? partes.join(' ') : 'só milícia';
 }
-const BT_COLS = 7, BT_LINHAS = 6;
 const dist = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 
 function btLog(b, msg) { b.log.unshift(msg); if (b.log.length > 40) b.log.length = 40; }
@@ -7875,4 +7185,17 @@ server.on('upgrade', (req, socket) => {
   conn.gz = /(?:^|[?&])gz=1(?:&|$)/.test(String(req.url || ''));
   handleClient(conn);
 });
-server.listen(PORT, '0.0.0.0', () => console.log(`🏛️ Presidente Online (VERSÃO TOTAL) em http://0.0.0.0:${PORT}`));
+/* ---- FASE 403: entry point + export para testes unitários (item 39) ----
+   Só abre a porta quando executado diretamente (`node server.js`). Quando
+   importado via `require` (testes), expõe funções puras e constantes SEM escutar. */
+if (require.main === module) {
+  server.listen(PORT, '0.0.0.0', () => console.log(`🏛️ Presidente Online (VERSÃO TOTAL) em http://0.0.0.0:${PORT}`));
+}
+
+module.exports = {
+  dayMsFor, buildDays, sanitizeName, makeCode, techTree, techName, techDesc, techCost, techLevel,
+  relBetween, relBonus, sectorSum, ownProvinces, leiProd, insumoNecessario, taxaSuprimento,
+  pibDetalhe, empregosOf, pibOf, incomeOf, deltasDe, personaOf, riscoProtesto, pressaoPolitica,
+  TECHS, TECH_COSTS, TECH_MAX, TECH_TREES, SECTORS, MISSIONS, UNIT_COSTS, UNIT_MAX, LEIS, SEG,
+  IDEOLOGIES, RELIGIONS, MINISTERS, PERSONAS, COUNTRIES, SPACE_COSTS, PROD_BUILDS, BUILD_OUT, BUILD_TAB,
+};
