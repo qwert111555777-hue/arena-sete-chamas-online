@@ -1004,3 +1004,7 @@ Três itens de qualidade/refatoração pendentes, executados em sequência:
 
 Regressão completa verde após a refatoração: dias, integração, multiplayer 2 jogadores
 e colonização (colônia fundada) ✅. Sem segredos (`grep rnd_|ghp_` = 0 em código).
+
+**Commits:** `64152da` (refactor modularização + aiTurn + exports) e `2a7f325` (testes + docs).
+**Deploy:** `dep-dainot6q1p3s73crvr0g` → live (commit `2a7f325`). verify-prod: index 568.343 B
+idêntico ao local; `test_mp_prod.js` em produção → 197 jogadores, estado consistente ✅.
