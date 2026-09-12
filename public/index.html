@@ -983,6 +983,7 @@
     <button id="btn-miss" title="Missões do presidente"><span class="rl-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.6"/></svg></span></button>
     <button id="btn-feed" title="Feed mundial — o que importa aconteceu"><span class="rl-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"/></svg></span></button>
     <button id="btn-delta" title="O que mudou desde ontem"><span class="rl-ico"><svg viewBox="0 0 24 24"><path d="M8 4h8v3H8z"/><path d="M16 6h1.5a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1H8"/><path d="M9 12h6M9 16h4"/></svg></span></button>
+    <button id="btn-chat" title="Chat da sala — fale com os outros presidentes"><span class="rl-ico"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/></svg></span></button>
   </div>
   <div id="leftdock">
     <button id="btn-menu" title="Menu"><span class="rl-ico"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span></button>
@@ -1751,7 +1752,7 @@ function handle(m){
   }
   if (m.t === 'sair_ok'){ try { location.reload(); } catch {} return; }
   if (m.t === 'aviso'){ toast(m.msg); return; }
-  if (m.t === 'chat'){ /* chat removido a pedido */ }
+  if (m.t === 'chat'){ onChat(m); return; }
   else if (m.t === 'batalha'){
     bt = m; btSel = null;
     showScreen('scr-batalha'); btRender();
@@ -4671,6 +4672,71 @@ function abrirFeedMundial(){
   ov.onclick = function(e){ if (e.target === ov || e.target.id === 'feed-fechar') ov.remove(); };
 }
 
+/* ---------- FASE 406: CHAT DA SALA ----------
+   Reativado: o servidor já tratava o case 'chat' (valida, trunca em 200 chars,
+   rate-limit 30 msg/3s e payload 2 KB em handleClient) e transmite a todos os
+   jogadores conectados. Aqui só há a UI + renderização segura (textContent,
+   nunca innerHTML — impossível injetar HTML/script pela mensagem). */
+function chatNode(c){
+  const d = document.createElement('div');
+  d.className = 'cmsg';
+  const w = document.createElement('span');
+  w.className = 'who';
+  w.textContent = (c.flag || '🏳️') + ' ' + (c.from || '?') + ': ';
+  d.appendChild(w);
+  d.appendChild(document.createTextNode(String(c.text || '')));
+  return d;
+}
+function renderChatMsgs(box){
+  const log = (state && state.chatLog) || [];
+  box.textContent = '';
+  if (!log.length){
+    const e = document.createElement('div');
+    e.style.cssText = 'text-align:center;opacity:.6;padding:24px 10px;font-size:12.5px;line-height:1.6';
+    e.textContent = 'Nenhuma mensagem ainda. Diga olá aos outros presidentes.';
+    box.appendChild(e);
+    return;
+  }
+  for (const c of log) box.appendChild(chatNode(c));
+}
+function onChat(m){
+  if (!state) return;
+  state.chatLog = state.chatLog || [];
+  state.chatLog.push({ from: m.from, flag: m.flag, text: m.text });
+  if (state.chatLog.length > 100) state.chatLog = state.chatLog.slice(-100);
+  const box = document.getElementById('chat-msgs');
+  if (box){ box.appendChild(chatNode(state.chatLog[state.chatLog.length - 1])); box.scrollTop = box.scrollHeight; }
+}
+function abrirChat(){
+  if (!state){ toast('Entre em um jogo primeiro.', 'info'); return; }
+  const ov = document.createElement('div'); ov.id = 'newspaper'; ov.className = 'feed-ov';
+  const wrap = document.createElement('div');
+  wrap.className = 'paper';
+  wrap.style.cssText = 'width:min(560px,94vw);max-height:84vh;overflow:hidden;background:#0b1220;color:#e6eefc;padding:18px 20px;display:flex;flex-direction:column;';
+  const h = document.createElement('h1'); h.style.fontSize = '18px'; h.textContent = '💬 Chat da Sala';
+  const box = document.createElement('div'); box.id = 'chat-msgs'; box.className = 'chat-msgs';
+  box.style.cssText = 'flex:1; min-height:0; height:260px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; margin:10px 0;';
+  const inp = document.createElement('div'); inp.className = 'chat-input';
+  const field = document.createElement('input');
+  field.type = 'text'; field.maxLength = 200; field.placeholder = 'Mensagem (máx. 200 caracteres)…';
+  const btn = document.createElement('button'); btn.textContent = 'Enviar';
+  btn.style.cssText = 'padding:8px 16px; cursor:pointer;';
+  inp.appendChild(field); inp.appendChild(btn);
+  wrap.appendChild(h); wrap.appendChild(box); wrap.appendChild(inp);
+  ov.appendChild(wrap); document.body.appendChild(ov);
+  const enviar = function(){
+    const v = field.value.replace(/\s+/g,' ').trim();
+    if (!v){ field.focus(); return; }
+    send({ t: 'chat', text: v });
+    field.value = ''; field.focus();
+  };
+  btn.onclick = enviar;
+  field.addEventListener('keydown', function(e){ if (e.key === 'Enter'){ e.preventDefault(); enviar(); } });
+  renderChatMsgs(box);
+  ov.onclick = function(e){ if (e.target === ov) ov.remove(); };
+  setTimeout(function(){ field.focus(); }, 50);
+}
+
 /* ---------- 388 (31): PAINEL "O QUE MUDOU?" ---------- */
 function abrirOQueMudou(){
   const m = me();
@@ -4824,7 +4890,9 @@ const Som = (function(){
     if (f && !f.__lig){ f.__lig = 1; f.onclick = abrirFeedMundial; }
     const d = document.getElementById('btn-delta');
     if (d && !d.__lig){ d.__lig = 1; d.onclick = abrirOQueMudou; }
-    if ((f && d) || ++t > 80) clearInterval(iv);
+    const c = document.getElementById('btn-chat');
+    if (c && !c.__lig){ c.__lig = 1; c.onclick = abrirChat; }
+    if ((f && d && c) || ++t > 80) clearInterval(iv);
   }, 250);
 })();
 

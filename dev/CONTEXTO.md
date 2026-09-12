@@ -1048,3 +1048,22 @@ Implementado `migracaoOf(p)` (puro, testável):
 
 Suite: **57/57** · regressão completa verde (dias/integração/multiplayer/colonização/
 anti-cheat/reconexão). Wire: 686 ações cliente × 718 cases servidor, 0 botões mortos.
+
+## FASE 406 — chat reativado no cliente (paridade cliente/servidor)
+
+O `case 'chat'` já existia no servidor (trunca 200 chars, valida, ecoa a todos os
+conectados; rate limit 30 msg/3s + payload 2 KB no handleClient). O cliente tinha
+o handler apagado (`/* chat removido a pedido */`) — funcionalidade presente no
+servidor mas desativada no cliente. Reativado:
+
+- Botão `btn-chat` no rightrail (HUD) → `abrirChat()` (overlay com lista + input).
+- `onChat(m)`: guarda em `state.chatLog` (cap 100) e anexa no painel aberto.
+- Renderização 100% `textContent`/`createTextNode` (nunca innerHTML) → injeção
+  de HTML/script impossível no cliente.
+- Servidor: defesa em profundidade — strip de caracteres de controle + normaliza
+  espaços antes de ecoar.
+- Input: maxLength 200 + Enter envia + trim; mensagens vazias descartadas.
+
+Testes: `test_chat.js` (2 jogadores, entrega A→B, eco, truncamento 200, vazias
+rejeitadas, spammer desconectado pelo rate limit) ✅; `test_chat_reconnect.js`
+(chat após reconexão) ✅. Regressão completa verde.

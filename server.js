@@ -6859,7 +6859,10 @@ function route(conn, msg) {
     case 'chat': {
       const { room, player } = conn.meta || {};
       if (!room) return;
-      const text = String(msg.text || '').slice(0, 200).trim();
+      /* FASE 406 — sanitização em profundidade: remove caracteres de controle
+         e trunca antes de ecoar. O cliente renderiza com textContent (nunca
+         innerHTML), então injeção de HTML/script é impossível nas duas pontas. */
+      const text = String(msg.text || '').replace(/[\u0000-\u001F\u007F]/g, '').replace(/\s+/g, ' ').slice(0, 200).trim();
       if (!text) return;
       const c = COUNTRY_BY_ID[player.country];
       for (const p of room.players) if (p.conn && p.connected) p.conn.send({ t: 'chat', from: player.name, flag: c ? c.flag : '🏳️', text });
