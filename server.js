@@ -504,6 +504,7 @@ class WSConn {
   // envia JSON já serializado (sem re-serializar) — usado pelo broadcast
   sendText(json) { if (this.closed) return; try { this.socket.write(encodeFrame(json)); } catch (e) { this._close(); } }
   sendBinary(buf) { if (this.closed) return; try { this.socket.write(encodeFrame(buf, 0x2)); } catch (e) { this._close(); } }
+  close() { this._close(); }   /* FASE 400: o route chamava conn.close() (inexistente) -> TypeError silencioso */
 }
 
 /* ---------------- Estado ---------------- */
@@ -592,6 +593,7 @@ function snapshot(room) {
       blockading: p.blockading, blockadedBy: p.blockadedBy,
       units: p.units, builds: p.builds, emergencyUntil: p.emergencyUntil, leis: p.leis, crise: p.crise || null,
       pop: Math.round(p.pop), rec: floorRec(p.rec), xp: p.xp, bot: p.bot, customName: p.customName, customFlag: p.customFlag,
+      persona: p.persona || null,
       pib: p.pib || pibOf(p), empregos: p.empregos || empregosOf(p),
       pibDetalhe: pibDetalhe(p), histRel: (p.histRel && typeof p.histRel === 'object') ? p.histRel : {},
       deltas: p.deltas || {}, estadoVisual: p.estadoVisual || [],
@@ -674,10 +676,25 @@ function addPlayer(room, conn, name, isHost) {
 }
 
 /* ---------------- Fluxo ---------------- */
+/* FASE 400 — PERSONALIDADE DA IA: cada bot nasce com um perfil que muda suas
+   prioridades (guerra, militar, economia, ciência, diplomacia, defesa).
+   Os bots obedecem às mesmas regras do mundo — a persona só redireciona o gasto. */
+const PERSONAS = {
+  expansionista: { nome: 'Expansionista', guerra: 1.9, mil: 1.4, eco: 0.8,  def: 0.6 },
+  economico:     { nome: 'Econômico',     guerra: 0.4, mil: 0.7, eco: 1.8,  def: 0.8 },
+  militarista:   { nome: 'Militarista',   guerra: 1.5, mil: 1.9, eco: 0.7,  def: 1.0 },
+  diplomatico:   { nome: 'Diplomático',   guerra: 0.2, mil: 0.6, eco: 1.0,  def: 0.8 },
+  cientifico:    { nome: 'Científico',    guerra: 0.5, mil: 0.8, eco: 0.9,  def: 0.8 },
+  defensivo:     { nome: 'Defensivo',     guerra: 0.15, mil: 1.1, eco: 1.0, def: 2.0 },
+  oportunista:   { nome: 'Oportunista',   guerra: 1.7, mil: 1.1, eco: 1.0,  def: 0.7 },
+};
+const PERSONA_KEYS = Object.keys(PERSONAS);
+function personaOf(id) { let h = 0; for (const ch of String(id) + 'x') h = (h * 31 + ch.charCodeAt(0)) % 997; return PERSONA_KEYS[h % PERSONA_KEYS.length]; }
 function makeAIBot(c) {
   let h = 0; for (const ch of c.id + 'x') h = (h * 31 + ch.charCodeAt(0)) % 997;
   return {
     id: c.id, name: c.name, country: c.id, bot: true, conn: null, connected: true, color: 0,
+    persona: personaOf(c.id),
     customName: null, customFlag: null, isHost: false,
     money: 10000, eco: 3 + (h % 4), mil: 3 + ((h >> 2) % 4), pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 25, madeira: 0, terras_raras: 12, uranio: 0, borracha: 0, carne: 0 }, xp: 0, blackout: false, depositos: depositosOf(c.id), upgrades: {}, pacts: {},
     aprov: 50, ap: AP_PER_TURN, alive: true, allies: [], eliminatedReason: null,
@@ -759,7 +776,7 @@ function checkVictory(room) {
   if (room.phase !== 'game') return;
   if (!room.marcos) room.marcos = {};
   const alive = room.players.filter(p => p.alive);
-  const marco = (id, p, txt) => { if (p && !room.marcos[id + '_' + p.id]) { room.marcos[id + '_' + p.id] = 1; log(room, `🏆 MARCO: ${cname(p)} — ${txt} (o jogo continua: o mundo é infinito!)`); record(room, `🏆 ${cname(p)}: ${txt}`); } };
+  const marco = (id, p, txt) => { if (p && !room.marcos[id + '_' + p.id]) { room.marcos[id + '_' + p.id] = 1; log(room, `🏆 MARCO: ${cname(p)} — ${txt} (o jogo continua: o mundo é infinito!)`); record(room, `🏆 ${cname(p)}: ${txt}`); salvarJogo(room); } };
   if (room.players.length > 1 && alive.length === 1) marco('unica', alive[0], 'última nação de pé — o mundo é seu!');
   marco('eco', alive.find(p => p.eco >= 60), 'hegemonia econômica (economia 60+)');
   marco('ideo', alive.find(p => p.influencia >= 60), 'hegemonia ideológica (doutrina 60+)');
@@ -1170,6 +1187,10 @@ function atualizarInflacao(p) {
 
 function resolveWeek(room) {
   room.turn++;
+  /* FASE 400 — AUTOSAVE: salva o mundo toda semana (periódico) sem depender do host
+     clicar em "salvar". Só salva se houver humano na sala (não polui o disco). */
+  if (room.players.some(p => !p.bot)) salvarJogo(room);
+
   /* FASE 382 — MERCADO DINÂMICO
      Preço deixa de ser passeio aleatório e passa a refletir oferta, demanda,
      guerra e sanções. Excedente derruba o preço; escassez encarece. */
@@ -1244,6 +1265,22 @@ const MISSIONS = [
   { id: 'maravilha_1',  desc: 'Erga 1 maravilha mundial',               reward: 700, check: p => (p.maravilhas || []).length >= 1 },
   { id: 'vencer_5',     desc: 'Vença 5 batalhas (Coronel)',             reward: 1000, check: p => (p.stats.vitorias || 0) >= 5 },
   { id: 'tesouro_15k',  desc: 'Acumule $15.000 no tesouro (Capitalista)', reward: 800, check: p => p.money >= 15000 },
+  /* FASE 400 — catálogo ampliado (econômicas, militares, políticas, diplomáticas,
+     científicas e espaciais) — item 25 da spec. */
+  { id: 'pib_1k',      desc: 'Eleve seu PIB a $1.000 (Industrial)',            reward: 800, check: p => pibOf(p) >= 1000 },
+  { id: 'mil_30',      desc: 'Alcance 30 de poder militar (General)',           reward: 900, check: p => p.mil >= 30 },
+  { id: 'mil_60',      desc: 'Alcance 60 de poder militar (Marechal)',          reward: 1500, check: p => p.mil >= 60 },
+  { id: 'pop_200',     desc: 'Alcance 200 habitantes (Metrópole)',              reward: 900, check: p => p.pop >= 200 },
+  { id: 'prov_5',      desc: 'Controle 5 províncias (Império)',                 reward: 1000, check: p => ownProvinces(p).length >= 5 },
+  { id: 'eco_30',      desc: 'Economia nível 30 (Potência industrial)',         reward: 900, check: p => p.eco >= 30 },
+  { id: 'influencia_40', desc: 'Alcance 40 de influência (Diplomata)',           reward: 900, check: p => (p.influencia || 0) >= 40 },
+  { id: 'un_3',        desc: 'Vote em 3 resoluções da ONU',                     reward: 500, check: p => (p.stats.votosUn || 0) >= 3 },
+  { id: 'espiao_3',    desc: 'Sabote 3 vezes com sucesso (Espião-mor)',         reward: 800, check: p => (p.stats.sabotagens || 0) >= 3 },
+  { id: 'space_5',     desc: 'Conclua o programa espacial (Astronauta)',        reward: 1200, check: p => (p.space || 0) >= 5 },
+  { id: 'nuclear_5',   desc: 'Domine a bomba (Potência nuclear)',               reward: 1200, check: p => (p.nuclear || 0) >= 5 },
+  { id: 'tratado_3',   desc: 'Tenha 3 acordos comerciais (Mercador)',           reward: 700, check: p => (p.trades || []).length >= 3 },
+  { id: 'leis_5',      desc: 'Aprove 5 leis (Legislador)',                      reward: 800, check: p => (p.leis || []).length >= 5 },
+  { id: 'xp_200',      desc: 'Acumule 200 XP (Veterano)',                       reward: 1000, check: p => (p.xp || 0) >= 200 },
 ];
 
 /* FASE 398 — fonte única dos custos de unidade (antes existiam 3 tabelas diferentes
@@ -1866,6 +1903,16 @@ function aiTurn(room) {
   const botsAlive = room.players.filter(p => p.alive && p.bot).length || 1;
   for (const b of room.players) {
     if (!b.alive || !b.bot) continue;
+    const per = PERSONAS[b.persona] || PERSONAS.economico;
+    /* FASE 400 — a persona redireciona o caixa do bot para a sua prioridade.
+       Todos os efeitos usam dinheiro real do bot (nada de recurso infinito). */
+    if (b.money > 600) {
+      if (per.eco >= 1.5 && b.money > 900) { b.money -= 400; b.eco += 1; }
+      if (per.mil >= 1.5 && b.money > 800) { b.money -= 300; b.mil += 1; }
+      if (per.def >= 1.5 && b.money > 700 && (b.seguranca.defesa || 0) < 3) { b.money -= 350; b.seguranca.defesa = (b.seguranca.defesa || 0) + 1; }
+      if (b.persona === 'cientifico' && b.money > 1000) { const tk = Object.keys(TECHS)[(room.turn + b.id.length) % Object.keys(TECHS).length]; b.techLv = b.techLv || {}; if ((b.techLv[tk] || 0) < 3) { b.techLv[tk]++; b.money -= 200; } }
+      if (b.persona === 'diplomatico' && b.money > 800) { const al = room.players.find(o => o.alive && o !== b && relBetween(b, o) >= 55 && !b.allies.includes(o.id) && !b.wars.includes(o.id)); if (al && b.allies.length < 3) { b.money -= 150; b.allies.push(al.id); al.allies.push(b.id); b.relations[al.id] = 100; al.relations[b.id] = 100; log(room, `🤝 ${cname(b)} (${per.nome}) firmou aliança com ${cname(al)}.`); } }
+    }
     const need = Math.ceil(b.pop / 10) + 10;
     if (b.rec.comida > need + 20) { const q = Math.floor((b.rec.comida - need) / 2); b.rec.comida -= q; b.money += q * room.market.comida; }
     if (b.rec.madeira > 30) { const q = Math.floor(b.rec.madeira / 3); b.rec.madeira -= q; b.money += q * room.market.madeira; }
@@ -2246,7 +2293,7 @@ function aiTurn(room) {
         log(room, `🤝 A IA ${cname(b)} enviou ajuda humanitária para ${cname(em)} (+$200).`);
       }
     }
-    if (room.turn > 20 && humans.length && b.mil >= 8 && Math.random() * botsAlive < 0.08 && room.turn >= room.noWarUntil) {
+    if (room.turn > 20 && humans.length && b.mil >= 8 && Math.random() * botsAlive < 0.08 * per.guerra && room.turn >= room.noWarUntil) {
       const ts = humans.filter(h => !b.allies.includes(h.id) && !b.wars.includes(h.id) && !(((b.pacts && b.pacts[h.id]) || 0) > room.turn) && relBetween(b, h) < 45 && b.mil >= h.mil * 1.75 && h.wars.length < 2 && ownProvinces(h).length > 1 && h.money > 500);
       if (ts.length) {
         const h = ts[Math.floor(Math.random() * ts.length)];
@@ -6464,6 +6511,7 @@ function performAction(room, p, msg) {
           const provs = ownProvinces(target).filter(pr => pr.infra > 0);
           if (provs.length) { const pr = provs[Math.floor(Math.random() * provs.length)]; pr.infra -= 1; log(room, `🧨 Sabotagem de ${cname(p)} destrói infraestrutura em ${pr.name} (${cname(target)})!`); }
           else { target.mil = Math.max(1, target.mil - 3); log(room, `🧨 Sabotagem de ${cname(p)} danifica o arsenal de ${cname(target)} (-3 militar)!`); }
+          p.stats.sabotagens = (p.stats.sabotagens || 0) + 1;
           bumpRel(p, target, -5);
         }
       } else if (r < chance + Math.max(0.1, 0.3 - 0.05 * sAtk)) { p.aprov = Math.max(0, p.aprov - 5); target.aprov = Math.min(100, target.aprov + 2); log(room, `🚨 ${cname(p)} foi EXPOSTO sabotando ${cname(target)}!`); bumpRel(p, target, -10); }
@@ -7148,6 +7196,8 @@ function handleDisconnect(conn) {
     player.connected = false; player.conn = null; player.disconnectedAt = Date.now();
     log(room, `📴 ${player.name} perdeu a conexão (tem ${Math.round(ABANDON_MS / 60000)} min para voltar).`);
     if (room.hostId === player.id) { const next = room.players.find(p => p.connected); if (next) room.hostId = next.id; }
+    /* FASE 400 — momento crítico: salvar quando o anfitrião cai, para não perder o mundo */
+    salvarJogo(room);
     if (!room.players.some(p => p.connected)) { if (room.timer) clearInterval(room.timer); rooms.delete(room.code); return; }
     broadcast(room);
   }
@@ -7314,6 +7364,7 @@ function route(conn, msg) {
       if (!room || room.phase !== 'game' || !room.un || !player.alive) return;
       if (room.un.votes[player.id] != null) return;
       room.un.votes[player.id] = !!msg.accept;
+      player.stats.votosUn = (player.stats.votosUn || 0) + 1;
       log(room, `${cname(player)} votou ${msg.accept ? 'A FAVOR' : 'CONTRA'} na ONU.`);
       const alive = room.players.filter(p => p.alive);
       if (alive.every(p => room.un.votes[p.id] != null)) resolveUN(room); else broadcast(room);
