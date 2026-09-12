@@ -593,7 +593,7 @@ function snapshot(room) {
       blockading: p.blockading, blockadedBy: p.blockadedBy,
       units: p.units, builds: p.builds, emergencyUntil: p.emergencyUntil, leis: p.leis, crise: p.crise || null,
       pop: Math.round(p.pop), rec: floorRec(p.rec), xp: p.xp, bot: p.bot, customName: p.customName, customFlag: p.customFlag,
-      persona: p.persona || null, ciencia: p.ciencia || 0,
+      persona: p.persona || null, ciencia: p.ciencia || 0, colonias: p.colonias || [],
       pib: p.pib || pibOf(p), empregos: p.empregos || empregosOf(p),
       pibDetalhe: pibDetalhe(p), histRel: (p.histRel && typeof p.histRel === 'object') ? p.histRel : {},
       deltas: p.deltas || {}, estadoVisual: p.estadoVisual || [],
@@ -667,7 +667,7 @@ function addPlayer(room, conn, name, isHost) {
     space: 0, relations: {}, embassies: [], trades: [], blockading: [], blockadedBy: [],
     units: { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0, fuzileiros: 0, defesa_aerea: 0 }, builds: [], emergencyUntil: 0, leis: [],
     seguranca: { defesa: 0, secreto: 0, policia: 0, guarda: 0 },
-    espioes: 1,
+    espioes: 1, colonias: [],
   };
   conn.meta = { room, player: p };
   room.players.push(p);
@@ -709,7 +709,7 @@ function makeAIBot(c) {
     buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0, mandatos: 0, conversoes: 0, doutrinacoes: 0, titulos: 0 }, famine: false,
     ideology: Object.keys(IDEOLOGIES)[h % 6], religion: Object.keys(RELIGIONS)[h % 5],
     seguranca: { defesa: h % 2, secreto: (h >> 1) % 2, policia: (h >> 2) % 3, guarda: (h >> 3) % 2 },
-    espioes: 1,
+    espioes: 1, colonias: [],
   };
 }
 
@@ -733,7 +733,7 @@ function startGame(room) {
     p.techs = []; p.techLv = {}; p.sectors = { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0, infraestrutura: 0, ciencia: 0 };
     p.space = 0; p.pollution = 10; p.relations = {}; p.embassies = []; p.trades = []; p.blockading = []; p.blockadedBy = [];
     p.units = { blindados: 0, aviacao: 0, frota: 0, infantaria: 0, artilharia: 0, submarinos: 0, porta_avioes: 0, fuzileiros: 0, defesa_aerea: 0 }; p.builds = []; p.emergencyUntil = 0; p.leis = [];
-    p.seguranca = { defesa: 0, secreto: 0, policia: 0, guarda: 0 }; p.espioes = 1;
+    p.seguranca = { defesa: 0, secreto: 0, policia: 0, guarda: 0 }; p.espioes = 1; p.colonias = [];
   });
   for (let i = 0; i < room.players.length; i++) for (let j = i + 1; j < room.players.length; j++) {
     room.players[i].relations[room.players[j].id] = 50; room.players[j].relations[room.players[i].id] = 50;
@@ -787,6 +787,7 @@ function checkVictory(room) {
   /* FASE 401 — vitórias científica e espacial (item 28): integrar ciência/espaço ao sistema de marcos. */
   marco('ciencia', alive.find(p => (p.ciencia || 0) >= 50 || ((p.techs || []).length >= 30)), 'potência científica (50+ ciência ou 30+ tecnologias)');
   marco('espaco', alive.find(p => (p.space || 0) >= 5), 'conquistou o espaço (programa espacial completo)');
+  marco('colonias', alive.find(p => (p.colonias || []).length >= 2), 'império interplanetário (2+ colônias)');
   const supM = room.players.length > 1 && alive.length === 1 ? alive[0] : null;
   const supR = alive.find(p => p.religion && p.religion !== 'laico' && alive.length > 1 && alive.every(o => o.religion === p.religion));
   const supI = alive.find(p => p.ideology && alive.length > 1 && alive.every(o => o.ideology === p.ideology));
@@ -863,6 +864,7 @@ function incomeOf(room, p) {
     + p.trades.length * 20
     + ((p.sectors && p.sectors.turismo) || 0) * 15
     + (p.space >= 5 ? 130 : p.space >= 4 ? 80 : p.space >= 3 ? 30 : 0)
+    + ((p.colonias || []).reduce((s, c) => s + 20 + 15 * c.infra + Math.floor(c.pop / 10), 0))
     + sectorSum(p) * 2
     + relBonus(p);
   base += 20 * techLevel(p, 'valor_agreg');
@@ -971,6 +973,15 @@ function dayTick(room) {
       if (b.kind === 'espacial' && p.space < 5) { p.space += 1; p.aprov = Math.min(100, p.aprov + 2); log(room, `🚀 ${cname(p)} conclui etapa do programa espacial (nível ${p.space}).`); }
       if (PROD_NAMES[b.kind]) { p.buildings[b.kind] = (p.buildings[b.kind] || 0) + 1; p.stats.construidas++; log(room, `${PROD_NAMES[b.kind]} construíd${b.kind === 'mina' ? 'a' : 'o'} em ${cname(p)}.`); }
       if (b.kind === 'infra' || b.kind === 'nuclear') p.stats.construidas++;
+    }
+    /* FASE 402 — colônias crescem devagar e pedem manutenção (integração real) */
+    if (p.colonias && p.colonias.length) {
+      for (const c of p.colonias) {
+        c.pop += (0.5 + 0.5 * c.infra) / DAY_DIV;   // crescimento populacional da colônia
+        const custo = 1 * c.infra / DAY_DIV;         // manutenção
+        p.money -= custo;
+        if (p.money < 0) p.money = 0;
+      }
     }
     p.money += incomeOf(room, p) / DAY_DIV;
     if (p.dividas && p.dividas.length) { const due = p.dividas.filter(d => room.day >= d.dia); p.dividas = p.dividas.filter(d => room.day < d.dia); for (const d of due) { const cr = room.players.find(x => x.id === d.to); const pag = Math.min(Math.max(0, p.money), d.valor); p.money -= pag; if (cr && cr.alive) { cr.money += pag; if (pag >= d.valor) { bumpRel(p, cr, 3); log(room, `💸 ${cname(p)} quitou o empréstimo de ${cname(cr)} ($${pag}).`); } else { bumpRel(p, cr, -10); log(room, `⚠️ ${cname(p)} deu CALOTE em ${cname(cr)} (pagou $${pag} de $${d.valor}, −10 relações)!`); } } } }
@@ -1280,6 +1291,7 @@ const MISSIONS = [
   { id: 'un_3',        desc: 'Vote em 3 resoluções da ONU',                     reward: 500, check: p => (p.stats.votosUn || 0) >= 3 },
   { id: 'espiao_3',    desc: 'Sabote 3 vezes com sucesso (Espião-mor)',         reward: 800, check: p => (p.stats.sabotagens || 0) >= 3 },
   { id: 'space_5',     desc: 'Conclua o programa espacial (Astronauta)',        reward: 1200, check: p => (p.space || 0) >= 5 },
+  { id: 'colonia_1',   desc: 'Funde uma colônia espacial (Colonizador)',         reward: 1500, check: p => (p.colonias || []).length >= 1 },
   { id: 'nuclear_5',   desc: 'Domine a bomba (Potência nuclear)',               reward: 1200, check: p => (p.nuclear || 0) >= 5 },
   { id: 'tratado_3',   desc: 'Tenha 3 acordos comerciais (Mercador)',           reward: 700, check: p => (p.trades || []).length >= 3 },
   { id: 'leis_5',      desc: 'Aprove 5 leis (Legislador)',                      reward: 800, check: p => (p.leis || []).length >= 5 },
@@ -6413,6 +6425,30 @@ function performAction(room, p, msg) {
       if (!spend(p, 2, SPACE_COSTS[p.space + p.builds.filter(b=>b.kind==='espacial').length])) return;
       p.builds.push({ kind: 'espacial', untilDay: room.day + 12 });
       log(room, `🚀 ${cname(p)} inicia etapa do programa espacial (conclui no próximo turno).`);
+      break;
+    }
+    case 'colonizar': {
+      /* FASE 402 — COLONIZAÇÃO (itens 20/21): fundar uma colônia em Marte/Lua depois
+         de concluir o programa espacial (space 5). A colônia tem população, infra e
+         manutenção próprias, cresce no tick e rende ao país. */
+      if ((p.space || 0) < 5) { err(p.conn, '🚀 Conclua o programa espacial (nível 5) antes de colonizar outros mundos.'); return; }
+      const destinos = { marte: '🔴 Marte', lua: '🌙 Lua', europa: '🧊 Europa' };
+      const dst = destinos[msg.destino] ? msg.destino : 'marte';
+      if ((p.colonias || []).some(c => c.destino === dst)) { err(p.conn, 'Você já tem uma colônia nesse destino.'); return; }
+      if (!spend(p, 2, 3000)) return;
+      p.colonias = p.colonias || [];
+      p.colonias.push({ destino: dst, pop: 5, infra: 1, fundadoEm: room.day });
+      log(room, `🚀🪐 ${cname(p)} FUNDOU uma colônia em ${destinos[dst]}! (+5 habitantes, +infraestrutura extraterrestre).`);
+      record(room, `🚀 ${cname(p)} fundou colônia em ${destinos[dst]} (dia ${room.day}).`);
+      break;
+    }
+    case 'colonia_up': {
+      const c = (p.colonias || []).find(x => x.destino === msg.destino);
+      if (!c) { err(p.conn, 'Colônia não encontrada.'); return; }
+      if (c.infra >= 5) { err(p.conn, 'Colônia já no nível máximo.'); return; }
+      if (!spend(p, 1, 800)) return;
+      c.infra += 1;
+      log(room, `🪐 ${cname(p)} amplia a colônia de ${c.destino} (infraestrutura ${c.infra}).`);
       break;
     }
     case 'imposto': p.taxRate = Math.max(0, Math.min(2, msg.value | 0)); log(room, `🧾 ${cname(p)} ajusta impostos para ${['baixa', 'média', 'alta'][p.taxRate]}.`); break;
