@@ -1,0 +1,105 @@
+/* FASE 403 — SUITE DE TESTES UNITÁRIOS (item 39 da spec)
+   Testa funções puras e constantes do servidor, sem rede (require direto).
+   Rode com:  node test/unit.test.js
+   Saída: linhas ✅/❌ + resumo. Exit code 0 = tudo verde. */
+'use strict';
+const s = require('../server.js');
+
+let pass = 0, fail = 0;
+const failures = [];
+function ok(nome, cond) {
+  if (cond) { pass++; console.log('  ✅ ' + nome); }
+  else { fail++; failures.push(nome); console.log('  ❌ ' + nome); }
+}
+function section(t) { console.log('\n■ ' + t); }
+
+/* ---------- TEMPO ---------- */
+section('TEMPO');
+ok('dayMsFor(1) = 3000', s.dayMsFor(1) === 3000);
+ok('dayMsFor(2) = 1500', s.dayMsFor(2) === 1500);
+ok('dayMsFor(3) = 1000', s.dayMsFor(3) === 1000);
+ok('dayMsFor(5) = 600', s.dayMsFor(5) === 600);
+ok('dayMsFor(999 inválido) = 3000', s.dayMsFor(999) === 3000);
+
+/* ---------- CONSTRUÇÃO ---------- */
+section('CONSTRUÇÃO (buildDays)');
+ok('buildDays está entre 1 e 30', (() => { const d = s.buildDays(500, null); return d >= 1 && d <= 30; })());
+ok('buildDays é inteiro', Number.isInteger(s.buildDays(300, null)));
+
+/* ---------- SANITIZAÇÃO ---------- */
+section('SEGURANÇA (sanitizeName)');
+ok('remove caracteres perigosos', s.sanitizeName('<script>alert(1)</script>') === 'scriptalert1script');
+ok('trunca em 18 chars', s.sanitizeName('A'.repeat(50)).length <= 18);
+ok('vazio vira Presidente', s.sanitizeName('') === 'Presidente');
+ok('mantém acentos e espaços', s.sanitizeName('João Silva') === 'João Silva');
+
+/* ---------- TECNOLOGIA ---------- */
+section('TECNOLOGIA');
+ok('TECH_COSTS correto', JSON.stringify(s.TECH_COSTS) === JSON.stringify([50, 99, 198, 396, 797]));
+ok('techCost(0) = 50', s.techCost(0) === 50);
+ok('techCost(4) = 797', s.techCost(4) === 797);
+ok('techCost(fora do range) = 797', s.techCost(999) === 797);
+ok('techLevel jogador sem techLv = 0', s.techLevel({}, 'infra') === 0);
+ok('techLevel jogador com techLv = N', s.techLevel({ techLv: { infra: 3 } }, 'infra') === 3);
+ok('techName de tech inexistente devolve a chave', s.techName('zzz') === 'zzz');
+ok('TECHS tem 125 tecnologias', Object.keys(s.TECHS).length === 125);
+ok('TECH_TREES tem 5 árvores', s.TECH_TREES.length === 5);
+
+/* ---------- RELAÇÕES ---------- */
+section('RELAÇÕES (relBetween)');
+ok('relação default = 50', s.relBetween({ id: 'a', relations: {} }, { id: 'b' }) === 50);
+ok('relação explícita é respeitada', s.relBetween({ id: 'a', relations: { b: 80 } }, { id: 'b' }) === 80);
+
+/* ---------- SETORES / PROVÍNCIAS ---------- */
+section('SETORES / PROVÍNCIAS');
+ok('sectorSum soma os 9 setores', s.sectorSum({ sectors: { educacao: 1, saude: 1, cultura: 1, esportes: 1, habitacao: 1, justica: 1, turismo: 1, infraestrutura: 1, ciencia: 1 } }) === 9);
+ok('ownProvinces filtra por dono', s.ownProvinces({ id: 'p1', provinces: [{ owner: 'p1' }, { owner: 'p2' }, { owner: 'p1' }] }).length === 2);
+ok('SECTORS tem 9 setores', s.SECTORS.length === 9);
+
+/* ---------- MISSÕES ---------- */
+section('MISSÕES');
+ok('MISSIONS tem 37 missões', s.MISSIONS.length === 37);
+ok('toda missão tem id/desc/reward/check', s.MISSIONS.every(m => m.id && m.desc && typeof m.reward === 'number' && typeof m.check === 'function'));
+
+/* ---------- UNIDADES ---------- */
+section('UNIDADES');
+ok('UNIT_COSTS tem 9 unidades', Object.keys(s.UNIT_COSTS).length === 9);
+ok('UNIT_MAX = 3', s.UNIT_MAX === 3);
+ok('todas as unidades têm custo positivo', Object.values(s.UNIT_COSTS).every(c => c > 0));
+
+/* ---------- PERSONAS ---------- */
+section('PERSONAS DE IA');
+ok('7 personas', Object.keys(s.PERSONAS).length === 7);
+const p1 = s.personaOf('br'), p2 = s.personaOf('br');
+ok('personaOf é determinística', p1 === p2);
+ok('personaOf retorna chave válida', p1 in s.PERSONAS);
+const variedade = new Set(['br','us','ru','cn','gb','fr','de','in','jp','mx'].map(id => s.personaOf(id)));
+ok('personaOf tem variedade entre países', variedade.size >= 2);
+
+/* ---------- ECONOMIA (mock) ---------- */
+section('ECONOMIA (pibOf/incomeOf)');
+const mk = () => ({
+  id: 'pX', money: 10000, eco: 3, mil: 3, aprov: 50, ap: 4, alive: true,
+  allies: [], sanctioning: [], sanctionedBy: [], blockading: [], blockadedBy: [], wars: [],
+  provinces: [{ name: 'Capital', infra: 1, owner: 'pX', origem: 'pX' }],
+  buildings: { fazenda: 0, mina: 0, usina: 0 }, stats: {}, builds: [],
+  rec: { comida: 10, minerio: 10, energia: 10, concreto: 25, madeira: 10, terras_raras: 12, uranio: 0, borracha: 0, carne: 0 },
+  pop: 0, xp: 0, techLv: {}, techs: [], sectors: { educacao: 0, saude: 0, cultura: 0, esportes: 0, habitacao: 0, justica: 0, turismo: 0, infraestrutura: 0, ciencia: 0 },
+  space: 0, colonias: [], embassies: [], trades: [], ministers: { eco: null, def: null, dip: null, soc: null },
+  ideology: null, religion: 'laico', leis: [], taxes: { corp: 10, rend: 10, prod: 10, amb: 5 }, budget: { exe: 1, int: 1, tra: 1, edu: 1, ambm: 1 },
+  taxRate: 1, debt: 0, nuclear: 0, influencia: 0, fe: 0, relations: {}, depositos: [], upgrades: {}, pacts: {}, seguranca: { defesa: 0, secreto: 0, policia: 0, guarda: 0 }, espioes: 1,
+  emergencyUntil: 0, maravilhas: [], suprimento: null, pib: null, empregos: null, inflacao: 0,
+});
+const room = { embargo: null, bloqueio: null, turn: 1, invernoUntil: 0, market: { comida: 8 } };
+ok('pibOf retorna número finito', Number.isFinite(s.pibOf(mk())));
+ok('empregosOf retorna número finito', Number.isFinite(s.empregosOf(mk())));
+ok('incomeOf retorna número finito', Number.isFinite(s.incomeOf(room, mk())));
+ok('taxaSuprimento retorna número 0..1', (() => { const v = s.taxaSuprimento(mk()); return v >= 0 && v <= 1; })());
+ok('pibDetalhe retorna objeto', typeof s.pibDetalhe(mk()) === 'object');
+
+/* ---------- RESULTADO ---------- */
+console.log('\n══════════════════════════════');
+console.log('RESULTADO: ' + pass + ' passaram · ' + fail + ' falharam');
+if (fail) { console.log('FALHAS:'); failures.forEach(f => console.log('  - ' + f)); process.exit(1); }
+console.log('✅ TODOS OS TESTES UNITÁRIOS PASSARAM');
+process.exit(0);

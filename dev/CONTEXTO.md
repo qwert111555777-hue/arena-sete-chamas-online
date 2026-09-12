@@ -983,3 +983,24 @@ Commit + deploy `dep-daineflg1s2s7381tsl0` → live.
 Painel do programa espacial agora tem seção "COLÔNIAS" quando `space>=5`: lista
 colônias (destino/infra/pop), botão "Ampliar" e botões de fundar (Marte/Lua/Europa),
 todos ligados ao backend. verify-prod 568.343 B idêntico ao local.
+
+## FASE 403 — refatoração final: testes, aiTurn, modularização (2026-09-12)
+
+Três itens de qualidade/refatoração pendentes, executados em sequência:
+
+1. **Suite unitária formal (item 33):** `test/unit.test.js` com **39 testes** sobre as
+   funções puras exportadas (tech, relações, setores, economia, inflação, sanidade,
+   colonização…). `node test/unit.test.js` → 39 passaram, 0 falharam. `server.js` ganhou
+   guard `require.main === module` + `module.exports` no final (não escuta porta quando
+   importado; exporta ~40 símbolos).
+2. **Refatoração `aiTurn`:** removidas 209 linhas de churn (`if (b.money > X &&
+   Math.random() < Y) { b.money -= A; b.money += B; }`) — de 425 para 216 linhas — e
+   substituída por economia determinística única no início do loop de bots:
+   `b.money += round(min(150, eco*3 + trades*20 + províncias*5) * per.eco)`.
+3. **Modularização:** blocos de dados puros (COUNTRIES, TECHS, SECTORS, LEIS, SEG,
+   BUILDINGS, MISSIONS, UNIDADES, PERSONAS, FEED, UN…) extraídos byte-a-byte para
+   `lib/data/*.js` (script `dev/refactor_extract.py`). `server.js` caiu de 7687 → 7202
+   linhas; paridade de dados verificada (34 chaves idênticas via JSON).
+
+Regressão completa verde após a refatoração: dias, integração, multiplayer 2 jogadores
+e colonização (colônia fundada) ✅. Sem segredos (`grep rnd_|ghp_` = 0 em código).
