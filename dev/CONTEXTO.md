@@ -909,3 +909,31 @@ diplomacia, organizações, espionagem, nuclear, espaço, colonização, comérc
 jornal, missões, IA (perfis), tempo, vitórias, rankings, persistência/autosave,
 testes de manipulação. A maioria dos sistemas JÁ existe no código — o trabalho é
 consertar/endurecer/completar e conectar (matriz em handover `AUDITORIA-FASE1`).
+
+## FASE 400 — autosave + personas de IA + missões + anti-cheat (2026-09-12)
+
+Commit `036a77c`, deploy `dep-dain4315efls73e73to0` → live. Continuando "faça tudo sem parar".
+
+**Entregue:**
+1. **Autosave (item 32):** salva o mundo automaticamente toda semana (`resolveWeek`),
+   em marcos de vitória (`checkVictory`) e quando o anfitrião cai (`handleDisconnect`).
+   Antes só salvava por clique manual do host. Confirmado: arquivos `saves/*.json`
+   sendo gerados automaticamente (~1 MB cada, JSON válido).
+2. **Personas de IA (item 26):** 7 perfis determinísticos (expansionista, econômico,
+   militarista, diplomático, científico, defensivo, oportunista) via `personaOf(id)`,
+   expostos no snapshot (`persona`). Redirecionam o gasto do bot e o gate de guerra
+   (`0.08 * per.guerra`). Verificado: 7 personas distintas entre os 195 bots, local e produção.
+3. **Missões ampliadas (item 25):** +14 missões (PIB 1k, mil 30/60, pop 200, 5 províncias,
+   eco 30, influência 40, votar ONU ×3, sabotar ×3, espaço 5, nuclear 5, 3 tratados,
+   5 leis, XP 200). Stats novas: `votosUn` e `sabotagens` rastreadas nos handlers.
+4. **Anti-cheat (item 42):** `test_anticheat.js` — ação fantasma, target inválido,
+   spam além do AP, alvo = si mesmo. Local: tudo rejeitado (AP nunca negativo,
+   dinheiro/mil exatos). Produção: invariantes mantidas (latência só atrasou a contagem).
+5. **fix:** `WSConn.close()` adicionado — `route` chamava `conn.close()` inexistente
+   (TypeError silencioso no fluxo "sair").
+
+**Testes:** regressão smoke_day/fundar/smoke/fe verdes; persona + anti-cheat local verdes.
+node-check duplo OK. verify-prod 566.232 B idêntico ao local.
+
+**Próximo:** continuar a fila — auditoria de segurança caso a caso dos 715 handlers,
+testes de integração completos, e revisão dos sistemas restantes (rankings, vitórias).
