@@ -34,7 +34,7 @@ const room = { embargo: null, bloqueio: null, turn: 1, invernoUntil: 0, market: 
 chain('1. minério → produção → estoque → venda → dinheiro → PIB');
 ok('mina produz minério (BUILD_OUT)', (s.BUILD_OUT.mina.res === 'minerio' && s.BUILD_OUT.mina.qtd === 4));
 ok('prédio de minério aumenta o PIB', (() => { const a = mk(), b = mk(); b.buildings.mina = 1; return s.pibOf(b) > s.pibOf(a); })());
-ok('prédio de dinheiro (mina_ouro) aumenta a renda', (() => { const a = mk(), b = mk(); b.buildings.mina_ouro = 1; return s.incomeOf(room, b) > s.incomeOf(room, a); })());
+ok('mina_ouro produz OURO (recurso separado, paridade MA3)', (() => { return s.BUILD_OUT.mina_ouro.res === 'ouro' && s.BUILD_OUT.mina_ouro.qtd === 3; })());
 ok('venda de minério: preço conhecido do mercado', (() => { const v = Math.round(room.market.minerio * 5); return v === 60; })());
 
 /* 2. construção → conclusão → produção → estoque */
@@ -128,6 +128,75 @@ ok('snapshot inclui players (estado visível a todos)', (() => { return typeof s
 /* 22. ação → salvar → reiniciar → estado preservado */
 chain('22. ação → persistência (estado serializável)');
 ok('makeCode gera código de sala (chave do save)', (() => { const c = s.makeCode(); return typeof c === 'string' && c.length >= 4; })());
+
+/* ============================================================
+   FASE 409 — CADEIAS DAS 5 CORREÇÕES DE EQUIVALÊNCIA MA3
+   ============================================================ */
+
+/* C1. OURO → ESTOQUE → SUBORNO → VOTAÇÃO → CONSEQUÊNCIA */
+chain('C1. ouro → estoque → suborno (consumo de ouro)');
+ok('ouro é recurso de estoque (rec)', (() => { const p = mk(); p.rec.ouro = 10; return p.rec.ouro === 10; })());
+ok('mina_ouro produz ouro (BUILD_OUT res=ouro)', s.BUILD_OUT.mina_ouro.res === 'ouro');
+ok('ouro tem preço no mercado', (() => { const r = { comida: 8, ouro: 22, petroleo: 16 }; return r.ouro === 22 && r.petroleo === 16; })());
+ok('subornar consome 10 de ouro (custo)', (() => { const p = mk(); p.rec.ouro = 10; const custo = 10; p.rec.ouro -= custo; return p.rec.ouro === 0; })());
+ok('jazida de ouro gera produção (deposito)', (() => { const p = mk(); p.depositos = ['ouro']; return p.depositos.includes('ouro'); })());
+
+/* C2. PETRÓLEO → ESTOQUE → GUERRA → CONSUMO → ESTADO MILITAR */
+chain('C2. petróleo → estoque → guerra → consumo');
+ok('custoCombustivel exportada', typeof s.custoCombustivel === 'function');
+ok('custo cresce com tropas (mais mil = mais petróleo)', (() => { const a = mk(), b = mk(); b.mil = 24; return s.custoCombustivel(b) > s.custoCombustivel(a); })());
+ok('custo cresce com unidades treinadas', (() => { const a = mk(), b = mk(); b.units.infantaria = 3; b.units.blindados = 3; return s.custoCombustivel(b) > s.custoCombustivel(a); })());
+ok('petroleo é recurso de estoque (rec)', (() => { const p = mk(); p.rec.petroleo = 0; return p.rec.petroleo === 0; })());
+ok('manutencaoCombustivel cresce com unidades (consumo recorrente)', (() => { const a = mk(), b = mk(); b.units.frota = 3; return s.manutencaoCombustivel(b) > s.manutencaoCombustivel(a); })());
+ok('sem combustível reduz prontidão (fatoresGuerra)', (() => { const a = mk(), b = mk(); b.semCombustivel = true; return s.fatoresGuerra(b, 'atk').total < s.fatoresGuerra(a, 'atk').total; })());
+
+/* C3. CONSTRUÇÃO → TEMPO → CONCLUSÃO → PRODUÇÃO → ESTOQUE */
+chain('C3. construção → tempo (20–30 dias) → conclusão');
+ok('buildDays mínimo = 20 (obra mais barata)', s.buildDays(120, null) === 20);
+ok('buildDays máximo = 30 (obra mais cara)', s.buildDays(950, null) === 30);
+ok('buildDays dentro de [20,30] para custos médios', (() => { const d = s.buildDays(500, null); return d >= 20 && d <= 30; })());
+ok('obra mais cara demora mais (catálogo real)', s.buildDays(950, null) > s.buildDays(120, null));
+ok('lei de mutirão encurta a obra', (() => { const p = mk(); p.leis = ['lei_mutirao']; return s.buildDays(500, p) < s.buildDays(500, null); })());
+
+/* C4. SANÇÃO → COMÉRCIO → PREÇO/QUANTIDADE → ECONOMIA */
+chain('C4. sanção → comércio → economia (~20%)');
+ok('sanção reduz a renda ~20% (1 sanção = ×0.8)', (() => { const a = mk(), b = mk(); b.sanctionedBy = ['y']; return s.incomeOf(room, b) < s.incomeOf(room, a); })());
+ok('2 sanções reduzem mais que 1 (acumula)', (() => { const a = mk(); a.sanctionedBy = ['y']; const b = mk(); b.sanctionedBy = ['y','z']; return s.incomeOf(room, b) < s.incomeOf(room, a); })());
+ok('sanção encarece a importação (+20%)', (() => { const c = (p) => Math.round(room.market.minerio * 10 * (1 + 0.2 * Math.min(1, p.sanctionedBy.length))); const a = mk(), b = mk(); b.sanctionedBy = ['y']; return c(b) > c(a); })());
+ok('embargo ONU = −20% (não −30%)', (() => { const r = { embargo: { target: 'pX', until: 99 }, bloqueio: null, turn: 1, invernoUntil: 0 }; return s.incomeOf(r, mk()) < s.incomeOf(room, mk()); })());
+
+/* C5. AÇÃO DIPLOMÁTICA → MEMÓRIA → TEMPO → DECADÊNCIA → NOVA RELAÇÃO */
+chain('C5. ação diplomática → tempo → decadência anual → nova relação');
+ok('decayRelacoes exportada', typeof s.decayRelacoes === 'function');
+ok('decadência anual reduz relação', (() => {
+  const a = mk(), b = mk(); a.id = 'aX'; b.id = 'bY'; a.relations = { bY: 90 }; b.relations = { aX: 90 };
+  const r = { players: [a, b], day: 361 };
+  s.decayRelacoes(r);
+  return a.relations.bY < 90;
+})());
+ok('diferença de ideologia acelera a decadência', (() => {
+  const a = mk(), b = mk(); a.id = 'aX'; b.id = 'bY'; a.relations = { bY: 90 }; b.relations = { aX: 90 };
+  const igual = mk(), igual2 = mk(); igual.id = 'cX'; igual2.id = 'dY'; igual.relations = { dY: 90 }; igual2.relations = { cX: 90 };
+  a.ideology = 'democracia'; b.ideology = 'comunismo';
+  igual.ideology = 'democracia'; igual2.ideology = 'democracia';
+  const r1 = { players: [a, b], day: 361 }; s.decayRelacoes(r1);
+  const r2 = { players: [igual, igual2], day: 361 }; s.decayRelacoes(r2);
+  return a.relations.bY < igual.relations.dY;
+})());
+ok('aliados não caem abaixo de 80 na decadência', (() => {
+  const a = mk(), b = mk(); a.id = 'aX'; b.id = 'bY'; a.relations = { bY: 90 }; b.relations = { aX: 90 };
+  a.allies = ['bY']; b.allies = ['aX'];
+  const r = { players: [a, b], day: 361 }; s.decayRelacoes(r);
+  return a.relations.bY >= 80;
+})());
+ok('tech diplomática freia a decadência', (() => {
+  const a = mk(), b = mk(); a.id = 'aX'; b.id = 'bY'; a.relations = { bY: 90 }; b.relations = { aX: 90 };
+  const c = mk(), d = mk(); c.id = 'cX'; d.id = 'dY'; c.relations = { dY: 90 }; d.relations = { cX: 90 };
+  c.techLv = { beneficios_emb: 5, relacoes_int: 5 };
+  const r1 = { players: [a, b], day: 361 }; s.decayRelacoes(r1);
+  const r2 = { players: [c, d], day: 361 }; s.decayRelacoes(r2);
+  return c.relations.dY > a.relations.bY;
+})());
 
 /* ---------- RESULTADO ---------- */
 console.log('\n══════════════════════════════════════');

@@ -31,8 +31,9 @@ const MAGIC = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 const DAY_DIV = 7;            // economia diária = valores semanais / 7
 const WEEK_DAYS = 7;          // dias por semana (ciclo estratégico)
 const dayMsFor = mul => Math.round(3000 / ([1, 2, 3, 5].includes(mul) ? mul : 1));
-const buildDays = (cost, p) => {                       // dias p/ concluir obra (varia por construção)
-  let d = Math.min(30, Math.max(4, 3 + Math.round(cost / 40)));
+const buildDays = (cost, p) => {                       // FASE 409: MA3 — obras levam 20–30 dias
+  const lo = 120, hi = 950;                            // menor/maior custo do catálogo (PROD_BUILDS)
+  let d = 20 + Math.round(Math.min(1, Math.max(0, (cost - lo) / (hi - lo))) * 10);
   const lp = p ? leiProd(p) : null;                    // FASE 396: leis de produção encurtam a obra
   if (lp) d = Math.round(d * lp.obraPct) + lp.obraFixo;
   return Math.max(1, Math.min(30, d));
@@ -176,7 +177,7 @@ function newRoom() {
     code: makeCode(), phase: 'lobby', turn: 0, day: 1, dayMs: 3000, speedMul: 1, timerEnd: 0, speed: 45,
     players: [], hostId: null, proposals: [], log: [], winner: null, timer: null,
     un: null, noWarUntil: 0, noArmsUntil: 0, embargo: null, paused: false, pausedRemaining: 0, era: 1, timeline: [],
-    world: COUNTRIES.slice(), market: { comida: 8, minerio: 12, energia: 10, concreto: 10, madeira: 7, terras_raras: 20, uranio: 25, borracha: 14, carne: 11 }, missionIdx: 0, warAuth: null, paused: false, pausedRemaining: 0,
+    world: COUNTRIES.slice(), market: { comida: 8, minerio: 12, energia: 10, concreto: 10, madeira: 7, terras_raras: 20, uranio: 25, borracha: 14, carne: 11, ouro: 22, petroleo: 16 }, missionIdx: 0, warAuth: null, paused: false, pausedRemaining: 0,
   };
   rooms.set(room.code, room);
   return room;
@@ -226,7 +227,7 @@ function carregarJogo(code){
 }
 function temSave(code){ try { return require('fs').existsSync(savePath(code)); } catch { return false; } }
 
-function floorRec(rec){ const o = {}; for (const k of ['comida','minerio','energia','concreto','madeira','terras_raras','uranio','borracha','carne']) o[k] = Math.floor((rec && rec[k]) || 0); return o; }
+function floorRec(rec){ const o = {}; for (const k of ['comida','minerio','energia','concreto','madeira','terras_raras','uranio','borracha','carne','ouro','petroleo']) o[k] = Math.floor((rec && rec[k]) || 0); return o; }
 function snapshot(room) {
   return {
     t: 'state', phase: room.phase, code: room.code, turn: room.turn, day: room.day || 1,
@@ -316,7 +317,7 @@ function addPlayer(room, conn, name, isHost) {
     nuclear: 0, influencia: 0, fe: 0, provinces: [], wars: [], abrigo: false, inflacao: 0,
     sanctioning: [], sanctionedBy: [],
     taxRate: 1, taxes: {corp:10, rend:10, prod:10, amb:5}, budget: {exe:1, int:1, tra:1, edu:1, ambm:1}, debt: 0, ideology: null, religion: 'laico',
-    customName: null, customFlag: '🏳️', bot: false, pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 25, madeira: 0, terras_raras: 12, uranio: 0, borracha: 0, carne: 0 },
+    customName: null, customFlag: '🏳️', bot: false, pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 25, madeira: 0, terras_raras: 12, uranio: 0, borracha: 0, carne: 0, ouro: 0, petroleo: 0 },
     xp: 0, blackout: false, depositos: [], upgrades: {}, pacts: {},
     buildings: { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }, stats: { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0, mandatos: 0, conversoes: 0, doutrinacoes: 0, titulos: 0 }, famine: false,
     ministers: { eco: null, def: null, dip: null, soc: null },
@@ -344,7 +345,7 @@ function makeAIBot(c) {
     id: c.id, name: c.name, country: c.id, bot: true, conn: null, connected: true, color: 0,
     persona: personaOf(c.id),
     customName: null, customFlag: null, isHost: false,
-    money: 10000, eco: 3 + (h % 4), mil: 3 + ((h >> 2) % 4), pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 25, madeira: 0, terras_raras: 12, uranio: 0, borracha: 0, carne: 0 }, xp: 0, blackout: false, depositos: depositosOf(c.id), upgrades: {}, pacts: {},
+    money: 10000, eco: 3 + (h % 4), mil: 3 + ((h >> 2) % 4), pop: 0, rec: { comida: 0, minerio: 0, energia: 0, concreto: 25, madeira: 0, terras_raras: 12, uranio: 0, borracha: 0, carne: 0, ouro: 0, petroleo: 0 }, xp: 0, blackout: false, depositos: depositosOf(c.id), upgrades: {}, pacts: {},
     aprov: 50, ap: AP_PER_TURN, alive: true, allies: [], eliminatedReason: null,
     nuclear: 0, influencia: 0, fe: 0, wars: [], abrigo: false, inflacao: 0,
     provinces: [{ name: c.name, infra: 1, owner: c.id, origem: c.id }],
@@ -369,7 +370,7 @@ function startGame(room) {
     const nat = { id: cid, name: p.customName || (p.name + 'lândia'), flag: p.customFlag || '🏳️', lat: spot[0] + Math.floor(i / NEWLANDS.length) * 5, lon: spot[1] };
     room.world.push(nat); DYNC[cid] = nat;
     p.country = cid;
-    p.money = 10000; p.eco = 3; p.mil = 3; p.pop = 0; p.rec = { comida: 0, minerio: 0, energia: 0, concreto: 25, madeira: 0, terras_raras: 12, uranio: 0, borracha: 0, carne: 0 }; p.xp = 0; p.blackout = false;
+    p.money = 10000; p.eco = 3; p.mil = 3; p.pop = 0; p.rec = { comida: 0, minerio: 0, energia: 0, concreto: 25, madeira: 0, terras_raras: 12, uranio: 0, borracha: 0, carne: 0, ouro: 0, petroleo: 0 }; p.xp = 0; p.blackout = false;
     p.depositos = depositosOf(cid); p.upgrades = {}; p.pacts = {};
     p.buildings = { fazenda: 0, mina: 0, usina: 0, petroleo: 0, fabrica: 0, serraria: 0, mina_ouro: 0, estrada: 0, base: 0, mina_rara: 0, adubo: 0, mina_uranio: 0, solar: 0, eolica: 0 }; p.stats = { construidas: 0, vendidas: 0, vitorias: 0, presentes: 0, treinos: 0, anexacoes: 0, ajuda: 0, mandatos: 0, conversoes: 0, doutrinacoes: 0, titulos: 0 }; p.famine = false;
     p.aprov = 50; p.ap = AP_PER_TURN; p.alive = true;
@@ -488,6 +489,19 @@ function milCap(p) {
   return Math.min(25, 8 + 5 * q + 2 * b + 3 * a);
 }
 
+/* FASE 409 — COMBUSTÍVEL MILITAR (paridade MA3: soldados consomem petróleo).
+   O custo de uma ofensiva cresce com o tamanho das forças mobilizadas
+   (mil + unidades treinadas). Sem petróleo no estoque, não há ataque. */
+function custoCombustivel(p) {
+  const unidades = Object.values(p.units || {}).reduce((s, n) => s + (n || 0), 0);
+  return 2 + Math.ceil((p.mil || 0) / 15) + Math.ceil(unidades / 3);
+}
+/* manutenção semanal do exército parado (consumo recorrente de petróleo) */
+function manutencaoCombustivel(p) {
+  const unidades = Object.values(p.units || {}).reduce((s, n) => s + (n || 0), 0);
+  return Math.ceil(unidades / 2);
+}
+
 /* FASE 404 — CALENDÁRIO CIVIL (meses/anos)
    O jogo só tinha "dia" e "era". Agora dia → data real: dia 1 = 01/07/2024.
    1 mês = 30 dias, 1 ano = 360 dias (calendário fixo e determinístico). */
@@ -535,7 +549,6 @@ function incomeOf(room, p) {
   let base = p.eco * 10 + prov + Math.floor(p.pop / 8) + bldMoney
     + p.allies.length * 25
     + (p.maravilhas || []).length * 50
-    + ((p.depositos || []).includes('ouro') ? 15 : 0)
     - p.embassies.length * 10
     + p.trades.length * 20
     + ((p.sectors && p.sectors.turismo) || 0) * 15
@@ -566,14 +579,15 @@ function incomeOf(room, p) {
   if (p.ministers.soc === 'atl') mult += 0.05;
   if (p.taxRate === 2) mult += 0.15;
   if (p.taxRate === 0) mult -= 0.10;
-  if (room.embargo && room.embargo.target === p.id && room.turn < room.embargo.until) mult *= 0.7;
+  if (room.embargo && room.embargo.target === p.id && room.turn < room.embargo.until) mult *= 0.8;   // FASE 409: poder de sanção ~20%
   if (room.bloqueio && room.bloqueio.target === p.id && room.turn < room.bloqueio.until) mult *= 0.5;
   if (room.turn < (room.invernoUntil || 0)) mult *= 0.9;
   if (p.blockadedBy.length) mult *= p.units.frota >= 1 ? 0.9 : 0.75;
+  /* FASE 409: sanções econômicas reduzem a renda ~20% cada, até 3 sanções */
+  if (p.sanctionedBy.length) mult *= Math.pow(0.8, Math.min(3, p.sanctionedBy.length));
   if (room.turn < p.emergencyUntil) mult *= 0.8;
   base *= mult;
   const costs = Math.round(p.mil * 2) + (p.budget ? (p.budget.exe-1)*40+(p.budget.int-1)*30+(p.budget.tra-1)*30+(p.budget.edu-1)*30+(p.budget.ambm-1)*20 : 0)
-    + p.sanctionedBy.length * 50
     + p.sanctioning.length * 20
     + p.blockading.length * 15
     + Math.round(p.debt * 0.05)
@@ -647,6 +661,8 @@ function dayTick(room) {
   montarFeed(room);
   if (room.phase !== 'game') return;
   room.day++;
+  /* FASE 409 — relações decaem por ANO (paridade MA3), não por semana. */
+  if (room.day > 1 && (room.day - 1) % 360 === 0) decayRelacoes(room);
   for (const p of room.players) {
     if (!p.alive) continue;
     const done = p.builds.filter(b => (b.untilDay != null ? b.untilDay : room.day) <= room.day);
@@ -766,7 +782,8 @@ function dayTick(room) {
       if (!room.hybridWins[vh.id]) { room.hybridWins[vh.id] = p.id; p.stats.vitorias = (p.stats.vitorias || 0) + 1; }
     }
     const dep = p.depositos || [];
-    if (dep.includes('petroleo')) p.rec.energia += 2 / DAY_DIV;
+    if (dep.includes('petroleo')) p.rec.petroleo = (p.rec.petroleo || 0) + 2 / DAY_DIV;
+    if (dep.includes('ouro')) p.rec.ouro = (p.rec.ouro || 0) + 2 / DAY_DIV;
     if (dep.includes('minerio')) p.rec.minerio += 2 / DAY_DIV;
     if (dep.includes('madeira')) p.rec.madeira += 3 / DAY_DIV;
     if (dep.includes('comida')) p.rec.comida += 3 / DAY_DIV;
@@ -857,6 +874,9 @@ function atualizarMercado(room) {
       /* população consome comida e energia */
       if (k === 'comida') demanda += Math.floor((p.pop || 0) / 12);
       if (k === 'energia') demanda += Math.floor((p.pop || 0) / 20);
+      /* FASE 409: ouro (joias/reservas) e petróleo (civil + exército) também têm demanda */
+      if (k === 'ouro') demanda += Math.floor((p.pop || 0) / 25);
+      if (k === 'petroleo') demanda += Math.floor((p.pop || 0) / 20) + manutencaoCombustivel(p);
     }
     const base = room.market[k];
     const ratio = demanda > 0 ? (oferta / demanda) : 2;
@@ -893,6 +913,27 @@ function atualizarInflacao(p) {
   p.inflacao = Math.max(-5, Math.min(40, prev + (alvo - prev) * 0.25));
 }
 
+/* FASE 409 — DECAIMENTO ANUAL DE RELAÇÕES (paridade MA3: "relações decaem por ano",
+   por diferenças de ideologia/religião). Embaixadas seguram; aliados não caem
+   abaixo de 80; tecnologias diplomáticas freiam. */
+function decayRelacoes(room) {
+  const alive = room.players.filter(p => p.alive);
+  for (let i = 0; i < alive.length; i++) for (let j = i + 1; j < alive.length; j++) {
+    const a = alive[i], b = alive[j];
+    let dec = 6;
+    if (a.ideology === 'fascismo' || b.ideology === 'fascismo') dec += 2;
+    if (a.ideology && b.ideology && a.ideology !== b.ideology) dec += 3;
+    if ((a.religion || 'laico') !== (b.religion || 'laico')) dec += 3;
+    dec = Math.max(0, dec - Math.min(4, Math.floor(techBonus(a, 'relacoes') / 2)));
+    let v = relBetween(a, b) - dec;
+    if (a.embassies.includes(b.id)) v += 3;
+    if (b.embassies.includes(a.id)) v += 3;
+    if (a.allies.includes(b.id)) v = Math.max(v, 80);
+    v = Math.max(0, Math.min(100, v));
+    a.relations[b.id] = v; b.relations[a.id] = v;
+  }
+}
+
 function resolveWeek(room) {
   room.turn++;
   /* FASE 400 — AUTOSAVE: salva o mundo toda semana (periódico) sem depender do host
@@ -904,21 +945,17 @@ function resolveWeek(room) {
      guerra e sanções. Excedente derruba o preço; escassez encarece. */
   atualizarMercado(room);
 
-  // relações: decaimento + embaixadas
-  const alive = room.players.filter(p => p.alive);
-  for (let i = 0; i < alive.length; i++) for (let j = i + 1; j < alive.length; j++) {
-    const a = alive[i], b = alive[j];
-    let dec = 2;
-    if (a.ideology === 'fascismo' || b.ideology === 'fascismo') dec = 3;
-    if (a.ideology && b.ideology && a.ideology !== b.ideology) dec += 1;
-    if ((a.religion || 'laico') !== (b.religion || 'laico')) dec += 1;
-    dec = Math.max(0, dec - Math.min(2, Math.floor(techBonus(a, 'relacoes') / 5)));   // FASE 407: techs diplomáticas freiam o decaimento
-    let v = relBetween(a, b) - dec;
-    if (a.embassies.includes(b.id)) v += 3;
-    if (b.embassies.includes(a.id)) v += 3;
-    if (a.allies.includes(b.id)) v = Math.max(v, 80);
-    v = Math.max(0, Math.min(100, v));
-    a.relations[b.id] = v; b.relations[a.id] = v;
+  /* FASE 409 — manutenção militar semanal: exército parado consome petróleo. */
+  for (const p of room.players) {
+    if (!p.alive) continue;
+    const upkeep = manutencaoCombustivel(p);
+    if (upkeep <= 0) { p.semCombustivel = false; continue; }
+    const take = Math.min((p.rec.petroleo || 0), upkeep);
+    p.rec.petroleo = (p.rec.petroleo || 0) - take;
+    if (take < upkeep) {
+      if (!p.semCombustivel) log(room, `⛽ ${cname(p)} ficou sem petróleo para o exército — prontidão reduzida!`);
+      p.semCombustivel = true;
+    } else p.semCombustivel = false;
   }
   if ((room.day - 1) % 14 === 0){ randomEvent(room); worldNews(room); }
   if ((room.day - 1) % 28 === 0 && !room.un) openUN(room);
@@ -1532,6 +1569,10 @@ function allyDefend(room, atk, def) {
 }
 
 function botAttack(room, a, d) {
+  /* FASE 409: a IA também precisa de combustível para atacar (paridade MA3) */
+  const fuel = custoCombustivel(a);
+  if ((a.rec.petroleo || 0) < fuel) { a.semCombustivel = true; log(room, `⛽ ${cname(a)} não conseguiu atacar ${cname(d)} por falta de petróleo.`); return; }
+  a.rec.petroleo -= fuel;
   allyDefend(room, a, d);
   let aM = 1, dM = 1;
   if (a.ideology === 'autoritarismo') aM += 0.15;
@@ -6210,10 +6251,10 @@ function performAction(room, p, msg) {
       if (p.ap < 2) { err(p.conn, 'Atacar custa 2 pontos de ação.'); return; }
       if (room.batalha && !room.batalha.fim) { err(p.conn, 'Já há uma batalha em andamento nesta sala.'); return; }
       if (p.pacts && p.pacts[target.id] > room.turn) { err(p.conn, 'Pacto de não-agressão vigente com essa nação.'); return; }
+      const custo = custoCombustivel(p);
+      if ((p.rec.petroleo || 0) < custo) { err(p.conn, `⛽ Sem combustível: a ofensiva exige ${custo} petróleo (construa Torre de Petróleo ou importe no mercado).`); return; }
       p.ap -= 2;
-      const fuel = ((p.buildings && p.buildings.petroleo) || 0) >= 1 ? 0 : 150;
-      if (p.money < fuel) { p.ap += 2; err(p.conn, '⛽ Sem combustível: construa Torre de Petróleo ou tenha $150.'); return; }
-      p.money -= fuel;
+      p.rec.petroleo -= custo;
       allyDefend(room, p, target);
       iniciarBatalha(room, p, target);
       btEnviar(room);
@@ -6225,7 +6266,8 @@ function performAction(room, p, msg) {
       if (!p.wars.includes(target.id)) { err(p.conn, 'Declare GUERRA primeiro (⚠️, 1⚡).'); return; }
       if (p.nuclear < NUKE_MIN_LEVEL) { err(p.conn, `Programa nuclear insuficiente (nível ${NUKE_MIN_LEVEL}+ necessário).`); return; }
       if (p.ap < 3) { err(p.conn, 'Lançar um míssil custa 3 pontos de ação.'); return; }
-      p.ap -= 3; p.nuclear -= 1;
+      if ((p.rec.petroleo || 0) < 8) { err(p.conn, '⛽ Sem combustível: o míssil exige 8 petróleo (produza ou importe).'); return; }
+      p.ap -= 3; p.nuclear -= 1; p.rec.petroleo -= 8;
       const shield = techLevel(target, 'interceptadores') > 0 || (target.space || 0) >= 5 || ((target.buildings && target.buildings.antimisseis) || 0) > 0 || (target.nukeShieldUntil || 0) > room.turn;
       const abrig = !!target.abrigo; if (abrig) target.abrigo = false;
       target.mil = Math.max(1, Math.round(target.mil * (abrig ? 0.75 : (shield ? 0.7 : 0.4))));
@@ -6268,7 +6310,7 @@ function performAction(room, p, msg) {
     case 'comprar': {
       const q = Math.max(1, Math.min(100, msg.qty | 0));
       if (room.market[msg.res] == null) return;
-      const cost = Math.round(room.market[msg.res] * q * Math.max(0.8, 1 - 0.03 * p.trades.length) * (1 + 0.1 * p.sanctionedBy.length) * leiProd(p).compra);
+      const cost = Math.round(room.market[msg.res] * q * Math.max(0.8, 1 - 0.03 * p.trades.length) * (1 + 0.2 * Math.min(1, p.sanctionedBy.length)) * leiProd(p).compra);
       if (p.money < cost) { err(p.conn, 'Dinheiro insuficiente.'); return; }
       p.money -= cost; p.rec[msg.res] += q;
       if (!p.bot) { const sup = room.world[(room.turn * 7 + msg.res.length * 13) % room.world.length]; log(room, `🚢 Carregamento de ${msg.res} chegou de ${sup.name} (+${q}).`); }
@@ -6557,7 +6599,9 @@ function performAction(room, p, msg) {
     }
     case 'subornar': {
       if (!room.un || room.un.proposer !== p.id) { err(p.conn, 'Nenhuma resolução sua em votação.'); return; }
-      if (!spend(p, 0, 200)) return;
+      const custoSuborno = 10;   // FASE 409: propina em OURO (paridade MA3), não em dinheiro
+      if ((p.rec.ouro || 0) < custoSuborno) { err(p.conn, `🪙 Precisa de ${custoSuborno} ouro para subornar — construa Minas de Ouro ou importe no mercado.`); return; }
+      p.rec.ouro -= custoSuborno;
       const nos = Object.keys(room.un.votes).filter(k => room.un.votes[k] === false);
       const flip = Math.ceil(nos.length / 2);
       let n = 0;
@@ -6995,8 +7039,10 @@ function fatoresGuerra(p, lado) {
   const ministro = ministroEfeito(p, 'def', 'militar') + ministroEfeito(p, 'def', 'defesa');
   /* sanções e bloqueios corroem a capacidade de combate */
   const pressao = (p.sanctionedBy || []).length * -0.03 + (p.blockadedBy || []).length * -0.05;
-  return { tech, terreno, logistica, suprimento, ministro, pressao,
-           total: tech + terreno + logistica + suprimento + ministro + pressao };
+  /* FASE 409: exército sem combustível luta mal */
+  const combustivel = p.semCombustivel ? -0.12 : 0;
+  return { tech, terreno, logistica, suprimento, ministro, pressao, combustivel,
+           total: tech + terreno + logistica + suprimento + ministro + pressao + combustivel };
 }
 
 function montarExercito(p, lado) {
@@ -7310,6 +7356,7 @@ module.exports = {
   relBetween, relBonus, sectorSum, ownProvinces, leiProd, insumoNecessario, taxaSuprimento,
   pibDetalhe, empregosOf, pibOf, incomeOf, deltasDe, personaOf, riscoProtesto, pressaoPolitica,
   buildingMaint, milCap, dataDe, MESES, migracaoOf, techBonus, techResBonus, TECH_EFFECTS, TECH_RES, riscoEspionagem,
+  custoCombustivel, manutencaoCombustivel, decayRelacoes, fatoresGuerra,
   TECHS, TECH_COSTS, TECH_MAX, TECH_TREES, SECTORS, MISSIONS, UNIT_COSTS, UNIT_MAX, LEIS, SEG,
   IDEOLOGIES, RELIGIONS, MINISTERS, PERSONAS, COUNTRIES, SPACE_COSTS, PROD_BUILDS, BUILD_OUT, BUILD_TAB,
 };

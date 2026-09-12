@@ -22,9 +22,12 @@ ok('dayMsFor(5) = 600', s.dayMsFor(5) === 600);
 ok('dayMsFor(999 inválido) = 3000', s.dayMsFor(999) === 3000);
 
 /* ---------- CONSTRUÇÃO ---------- */
-section('CONSTRUÇÃO (buildDays)');
-ok('buildDays está entre 1 e 30', (() => { const d = s.buildDays(500, null); return d >= 1 && d <= 30; })());
+section('CONSTRUÇÃO (buildDays — 20 a 30 dias, paridade MA3)');
+ok('buildDays está entre 20 e 30', (() => { const d = s.buildDays(500, null); return d >= 20 && d <= 30; })());
 ok('buildDays é inteiro', Number.isInteger(s.buildDays(300, null)));
+ok('obra mais barata = 20 dias', s.buildDays(120, null) === 20);
+ok('obra mais cara = 30 dias', s.buildDays(950, null) === 30);
+ok('monotônico (mais cara = mais dias)', s.buildDays(900, null) >= s.buildDays(300, null));
 
 /* ---------- SANITIZAÇÃO ---------- */
 section('SEGURANÇA (sanitizeName)');
@@ -162,6 +165,20 @@ ok('base +2 no teto', s.milCap({ buildings: { base: 1 } }) === 10);
 ok('academia +3 no teto', s.milCap({ buildings: { academia_militar: 1 } }) === 11);
 ok('teto nunca passa de 25', s.milCap({ buildings: { quartel: 10, base: 10, academia_militar: 10 } }) === 25);
 ok('quartéis elevam o teto (diferença real)', s.milCap({ buildings: { quartel: 3 } }) > s.milCap({ buildings: {} }));
+
+/* ---------- FASE 409: OURO & PETRÓLEO (recursos separados) ---------- */
+section('FASE 409 — ouro e petróleo (paridade MA3)');
+ok('custoCombustivel exportada', typeof s.custoCombustivel === 'function');
+ok('manutencaoCombustivel exportada', typeof s.manutencaoCombustivel === 'function');
+ok('custoCombustivel mínimo = 2 (sem tropas)', s.custoCombustivel({ mil: 0, units: {} }) === 2);
+ok('custoCombustivel cresce com mil', s.custoCombustivel({ mil: 30, units: {} }) > s.custoCombustivel({ mil: 0, units: {} }));
+ok('custoCombustivel cresce com unidades', s.custoCombustivel({ mil: 0, units: { blindados: 3 } }) > s.custoCombustivel({ mil: 0, units: {} }));
+ok('mina_ouro produz ouro (BUILD_OUT)', s.BUILD_OUT.mina_ouro.res === 'ouro' && s.BUILD_OUT.mina_ouro.qtd === 3);
+ok('torre de petróleo produz petróleo (BUILD_OUT)', s.BUILD_OUT.petroleo.res === 'petroleo');
+ok('refinaria produz petróleo (BUILD_OUT)', s.BUILD_OUT.refinaria.res === 'petroleo');
+ok('manutencaoCombustivel = metade das unidades', s.manutencaoCombustivel({ units: { frota: 4 } }) === 2);
+ok('decayRelacoes exportada', typeof s.decayRelacoes === 'function');
+ok('fatoresGuerra penaliza exército sem combustível', (() => { const a = { techLv: {}, buildings: {}, provinces: [{ owner: 'p', infra: 1 }], sanctionedBy: [], blockadedBy: [], ministers: { def: null }, rec: {} }; const b = { techLv: {}, buildings: {}, provinces: [{ owner: 'p', infra: 1 }], sanctionedBy: [], blockadedBy: [], ministers: { def: null }, rec: {}, semCombustivel: true }; return s.fatoresGuerra(b, 'atk').total < s.fatoresGuerra(a, 'atk').total; })());
 
 /* ---------- RESULTADO ---------- */
 console.log('\n══════════════════════════════');
