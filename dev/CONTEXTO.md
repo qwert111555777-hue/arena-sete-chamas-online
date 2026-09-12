@@ -960,3 +960,18 @@ Commit `3f40ca6`, deploy `dep-dainaj6q1p3s73cqeet0` → live.
    ✅ local e em produção.
 
 verify-prod 566.620 B idêntico ao local. Regressão completa verde.
+
+## FASE 402 — colonização espacial (itens 20/21) (2026-09-12)
+
+Commit `8e3ca19`, deploy `dep-daindnrm8hqs73ditmkg` → live.
+
+Sistema de colonização real, conectado ao programa espacial:
+- `case 'colonizar'`: funda colônia em Marte/Lua/Europa após `space>=5` (2 AP + $3000),
+  uma por destino; tem população, infra e data de fundação.
+- `case 'colonia_up'`: amplia infra da colônia (1 AP + $800, máx 5).
+- `dayTick`: colônias crescem `(0.5+0.5*infra)/dia` e cobram manutenção `(1*infra)/dia`.
+- `incomeOf`: cada colônia rende `20 + 15*infra + pop/10`.
+- snapshot expõe `colonias`; marco "império interplanetário" (2+); missão `colonia_1`.
+
+Testes: `test_colonizar.js` (rejeição sem space 5 ✅) e `test_colonizar_pos.js`
+(jogou até space=5 e fundou colônia em Marte, pop 5→12,14 ✅). Regressão verde.
