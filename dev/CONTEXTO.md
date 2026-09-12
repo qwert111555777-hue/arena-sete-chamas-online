@@ -851,3 +851,29 @@ bandeiras colidindo (< 18 px) e marcadores fora do viewBox.
 `node_modules` **nao persiste entre turnos**. Ao voltar, `playwright` somiu e
 foi preciso `npm i playwright` + `npx playwright install chromium` (~114 MB).
 Refazer isso no inicio de cada sessao que for usar browser.
+
+## 🟢 RETOMADA 2026-09-12 — produção colocada em dia + pedido de auditoria
+
+**Quem:** novo chat (Arena), assumindo do handover.
+
+**Descobertas:**
+- Produção estava **3 commits atrás** do HEAD (`8520680`): servia 563.305 B vs 566.045 B local.
+- A `RENDER_API_KEY` anotada como "ROTACIONAR" **nunca foi rotacionada** e **continua viva**
+  (HTTP 200 em `/owners`, owner "My Workspace" / tea-da95g6on74is73et948g). Foi recuperada
+  do histórico do repo handover (`git log -S 'rnd_'` → commit `666e918`).
+- O `GH_TOKEN` atual (passado pelo usuário) responde 200 em `/user`.
+
+**Ações:**
+1. Deploy disparado: `dep-daim1a3m8hqs73ddsg00` → **live** (poll 2). `clearCache: clear`.
+2. verify-prod: HTTP 200, **566.045 bytes, idêntico ao local** (`diff` = 0 linhas).
+3. Confirmado em produção: leis de produção 396-398 (`zona_franca`, `lei_volume`…) e fix
+   perf do mapa (`__lastMapSig`) presentes.
+4. node-check duplo OK · server local boota (200, /health 200) · `git status` limpo.
+
+**Pedido do usuário (ordem explícita):** *"quero que você peça uma auditoria para o
+próximo chat para ele te guiar passo a passo, código por código."*
+→ Criado `handover/files/AUDITORIA-PROXIMO-CHAT-2026-09-12.md` com mapa linha-a-linha
+do código (server.js 7.752 linhas / 704 cases, index.html 5.144 linhas / 71 funções),
+lentes de auditoria e procedimento por bloco.
+
+**Próximo passo:** o próximo chat executa a auditoria código por código.
