@@ -975,3 +975,11 @@ Sistema de colonização real, conectado ao programa espacial:
 
 Testes: `test_colonizar.js` (rejeição sem space 5 ✅) e `test_colonizar_pos.js`
 (jogou até space=5 e fundou colônia em Marte, pop 5→12,14 ✅). Regressão verde.
+
+## FASE 402b — UI de colonização (item 34) (2026-09-12)
+
+Commit + deploy `dep-daineflg1s2s7381tsl0` → live.
+
+Painel do programa espacial agora tem seção "COLÔNIAS" quando `space>=5`: lista
+colônias (destino/infra/pop), botão "Ampliar" e botões de fundar (Marte/Lua/Europa),
+todos ligados ao backend. verify-prod 568.343 B idêntico ao local.
