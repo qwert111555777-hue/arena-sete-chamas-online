@@ -4128,7 +4128,18 @@ $('btn-win').onclick = () => {
   ov.innerHTML = s;
   document.body.appendChild(ov);
   const RK = (f,lb,ic) => { const arr = alive.slice().sort((a,b)=>f(b)-f(a)); const pos = arr.findIndex(p=>p.id===myId)+1; return '<div style="background:#fff8e6;border:1px solid #c9b98b;border-radius:8px;padding:6px 10px;margin-bottom:6px;font-size:13px">'+ic+' '+lb+': <b>#'+pos+' de '+arr.length+'</b></div>'; };
-  ov.querySelector('#win-ranks').innerHTML = RK(p=>p.dailyIncome||0,'Receita/dia','💵') + RK(p=>p.mil||0,'Poder militar','🪖') + RK(p=>p.pop||0,'População','👥') + RK(p=>p.eco||0,'Indústria (eco)','🏭');
+  ov.querySelector('#win-ranks').innerHTML =
+    RK(p=>p.dailyIncome||0,'Receita/dia','💵') +
+    RK(p=>p.mil||0,'Poder militar','🪖') +
+    RK(p=>p.pop||0,'População','👥') +
+    RK(p=>p.eco||0,'Economia','🏭') +
+    RK(p=>p.pib||0,'PIB','📊') +
+    RK(p=>(p.techs||[]).length,'Tecnologia','🔬') +
+    RK(p=>p.influencia||0,'Influência','🧠') +
+    RK(p=>p.ciencia||0,'Ciência','⚗️') +
+    RK(p=>p.space||0,'Programa espacial','🚀') +
+    RK(p=>(p.trades||[]).length,'Comércio','💼') +
+    RK(p=>(p.provinces||[]).filter(pr=>pr.owner===p.id).length,'Território','🗺️');
   ov.querySelector('#wn-x').onclick=()=>ov.remove();
   ov.onclick = e => { if (e.target===ov) ov.remove(); };
 };

@@ -593,7 +593,7 @@ function snapshot(room) {
       blockading: p.blockading, blockadedBy: p.blockadedBy,
       units: p.units, builds: p.builds, emergencyUntil: p.emergencyUntil, leis: p.leis, crise: p.crise || null,
       pop: Math.round(p.pop), rec: floorRec(p.rec), xp: p.xp, bot: p.bot, customName: p.customName, customFlag: p.customFlag,
-      persona: p.persona || null,
+      persona: p.persona || null, ciencia: p.ciencia || 0,
       pib: p.pib || pibOf(p), empregos: p.empregos || empregosOf(p),
       pibDetalhe: pibDetalhe(p), histRel: (p.histRel && typeof p.histRel === 'object') ? p.histRel : {},
       deltas: p.deltas || {}, estadoVisual: p.estadoVisual || [],
@@ -784,6 +784,9 @@ function checkVictory(room) {
   marco('convR', alive.find(p => p.religion && p.religion !== 'laico' && alive.filter(o => o.religion === p.religion).length > alive.length / 2), 'sua fé converteu a maioria das nações');
   marco('convI', alive.find(p => p.ideology && alive.filter(o => o.ideology === p.ideology).length > alive.length / 2), 'sua doutrina governa a maioria das nações');
   marco('sociedade', alive.find(p => { const s = p.sectors || {}; return ['educacao','saude','cultura','esportes','habitacao','justica','turismo'].every(k => (s[k] || 0) >= 4); }), 'sociedade perfeita (7 setores Nv4+)');
+  /* FASE 401 — vitórias científica e espacial (item 28): integrar ciência/espaço ao sistema de marcos. */
+  marco('ciencia', alive.find(p => (p.ciencia || 0) >= 50 || ((p.techs || []).length >= 30)), 'potência científica (50+ ciência ou 30+ tecnologias)');
+  marco('espaco', alive.find(p => (p.space || 0) >= 5), 'conquistou o espaço (programa espacial completo)');
   const supM = room.players.length > 1 && alive.length === 1 ? alive[0] : null;
   const supR = alive.find(p => p.religion && p.religion !== 'laico' && alive.length > 1 && alive.every(o => o.religion === p.religion));
   const supI = alive.find(p => p.ideology && alive.length > 1 && alive.every(o => o.ideology === p.ideology));
